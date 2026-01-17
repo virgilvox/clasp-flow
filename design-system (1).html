@@ -1,0 +1,1203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CLASP Design System</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <style>
+    /* ═══════════════════════════════════════════════════════════════════════
+       DESIGN TOKENS
+       ═══════════════════════════════════════════════════════════════════════ */
+    :root {
+      --color-primary-50: #E6F7F3;
+      --color-primary-100: #B3E8DA;
+      --color-primary-200: #80D9C1;
+      --color-primary-300: #4DCAA8;
+      --color-primary-400: #2AAB8A;
+      --color-primary-500: #1A9A7A;
+      --color-primary-600: #168A6D;
+      --color-primary-700: #127A60;
+      --color-primary-800: #0E6A53;
+      --color-primary-900: #0A5A46;
+      
+      --color-neutral-0: #FFFFFF;
+      --color-neutral-50: #F5F5F5;
+      --color-neutral-100: #E8E8E8;
+      --color-neutral-200: #D4D4D4;
+      --color-neutral-300: #B0B0B0;
+      --color-neutral-400: #8C8C8C;
+      --color-neutral-500: #6B6B6B;
+      --color-neutral-600: #4A4A4A;
+      --color-neutral-700: #3D3D3D;
+      --color-neutral-800: #2D2D2D;
+      --color-neutral-900: #1A1A1A;
+      
+      --color-success: #22C55E;
+      --color-warning: #F59E0B;
+      --color-error: #EF4444;
+      --color-selection: #FEF9E7;
+      
+      --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+      
+      --space-1: 0.25rem;
+      --space-2: 0.5rem;
+      --space-3: 0.75rem;
+      --space-4: 1rem;
+      --space-6: 1.5rem;
+      --space-8: 2rem;
+      
+      --radius-sm: 2px;
+      --radius-default: 4px;
+      --radius-full: 9999px;
+      
+      --transition-default: 200ms ease;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-mono);
+      font-size: 14px;
+      line-height: 1.5;
+      color: var(--color-neutral-900);
+      background: var(--color-neutral-100);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       LAYOUT
+       ═══════════════════════════════════════════════════════════════════════ */
+    .ds-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    .ds-sidebar {
+      width: 240px;
+      background: var(--color-neutral-800);
+      color: var(--color-neutral-0);
+      padding: var(--space-4);
+      position: fixed;
+      height: 100vh;
+      overflow-y: auto;
+    }
+
+    .ds-sidebar-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-primary-400);
+      margin-bottom: var(--space-6);
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+    }
+
+    .ds-sidebar-section {
+      margin-bottom: var(--space-4);
+    }
+
+    .ds-sidebar-section-title {
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-neutral-400);
+      margin-bottom: var(--space-2);
+    }
+
+    .ds-nav-item {
+      display: block;
+      padding: var(--space-2) var(--space-3);
+      color: var(--color-neutral-300);
+      text-decoration: none;
+      font-size: 13px;
+      border-radius: 0;
+      transition: all var(--transition-default);
+      cursor: pointer;
+    }
+
+    .ds-nav-item:hover {
+      background: var(--color-neutral-700);
+      color: var(--color-neutral-0);
+    }
+
+    .ds-nav-item.active {
+      background: var(--color-primary-400);
+      color: var(--color-neutral-0);
+    }
+
+    .ds-content {
+      flex: 1;
+      margin-left: 240px;
+      padding: var(--space-8);
+    }
+
+    .ds-section {
+      display: none;
+      background: var(--color-neutral-0);
+      border-radius: 0;
+      padding: var(--space-6);
+      margin-bottom: var(--space-6);
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .ds-section.active { display: block; }
+
+    .ds-section-title {
+      font-size: 20px;
+      font-weight: 600;
+      margin-bottom: var(--space-6);
+      padding-bottom: var(--space-4);
+      border-bottom: 1px solid var(--color-neutral-200);
+    }
+
+    .ds-subsection {
+      margin-bottom: var(--space-8);
+    }
+
+    .ds-subsection-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-neutral-500);
+      margin-bottom: var(--space-4);
+    }
+
+    .ds-row {
+      display: flex;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .ds-grid {
+      display: grid;
+      gap: var(--space-4);
+    }
+
+    /* ═══════════════════════════════════════════════════════════════════════
+       COMPONENTS
+       ═══════════════════════════════════════════════════════════════════════ */
+    
+    /* Buttons */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-4);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      text-decoration: none;
+      border: 1px solid transparent;
+      border-radius: 0;
+      cursor: pointer;
+      transition: all var(--transition-default);
+    }
+
+    .btn-primary {
+      background: var(--color-primary-400);
+      color: var(--color-neutral-0);
+      border: 2px solid var(--color-neutral-900);
+      box-shadow: 4px 4px 0 0 var(--color-neutral-900);
+    }
+    .btn-primary:hover { background: var(--color-primary-500); }
+    .btn-primary:active { 
+      box-shadow: 2px 2px 0 0 var(--color-neutral-900);
+      transform: translate(2px, 2px);
+    }
+
+    .btn-secondary {
+      background: var(--color-neutral-0);
+      color: var(--color-neutral-900);
+      border: 2px solid var(--color-neutral-900);
+    }
+    .btn-secondary:hover { 
+      background: var(--color-neutral-50); 
+      box-shadow: 4px 4px 0 0 var(--color-neutral-900);
+    }
+    .btn-secondary:active {
+      box-shadow: 2px 2px 0 0 var(--color-neutral-900);
+      transform: translate(2px, 2px);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--color-neutral-900);
+    }
+    .btn-ghost:hover { background: var(--color-neutral-100); }
+
+    .btn-sm { padding: var(--space-2) var(--space-3); font-size: 10px; }
+    .btn-lg { padding: var(--space-4) var(--space-6); font-size: 14px; }
+
+    .btn-icon {
+      padding: var(--space-2);
+      min-width: 36px;
+      min-height: 36px;
+    }
+
+    /* Badges */
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-1) var(--space-2);
+      font-size: 10px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      border-radius: var(--radius-sm);
+    }
+
+    .badge-primary { background: var(--color-primary-400); color: var(--color-neutral-0); }
+    .badge-secondary { background: var(--color-neutral-200); color: var(--color-neutral-900); }
+    .badge-success { background: var(--color-success); color: var(--color-neutral-0); }
+    .badge-warning { background: var(--color-warning); color: var(--color-neutral-900); }
+    .badge-error { background: var(--color-error); color: var(--color-neutral-0); }
+
+    .badge-count {
+      min-width: 22px;
+      height: 22px;
+      padding: 0 var(--space-2);
+      border-radius: var(--radius-full);
+    }
+
+    .badge-protocol { padding: 2px 6px; font-size: 10px; font-weight: 700; }
+    .badge-clasp { background: var(--color-primary-400); color: var(--color-neutral-0); }
+    .badge-osc { background: var(--color-neutral-600); color: var(--color-neutral-0); }
+    .badge-midi { background: #7C3AED; color: var(--color-neutral-0); }
+    .badge-dmx { background: #0891B2; color: var(--color-neutral-0); }
+
+    /* Inputs */
+    .input-wrapper { display: flex; flex-direction: column; gap: var(--space-2); }
+
+    .input-label {
+      font-size: 11px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--color-neutral-500);
+    }
+
+    .input {
+      padding: var(--space-3) var(--space-4);
+      font-family: var(--font-mono);
+      font-size: 14px;
+      color: var(--color-neutral-900);
+      background: var(--color-neutral-0);
+      border: 1px solid var(--color-neutral-200);
+      border-radius: 0;
+      transition: border-color var(--transition-default);
+    }
+    .input:hover { border-color: var(--color-neutral-300); }
+    .input:focus { outline: none; border-color: var(--color-primary-400); box-shadow: 0 0 0 3px var(--color-primary-100); }
+
+    .select {
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236B6B6B' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      padding-right: 40px;
+    }
+
+    /* Status Indicators */
+    .status {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 12px;
+      height: 12px;
+      border-radius: var(--radius-full);
+    }
+    .status-lg { width: 40px; height: 40px; }
+    .status-online { background: var(--color-success); }
+    .status-offline { background: var(--color-neutral-400); }
+    .status-warning { background: var(--color-warning); }
+    .status-error { background: var(--color-error); }
+
+    /* Panels */
+    .panel {
+      border-radius: 0;
+      overflow: hidden;
+      border: 1px solid var(--color-neutral-300);
+    }
+    .panel-header {
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-neutral-800);
+      color: var(--color-neutral-0);
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .panel-body {
+      padding: var(--space-4);
+      background: var(--color-neutral-0);
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      gap: 2px;
+      border-bottom: 1px solid var(--color-neutral-200);
+    }
+    .tab {
+      padding: var(--space-4) var(--space-6);
+      font-family: var(--font-mono);
+      font-size: 12px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-neutral-500);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: all var(--transition-default);
+    }
+    .tab:hover { color: var(--color-neutral-900); }
+    .tab.active { color: var(--color-primary-400); border-bottom-color: var(--color-primary-400); }
+
+    /* Progress */
+    .progress {
+      width: 100%;
+      height: 8px;
+      background: var(--color-neutral-200);
+      border-radius: 0;
+      overflow: hidden;
+    }
+    .progress-bar {
+      height: 100%;
+      background: var(--color-primary-400);
+      border-radius: 0;
+    }
+
+    .value-bar-track {
+      height: 12px;
+      background: var(--color-neutral-700);
+      border-radius: 0;
+      overflow: hidden;
+    }
+    .value-bar-fill {
+      height: 100%;
+      background: var(--color-primary-400);
+    }
+
+    /* Nodes */
+    .node {
+      position: relative;
+      padding: var(--space-4);
+      min-width: 140px;
+      background: var(--color-neutral-0);
+      border: 1px solid var(--color-neutral-200);
+      border-radius: 0;
+      box-shadow: 3px 3px 0 0 var(--color-neutral-300);
+    }
+    .node-primary {
+      background: var(--color-primary-400);
+      border-color: var(--color-primary-500);
+      color: var(--color-neutral-0);
+    }
+    .node-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .node-subtitle {
+      font-size: 11px;
+      color: var(--color-neutral-400);
+      margin-top: 2px;
+    }
+    .node-primary .node-subtitle { color: var(--color-primary-100); }
+    .node-port {
+      position: absolute;
+      width: 12px;
+      height: 12px;
+      background: var(--color-success);
+      border: 2px solid var(--color-neutral-0);
+      border-radius: var(--radius-full);
+      top: 50%;
+      transform: translateY(-50%);
+    }
+    .node-port-left { left: -6px; }
+    .node-port-right { right: -6px; }
+
+    /* Signal Row */
+    .signal-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-4);
+      border-bottom: 1px solid var(--color-neutral-100);
+      font-size: 13px;
+    }
+    .signal-row:hover { background: var(--color-neutral-50); }
+    .signal-direction { color: var(--color-neutral-400); font-size: 11px; }
+    .signal-address { flex: 1; }
+    .signal-value { min-width: 50px; text-align: right; font-variant-numeric: tabular-nums; }
+
+    /* Bridge Row */
+    .bridge-row {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      padding: var(--space-4);
+      background: var(--color-neutral-50);
+      border: 2px solid var(--color-neutral-800);
+      box-shadow: 4px 4px 0 0 var(--color-neutral-800);
+      transition: all var(--transition-default);
+    }
+    .bridge-row:hover { box-shadow: 6px 6px 0 0 var(--color-neutral-800); }
+    .bridge-endpoint { display: flex; flex-direction: column; gap: 2px; }
+    .bridge-endpoint-protocol { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-primary-400); }
+    .bridge-endpoint-address { font-size: 14px; }
+    .bridge-arrow { color: var(--color-primary-400); font-size: 18px; padding: 0 var(--space-4); }
+    .bridge-actions { display: flex; gap: var(--space-2); margin-left: auto; }
+
+    /* List Item */
+    .list-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3);
+      background: var(--color-neutral-0);
+      border: 1px solid var(--color-neutral-200);
+      transition: all var(--transition-default);
+    }
+    .list-item:hover { box-shadow: 3px 3px 0 0 var(--color-neutral-300); }
+    .list-item-selected { background: #FEF9E7; border-color: var(--color-neutral-300); }
+    .list-item-content { flex: 1; min-width: 0; }
+    .list-item-title { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .list-item-meta { font-size: 11px; color: var(--color-neutral-400); margin-top: 2px; }
+    .list-item-actions { display: flex; gap: 4px; }
+
+    /* App Header */
+    .app-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-3) var(--space-4);
+      background: var(--color-neutral-800);
+      color: var(--color-neutral-0);
+    }
+    .app-header-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    .app-header-title {
+      font-size: 14px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+    }
+    .app-header-version {
+      font-size: 11px;
+      color: var(--color-neutral-400);
+    }
+
+    /* Status Bar */
+    .status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--space-2) var(--space-4);
+      background: var(--color-neutral-200);
+      border-top: 1px solid var(--color-neutral-300);
+      font-size: 11px;
+      color: var(--color-neutral-500);
+    }
+    .status-bar-value { color: var(--color-primary-400); font-weight: 600; }
+
+    /* Color Swatches */
+    .color-swatch {
+      text-align: center;
+    }
+    .color-swatch-box {
+      width: 60px;
+      height: 60px;
+      border-radius: 0;
+      border: 1px solid var(--color-neutral-200);
+      margin-bottom: var(--space-1);
+    }
+    .color-swatch-name { font-size: 10px; color: var(--color-neutral-500); }
+    .color-swatch-hex { font-size: 9px; color: var(--color-neutral-400); }
+
+    /* Typography samples */
+    .type-sample { margin-bottom: var(--space-3); }
+    .type-meta { color: var(--color-neutral-400); margin-left: var(--space-4); }
+
+    /* Icons */
+    .icon { width: 16px; height: 16px; }
+    .icon-sm { width: 14px; height: 14px; }
+    .icon-lg { width: 20px; height: 20px; }
+    
+    .btn svg { width: 16px; height: 16px; }
+    .btn-sm svg { width: 14px; height: 14px; }
+    .btn-lg svg { width: 18px; height: 18px; }
+    .btn-icon svg { width: 18px; height: 18px; }
+  </style>
+</head>
+<body>
+  <div class="ds-layout">
+    <!-- Sidebar Navigation -->
+    <aside class="ds-sidebar">
+      <div class="ds-sidebar-title">
+        <i data-lucide="layout-grid" style="width:20px;height:20px;"></i>
+        CLASP Design System
+      </div>
+
+      <div class="ds-sidebar-section">
+        <div class="ds-sidebar-section-title">Foundations</div>
+        <a class="ds-nav-item active" data-section="colors">Colors</a>
+        <a class="ds-nav-item" data-section="typography">Typography</a>
+        <a class="ds-nav-item" data-section="spacing">Spacing</a>
+      </div>
+
+      <div class="ds-sidebar-section">
+        <div class="ds-sidebar-section-title">Components</div>
+        <a class="ds-nav-item" data-section="buttons">Buttons</a>
+        <a class="ds-nav-item" data-section="badges">Badges</a>
+        <a class="ds-nav-item" data-section="inputs">Inputs</a>
+        <a class="ds-nav-item" data-section="status">Status Indicators</a>
+        <a class="ds-nav-item" data-section="panels">Panels</a>
+        <a class="ds-nav-item" data-section="tabs">Tabs</a>
+        <a class="ds-nav-item" data-section="progress">Progress</a>
+        <a class="ds-nav-item" data-section="nodes">Flow Nodes</a>
+        <a class="ds-nav-item" data-section="listitems">List Items</a>
+        <a class="ds-nav-item" data-section="bridgerows">Bridge Rows</a>
+      </div>
+
+      <div class="ds-sidebar-section">
+        <div class="ds-sidebar-section-title">Patterns</div>
+        <a class="ds-nav-item" data-section="header">App Header</a>
+        <a class="ds-nav-item" data-section="monitor">Signal Monitor</a>
+        <a class="ds-nav-item" data-section="icons">Icons</a>
+      </div>
+    </aside>
+
+    <!-- Main Content -->
+    <main class="ds-content">
+
+      <!-- COLORS -->
+      <section id="colors" class="ds-section active">
+        <h2 class="ds-section-title">Colors</h2>
+        
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Primary (Teal)</h3>
+          <div class="ds-row">
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#E6F7F3"></div><div class="color-swatch-name">50</div><div class="color-swatch-hex">#E6F7F3</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#B3E8DA"></div><div class="color-swatch-name">100</div><div class="color-swatch-hex">#B3E8DA</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#80D9C1"></div><div class="color-swatch-name">200</div><div class="color-swatch-hex">#80D9C1</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#4DCAA8"></div><div class="color-swatch-name">300</div><div class="color-swatch-hex">#4DCAA8</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#2AAB8A"></div><div class="color-swatch-name">400</div><div class="color-swatch-hex">#2AAB8A</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#1A9A7A"></div><div class="color-swatch-name">500</div><div class="color-swatch-hex">#1A9A7A</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#168A6D"></div><div class="color-swatch-name">600</div><div class="color-swatch-hex">#168A6D</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#127A60"></div><div class="color-swatch-name">700</div><div class="color-swatch-hex">#127A60</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#0E6A53"></div><div class="color-swatch-name">800</div><div class="color-swatch-hex">#0E6A53</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#0A5A46"></div><div class="color-swatch-name">900</div><div class="color-swatch-hex">#0A5A46</div></div>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Neutral (Grays)</h3>
+          <div class="ds-row">
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#FFFFFF"></div><div class="color-swatch-name">0</div><div class="color-swatch-hex">#FFFFFF</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#F5F5F5"></div><div class="color-swatch-name">50</div><div class="color-swatch-hex">#F5F5F5</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#E8E8E8"></div><div class="color-swatch-name">100</div><div class="color-swatch-hex">#E8E8E8</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#D4D4D4"></div><div class="color-swatch-name">200</div><div class="color-swatch-hex">#D4D4D4</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#B0B0B0"></div><div class="color-swatch-name">300</div><div class="color-swatch-hex">#B0B0B0</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#8C8C8C"></div><div class="color-swatch-name">400</div><div class="color-swatch-hex">#8C8C8C</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#6B6B6B"></div><div class="color-swatch-name">500</div><div class="color-swatch-hex">#6B6B6B</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#4A4A4A"></div><div class="color-swatch-name">600</div><div class="color-swatch-hex">#4A4A4A</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#3D3D3D"></div><div class="color-swatch-name">700</div><div class="color-swatch-hex">#3D3D3D</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#2D2D2D"></div><div class="color-swatch-name">800</div><div class="color-swatch-hex">#2D2D2D</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#1A1A1A"></div><div class="color-swatch-name">900</div><div class="color-swatch-hex">#1A1A1A</div></div>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Semantic</h3>
+          <div class="ds-row">
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#22C55E"></div><div class="color-swatch-name">Success</div><div class="color-swatch-hex">#22C55E</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#F59E0B"></div><div class="color-swatch-name">Warning</div><div class="color-swatch-hex">#F59E0B</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#EF4444"></div><div class="color-swatch-name">Error</div><div class="color-swatch-hex">#EF4444</div></div>
+            <div class="color-swatch"><div class="color-swatch-box" style="background:#FEF9E7;border-color:#E5DFC5;"></div><div class="color-swatch-name">Selection</div><div class="color-swatch-hex">#FEF9E7</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TYPOGRAPHY -->
+      <section id="typography" class="ds-section">
+        <h2 class="ds-section-title">Typography</h2>
+        
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Font Family</h3>
+          <p style="font-size:18px;margin-bottom:8px;">JetBrains Mono / Space Mono</p>
+          <p style="color:var(--color-neutral-500);">All text uses monospace fonts for a technical, industrial aesthetic.</p>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Scale</h3>
+          <div class="type-sample" style="font-size:32px;">text-4xl <span class="type-meta">2rem / 32px</span></div>
+          <div class="type-sample" style="font-size:24px;">text-3xl <span class="type-meta">1.5rem / 24px</span></div>
+          <div class="type-sample" style="font-size:20px;">text-2xl <span class="type-meta">1.25rem / 20px</span></div>
+          <div class="type-sample" style="font-size:18px;">text-xl <span class="type-meta">1.125rem / 18px</span></div>
+          <div class="type-sample" style="font-size:16px;">text-lg <span class="type-meta">1rem / 16px</span></div>
+          <div class="type-sample" style="font-size:14px;">text-base <span class="type-meta">0.875rem / 14px</span></div>
+          <div class="type-sample" style="font-size:12px;">text-sm <span class="type-meta">0.75rem / 12px</span></div>
+          <div class="type-sample" style="font-size:10px;">text-xs <span class="type-meta">0.625rem / 10px</span></div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Styles</h3>
+          <div class="type-sample" style="text-transform:uppercase;letter-spacing:0.1em;font-weight:600;">UPPERCASE LABELS — Headers, buttons, section titles</div>
+          <div class="type-sample" style="font-weight:500;">Medium Weight — Primary content, server names</div>
+          <div class="type-sample">Regular Weight — Body text, descriptions</div>
+          <div class="type-sample" style="color:var(--color-neutral-500);">Secondary Color — Metadata, timestamps</div>
+          <div class="type-sample" style="color:var(--color-primary-400);">Accent Color — Values, active states</div>
+          <div class="type-sample" style="font-variant-numeric:tabular-nums;">0.326 0.451 0.672 — Tabular numbers for alignment</div>
+        </div>
+      </section>
+
+      <!-- SPACING -->
+      <section id="spacing" class="ds-section">
+        <h2 class="ds-section-title">Spacing</h2>
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Scale</h3>
+          <div style="display:flex;flex-direction:column;gap:12px;">
+            <div style="display:flex;align-items:center;gap:16px;"><div style="width:4px;height:24px;background:var(--color-primary-400);"></div><span>space-1: 4px (0.25rem)</span></div>
+            <div style="display:flex;align-items:center;gap:16px;"><div style="width:8px;height:24px;background:var(--color-primary-400);"></div><span>space-2: 8px (0.5rem)</span></div>
+            <div style="display:flex;align-items:center;gap:16px;"><div style="width:12px;height:24px;background:var(--color-primary-400);"></div><span>space-3: 12px (0.75rem)</span></div>
+            <div style="display:flex;align-items:center;gap:16px;"><div style="width:16px;height:24px;background:var(--color-primary-400);"></div><span>space-4: 16px (1rem)</span></div>
+            <div style="display:flex;align-items:center;gap:16px;"><div style="width:24px;height:24px;background:var(--color-primary-400);"></div><span>space-6: 24px (1.5rem)</span></div>
+            <div style="display:flex;align-items:center;gap:16px;"><div style="width:32px;height:24px;background:var(--color-primary-400);"></div><span>space-8: 32px (2rem)</span></div>
+            <div style="display:flex;align-items:center;gap:16px;"><div style="width:48px;height:24px;background:var(--color-primary-400);"></div><span>space-12: 48px (3rem)</span></div>
+            <div style="display:flex;align-items:center;gap:16px;"><div style="width:64px;height:24px;background:var(--color-primary-400);"></div><span>space-16: 64px (4rem)</span></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BUTTONS -->
+      <section id="buttons" class="ds-section">
+        <h2 class="ds-section-title">Buttons</h2>
+        
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Primary</h3>
+          <div class="ds-row">
+            <button class="btn btn-primary btn-sm"><i data-lucide="plus"></i> Add Server</button>
+            <button class="btn btn-primary"><i data-lucide="plus"></i> New Bridge</button>
+            <button class="btn btn-primary btn-lg"><i data-lucide="plus"></i> New Mapping</button>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Secondary</h3>
+          <div class="ds-row">
+            <button class="btn btn-secondary btn-sm">Check</button>
+            <button class="btn btn-secondary"><i data-lucide="refresh-cw"></i> Scan</button>
+            <button class="btn btn-secondary btn-lg"><i data-lucide="activity"></i> Run Diagnostics</button>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Ghost & Icon</h3>
+          <div class="ds-row">
+            <button class="btn btn-ghost"><i data-lucide="layout-grid"></i> Auto Layout</button>
+            <button class="btn btn-icon btn-secondary"><i data-lucide="grid-3x3"></i></button>
+            <button class="btn btn-icon btn-ghost"><i data-lucide="x"></i></button>
+            <button class="btn btn-icon btn-secondary"><i data-lucide="pencil"></i></button>
+            <button class="btn btn-icon btn-secondary"><i data-lucide="download"></i></button>
+            <button class="btn btn-icon btn-secondary"><i data-lucide="upload"></i></button>
+          </div>
+        </div>
+      </section>
+
+      <!-- BADGES -->
+      <section id="badges" class="ds-section">
+        <h2 class="ds-section-title">Badges</h2>
+        
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Standard</h3>
+          <div class="ds-row">
+            <span class="badge badge-primary">Primary</span>
+            <span class="badge badge-secondary">Secondary</span>
+            <span class="badge badge-success">Success</span>
+            <span class="badge badge-warning">Warning</span>
+            <span class="badge badge-error">Error</span>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Count</h3>
+          <div class="ds-row">
+            <span class="badge badge-count badge-primary">0</span>
+            <span class="badge badge-count badge-primary">2</span>
+            <span class="badge badge-count badge-secondary">5</span>
+            <span class="badge badge-count badge-success">12</span>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Protocol</h3>
+          <div class="ds-row">
+            <span class="badge badge-protocol badge-clasp">CLASP</span>
+            <span class="badge badge-protocol badge-osc">OSC</span>
+            <span class="badge badge-protocol badge-midi">MIDI</span>
+            <span class="badge badge-protocol badge-dmx">DMX</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- INPUTS -->
+      <section id="inputs" class="ds-section">
+        <h2 class="ds-section-title">Inputs</h2>
+        
+        <div style="max-width:400px;display:flex;flex-direction:column;gap:24px;">
+          <div class="input-wrapper">
+            <label class="input-label">Signal Address</label>
+            <input class="input" type="text" value="/osc/fader1">
+          </div>
+
+          <div class="input-wrapper">
+            <label class="input-label">Value</label>
+            <input class="input" type="number" value="0.5" step="0.01">
+          </div>
+
+          <div class="input-wrapper">
+            <label class="input-label">Target Server</label>
+            <select class="input select">
+              <option>Select a server...</option>
+              <option>CLASP Bridge Server</option>
+              <option>OSC Server @ 0.0.0.0:9000</option>
+            </select>
+          </div>
+
+          <div class="input-wrapper">
+            <label class="input-label">Value Type</label>
+            <select class="input select">
+              <option>Float (0.0-1.0)</option>
+              <option>Integer</option>
+              <option>Boolean</option>
+              <option>String</option>
+            </select>
+          </div>
+        </div>
+      </section>
+
+      <!-- STATUS -->
+      <section id="status" class="ds-section">
+        <h2 class="ds-section-title">Status Indicators</h2>
+        
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Small</h3>
+          <div class="ds-row" style="gap:24px;">
+            <div style="display:flex;align-items:center;gap:8px;"><span class="status status-online"></span><span>Online</span></div>
+            <div style="display:flex;align-items:center;gap:8px;"><span class="status status-offline"></span><span>Offline</span></div>
+            <div style="display:flex;align-items:center;gap:8px;"><span class="status status-warning"></span><span>Warning</span></div>
+            <div style="display:flex;align-items:center;gap:8px;"><span class="status status-error"></span><span>Error</span></div>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Large (Server Health)</h3>
+          <div style="display:flex;align-items:center;gap:16px;padding:16px;background:#fff;border-radius:0;border:1px solid #D4D4D4;max-width:400px;">
+            <span class="status status-lg status-online" style="display:flex;align-items:center;justify-content:center;color:#fff;"><i data-lucide="check" style="width:20px;height:20px;"></i></span>
+            <div>
+              <div style="font-weight:500;">CLASP Bridge Server</div>
+              <div style="font-size:12px;color:#6B6B6B;">0 in, 0 out, 0 errors | Uptime: 0s</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PANELS -->
+      <section id="panels" class="ds-section">
+        <h2 class="ds-section-title">Panels</h2>
+        
+        <div style="max-width:400px;">
+          <div class="panel">
+            <div class="panel-header">Server Health</div>
+            <div class="panel-body">
+              <div style="display:flex;align-items:center;gap:16px;padding:12px;border:1px solid #D4D4D4;border-radius:0;">
+                <span class="status status-lg status-online" style="display:flex;align-items:center;justify-content:center;color:#fff;"><i data-lucide="check" style="width:20px;height:20px;"></i></span>
+                <div style="flex:1;">
+                  <div style="font-weight:500;">CLASP Bridge Server</div>
+                  <div style="font-size:12px;color:#6B6B6B;">0 in, 0 out, 0 errors</div>
+                </div>
+                <button class="btn btn-secondary btn-sm">Check</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- TABS -->
+      <section id="tabs" class="ds-section">
+        <h2 class="ds-section-title">Tabs</h2>
+        
+        <nav class="tabs">
+          <button class="tab">Bridges</button>
+          <button class="tab">Mappings</button>
+          <button class="tab active">Flow</button>
+          <button class="tab">Monitor</button>
+          <button class="tab">Test</button>
+          <button class="tab">Logs</button>
+        </nav>
+      </section>
+
+      <!-- PROGRESS -->
+      <section id="progress" class="ds-section">
+        <h2 class="ds-section-title">Progress</h2>
+        
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Standard</h3>
+          <div style="display:flex;flex-direction:column;gap:12px;max-width:400px;">
+            <div class="progress"><div class="progress-bar" style="width:25%"></div></div>
+            <div class="progress"><div class="progress-bar" style="width:50%"></div></div>
+            <div class="progress"><div class="progress-bar" style="width:75%"></div></div>
+            <div class="progress"><div class="progress-bar" style="width:100%;background:var(--color-success);"></div></div>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Value Bars (Monitor Style)</h3>
+          <div style="display:flex;flex-direction:column;gap:8px;max-width:300px;">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="width:50px;text-align:right;font-variant-numeric:tabular-nums;">0.326</span>
+              <div class="value-bar-track" style="flex:1;"><div class="value-bar-fill" style="width:32.6%"></div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="width:50px;text-align:right;font-variant-numeric:tabular-nums;">0.451</span>
+              <div class="value-bar-track" style="flex:1;"><div class="value-bar-fill" style="width:45.1%"></div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="width:50px;text-align:right;font-variant-numeric:tabular-nums;">0.672</span>
+              <div class="value-bar-track" style="flex:1;"><div class="value-bar-fill" style="width:67.2%"></div></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:12px;">
+              <span style="width:50px;text-align:right;font-variant-numeric:tabular-nums;">0.891</span>
+              <div class="value-bar-track" style="flex:1;"><div class="value-bar-fill" style="width:89.1%"></div></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- NODES -->
+      <section id="nodes" class="ds-section">
+        <h2 class="ds-section-title">Flow Nodes</h2>
+        
+        <div style="padding:32px;background:#F5F5F5;border-radius:0;display:flex;align-items:center;gap:60px;">
+          <div class="node">
+            <div class="node-port node-port-right"></div>
+            <div class="node-title">OSC</div>
+            <div class="node-subtitle">0.0.0.0:9000</div>
+          </div>
+
+          <div style="width:80px;border-top:2px dashed var(--color-primary-400);"></div>
+
+          <div class="node node-primary">
+            <div class="node-port node-port-left"></div>
+            <div class="node-title">CLASP</div>
+            <div class="node-subtitle">localhost:7330</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- LIST ITEMS -->
+      <section id="listitems" class="ds-section">
+        <h2 class="ds-section-title">List Items</h2>
+        
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Server List</h3>
+          <div style="max-width:300px;display:flex;flex-direction:column;gap:4px;">
+            <div class="list-item">
+              <span class="status status-online"></span>
+              <span class="badge badge-protocol badge-clasp">CLASP</span>
+              <div class="list-item-content">
+                <div class="list-item-title">CLASP Bridge Ser...</div>
+              </div>
+            </div>
+            <div class="list-item list-item-selected">
+              <span class="status status-online"></span>
+              <span class="badge badge-protocol badge-osc">OSC</span>
+              <div class="list-item-content">
+                <div class="list-item-title">OSC Server @ 0.0...</div>
+              </div>
+              <div class="list-item-actions">
+                <button class="btn btn-icon btn-ghost" style="padding:4px;min-width:28px;min-height:28px;"><i data-lucide="pencil" style="width:14px;height:14px;"></i></button>
+                <button class="btn btn-icon btn-ghost" style="padding:4px;min-width:28px;min-height:28px;"><i data-lucide="x" style="width:14px;height:14px;"></i></button>
+              </div>
+            </div>
+            <div style="font-size:11px;color:#8C8C8C;padding:4px 12px;display:flex;gap:8px;">
+              <span style="display:flex;align-items:center;gap:2px;"><i data-lucide="arrow-down" style="width:12px;height:12px;"></i>27</span>
+              <span style="display:flex;align-items:center;gap:2px;"><i data-lucide="arrow-up" style="width:12px;height:12px;"></i>0</span>
+              <span style="display:flex;align-items:center;gap:2px;"><i data-lucide="arrow-left-right" style="width:12px;height:12px;"></i>0</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">States</h3>
+          <div style="max-width:300px;display:flex;flex-direction:column;gap:8px;">
+            <div>
+              <div style="font-size:11px;color:#6B6B6B;margin-bottom:4px;">Default</div>
+              <div class="list-item">
+                <span class="status status-online"></span>
+                <span class="badge badge-protocol badge-clasp">CLASP</span>
+                <div class="list-item-content">
+                  <div class="list-item-title">CLASP Bridge Server</div>
+                </div>
+              </div>
+            </div>
+            <div>
+              <div style="font-size:11px;color:#6B6B6B;margin-bottom:4px;">Selected (yellow background)</div>
+              <div class="list-item list-item-selected">
+                <span class="status status-online"></span>
+                <span class="badge badge-protocol badge-osc">OSC</span>
+                <div class="list-item-content">
+                  <div class="list-item-title">OSC Server @ 0.0.0.0:9000</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- BRIDGE ROWS -->
+      <section id="bridgerows" class="ds-section">
+        <h2 class="ds-section-title">Bridge Rows</h2>
+        
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Bridge Connection</h3>
+          <div style="max-width:600px;">
+            <div class="bridge-row">
+              <div class="bridge-endpoint">
+                <div class="bridge-endpoint-protocol">OSC</div>
+                <div class="bridge-endpoint-address">0.0.0.0:9000</div>
+              </div>
+              <div class="bridge-arrow"><i data-lucide="arrow-right" style="width:20px;height:20px;"></i></div>
+              <div class="bridge-endpoint">
+                <div class="bridge-endpoint-protocol">CLASP</div>
+                <div class="bridge-endpoint-address">localhost:7330</div>
+              </div>
+              <div class="bridge-actions">
+                <button class="btn btn-icon btn-secondary" style="padding:8px;min-width:36px;min-height:36px;border-width:1px;"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+                <button class="btn btn-icon btn-secondary" style="padding:8px;min-width:36px;min-height:36px;border-width:1px;color:#8C8C8C;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Mapping Row</h3>
+          <div style="max-width:700px;">
+            <div class="bridge-row" style="border-width:1px;border-color:var(--color-neutral-300);background:var(--color-neutral-0);box-shadow:none;">
+              <span class="badge badge-protocol badge-clasp">CLASP</span>
+              <span style="flex:1;">/clasp/*</span>
+              <div class="bridge-arrow"><i data-lucide="arrow-right" style="width:18px;height:18px;"></i></div>
+              <span class="badge badge-protocol badge-clasp">CLASP</span>
+              <span style="flex:1;">/clasp/*</span>
+              <div class="bridge-actions">
+                <button class="btn btn-icon btn-secondary" style="padding:8px;min-width:36px;min-height:36px;border-width:1px;"><i data-lucide="pencil" style="width:16px;height:16px;"></i></button>
+                <button class="btn btn-icon btn-secondary" style="padding:8px;min-width:36px;min-height:36px;border-width:1px;color:#8C8C8C;"><i data-lucide="x" style="width:16px;height:16px;"></i></button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- HEADER -->
+      <section id="header" class="ds-section">
+        <h2 class="ds-section-title">App Header</h2>
+        
+        <div style="border-radius:0;overflow:hidden;box-shadow:0 2px 4px rgba(0,0,0,0.1);">
+          <header class="app-header">
+            <div class="app-header-brand">
+              <i data-lucide="layout-grid" style="width:20px;height:20px;"></i>
+              <span class="app-header-title">CLASP Bridge</span>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;">
+              <button class="btn btn-icon btn-ghost" style="color:#fff;"><i data-lucide="grid-3x3"></i></button>
+              <button class="btn btn-icon btn-ghost" style="color:#fff;"><i data-lucide="download"></i></button>
+              <button class="btn btn-icon btn-ghost" style="color:#fff;"><i data-lucide="upload"></i></button>
+              <span class="app-header-version">v0.2.0</span>
+            </div>
+          </header>
+          <div style="padding:8px 16px;font-size:12px;color:var(--color-primary-400);background:var(--color-neutral-800);">
+            Forwarded from OSC | Bridge: 176866948495
+          </div>
+          <div class="status-bar">
+            <div style="display:flex;align-items:center;gap:8px;">
+              <span class="status status-online"></span>
+              <span>0 devices</span>
+              <span class="status-bar-value">0/s</span>
+            </div>
+            <div style="text-transform:uppercase;letter-spacing:0.05em;">CLASP Protocol v2</div>
+          </div>
+        </div>
+      </section>
+
+      <!-- MONITOR -->
+      <section id="monitor" class="ds-section">
+        <h2 class="ds-section-title">Signal Monitor</h2>
+        
+        <div style="border:1px solid var(--color-neutral-200);border-radius:0;overflow:hidden;">
+          <div class="signal-row">
+            <span class="signal-direction"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i></span>
+            <span class="badge badge-protocol badge-clasp">CLASP</span>
+            <span class="signal-address">/osc/fader1</span>
+            <span class="signal-value">0.326</span>
+            <div style="width:60px;"><div class="value-bar-track"><div class="value-bar-fill" style="width:32.6%"></div></div></div>
+          </div>
+          <div class="signal-row">
+            <span class="signal-direction"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i></span>
+            <span class="badge badge-protocol badge-osc">OSC</span>
+            <span class="signal-address">/osc/fader1</span>
+            <span class="signal-value">0.326</span>
+            <div style="width:60px;"><div class="value-bar-track"><div class="value-bar-fill" style="width:32.6%"></div></div></div>
+          </div>
+          <div class="signal-row">
+            <span class="signal-direction"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i></span>
+            <span class="badge badge-protocol badge-clasp">CLASP</span>
+            <span class="signal-address">/osc/fader1</span>
+            <span class="signal-value">0.348</span>
+            <div style="width:60px;"><div class="value-bar-track"><div class="value-bar-fill" style="width:34.8%"></div></div></div>
+          </div>
+          <div class="signal-row">
+            <span class="signal-direction"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i></span>
+            <span class="badge badge-protocol badge-osc">OSC</span>
+            <span class="signal-address">/osc/fader1</span>
+            <span class="signal-value">0.370</span>
+            <div style="width:60px;"><div class="value-bar-track"><div class="value-bar-fill" style="width:37%"></div></div></div>
+          </div>
+          <div class="signal-row">
+            <span class="signal-direction"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i></span>
+            <span class="badge badge-protocol badge-clasp">CLASP</span>
+            <span class="signal-address">/osc/fader1</span>
+            <span class="signal-value">0.418</span>
+            <div style="width:60px;"><div class="value-bar-track"><div class="value-bar-fill" style="width:41.8%"></div></div></div>
+          </div>
+          <div class="signal-row">
+            <span class="signal-direction"><i data-lucide="arrow-left" style="width:12px;height:12px;"></i></span>
+            <span class="badge badge-protocol badge-osc">OSC</span>
+            <span class="signal-address">/osc/fader1</span>
+            <span class="signal-value">0.451</span>
+            <div style="width:60px;"><div class="value-bar-track"><div class="value-bar-fill" style="width:45.1%"></div></div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ICONS -->
+      <section id="icons" class="ds-section">
+        <h2 class="ds-section-title">Icons</h2>
+        <p style="color:#6B6B6B;margin-bottom:24px;">Using <a href="https://lucide.dev" target="_blank" style="color:var(--color-primary-400);">Lucide</a> icon library. 16px default size, stroke-based.</p>
+        
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Actions</h3>
+          <div class="ds-row" style="gap:24px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="plus"></i><span style="font-size:10px;color:#6B6B6B;">plus</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="x"></i><span style="font-size:10px;color:#6B6B6B;">x</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="pencil"></i><span style="font-size:10px;color:#6B6B6B;">pencil</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="trash-2"></i><span style="font-size:10px;color:#6B6B6B;">trash-2</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="copy"></i><span style="font-size:10px;color:#6B6B6B;">copy</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="check"></i><span style="font-size:10px;color:#6B6B6B;">check</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="refresh-cw"></i><span style="font-size:10px;color:#6B6B6B;">refresh-cw</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="search"></i><span style="font-size:10px;color:#6B6B6B;">search</span></div>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Navigation</h3>
+          <div class="ds-row" style="gap:24px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="arrow-left"></i><span style="font-size:10px;color:#6B6B6B;">arrow-left</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="arrow-right"></i><span style="font-size:10px;color:#6B6B6B;">arrow-right</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="arrow-up"></i><span style="font-size:10px;color:#6B6B6B;">arrow-up</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="arrow-down"></i><span style="font-size:10px;color:#6B6B6B;">arrow-down</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="arrow-left-right"></i><span style="font-size:10px;color:#6B6B6B;">arrow-left-right</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="chevron-down"></i><span style="font-size:10px;color:#6B6B6B;">chevron-down</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="external-link"></i><span style="font-size:10px;color:#6B6B6B;">external-link</span></div>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">UI Elements</h3>
+          <div class="ds-row" style="gap:24px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="layout-grid"></i><span style="font-size:10px;color:#6B6B6B;">layout-grid</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="grid-3x3"></i><span style="font-size:10px;color:#6B6B6B;">grid-3x3</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="settings"></i><span style="font-size:10px;color:#6B6B6B;">settings</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="info"></i><span style="font-size:10px;color:#6B6B6B;">info</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="help-circle"></i><span style="font-size:10px;color:#6B6B6B;">help-circle</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="menu"></i><span style="font-size:10px;color:#6B6B6B;">menu</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="more-horizontal"></i><span style="font-size:10px;color:#6B6B6B;">more-horizontal</span></div>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Data / Files</h3>
+          <div class="ds-row" style="gap:24px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="download"></i><span style="font-size:10px;color:#6B6B6B;">download</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="upload"></i><span style="font-size:10px;color:#6B6B6B;">upload</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="save"></i><span style="font-size:10px;color:#6B6B6B;">save</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="file"></i><span style="font-size:10px;color:#6B6B6B;">file</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="folder"></i><span style="font-size:10px;color:#6B6B6B;">folder</span></div>
+          </div>
+        </div>
+
+        <div class="ds-subsection">
+          <h3 class="ds-subsection-title">Status / Signals</h3>
+          <div class="ds-row" style="gap:24px;">
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="activity"></i><span style="font-size:10px;color:#6B6B6B;">activity</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="wifi"></i><span style="font-size:10px;color:#6B6B6B;">wifi</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="wifi-off"></i><span style="font-size:10px;color:#6B6B6B;">wifi-off</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="server"></i><span style="font-size:10px;color:#6B6B6B;">server</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="radio"></i><span style="font-size:10px;color:#6B6B6B;">radio</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="zap"></i><span style="font-size:10px;color:#6B6B6B;">zap</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="pause"></i><span style="font-size:10px;color:#6B6B6B;">pause</span></div>
+            <div style="display:flex;flex-direction:column;align-items:center;gap:8px;"><i data-lucide="play"></i><span style="font-size:10px;color:#6B6B6B;">play</span></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script>
+    // Initialize Lucide icons
+    lucide.createIcons();
+
+    // Navigation
+    document.querySelectorAll('.ds-nav-item').forEach(item => {
+      item.addEventListener('click', () => {
+        // Update nav
+        document.querySelectorAll('.ds-nav-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        
+        // Update sections
+        const sectionId = item.dataset.section;
+        document.querySelectorAll('.ds-section').forEach(s => s.classList.remove('active'));
+        document.getElementById(sectionId).classList.add('active');
+        
+        // Re-initialize icons for newly visible section
+        lucide.createIcons();
+      });
+    });
+
+    // Tab interaction demo
+    document.querySelectorAll('.tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+      });
+    });
+  </script>
+</body>
+</html>
