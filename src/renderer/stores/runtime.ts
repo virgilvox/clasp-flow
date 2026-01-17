@@ -1,0 +1,159 @@
+import { defineStore } from 'pinia'
+
+export type RuntimeStatus = 'stopped' | 'running' | 'paused'
+
+export interface NodeMetrics {
+  nodeId: string
+  executionTime: number
+  lastExecuted: Date | null
+  errorCount: number
+  lastError: string | null
+}
+
+export interface RuntimeError {
+  id: string
+  nodeId: string
+  nodeName: string
+  message: string
+  timestamp: Date
+}
+
+interface RuntimeState {
+  status: RuntimeStatus
+  fps: number
+  targetFps: number
+  frameCount: number
+  startTime: Date | null
+  nodeMetrics: Map<string, NodeMetrics>
+  errors: RuntimeError[]
+  maxErrors: number
+}
+
+export const useRuntimeStore = defineStore('runtime', {
+  state: (): RuntimeState => ({
+    status: 'stopped',
+    fps: 0,
+    targetFps: 60,
+    frameCount: 0,
+    startTime: null,
+    nodeMetrics: new Map(),
+    errors: [],
+    maxErrors: 100,
+  }),
+
+  getters: {
+    isRunning: (state) => state.status === 'running',
+    isPaused: (state) => state.status === 'paused',
+    isStopped: (state) => state.status === 'stopped',
+
+    uptime: (state): number => {
+      if (!state.startTime) return 0
+      return Date.now() - state.startTime.getTime()
+    },
+
+    errorCount: (state) => state.errors.length,
+
+    recentErrors: (state) => state.errors.slice(-10),
+
+    getNodeMetrics: (state) => (nodeId: string): NodeMetrics | undefined => {
+      return state.nodeMetrics.get(nodeId)
+    },
+  },
+
+  actions: {
+    start() {
+      if (this.status === 'stopped') {
+        this.startTime = new Date()
+        this.frameCount = 0
+      }
+      this.status = 'running'
+    },
+
+    pause() {
+      if (this.status === 'running') {
+        this.status = 'paused'
+      }
+    },
+
+    resume() {
+      if (this.status === 'paused') {
+        this.status = 'running'
+      }
+    },
+
+    stop() {
+      this.status = 'stopped'
+      this.fps = 0
+      this.startTime = null
+    },
+
+    toggle() {
+      if (this.status === 'running') {
+        this.pause()
+      } else {
+        this.start()
+      }
+    },
+
+    setFps(fps: number) {
+      this.fps = fps
+    },
+
+    setTargetFps(fps: number) {
+      this.targetFps = Math.max(1, Math.min(120, fps))
+    },
+
+    incrementFrameCount() {
+      this.frameCount++
+    },
+
+    updateNodeMetrics(nodeId: string, executionTime: number) {
+      const existing = this.nodeMetrics.get(nodeId)
+      this.nodeMetrics.set(nodeId, {
+        nodeId,
+        executionTime,
+        lastExecuted: new Date(),
+        errorCount: existing?.errorCount ?? 0,
+        lastError: existing?.lastError ?? null,
+      })
+    },
+
+    recordNodeError(nodeId: string, nodeName: string, message: string) {
+      const error: RuntimeError = {
+        id: `${nodeId}-${Date.now()}`,
+        nodeId,
+        nodeName,
+        message,
+        timestamp: new Date(),
+      }
+
+      this.errors.push(error)
+
+      // Limit error history
+      if (this.errors.length > this.maxErrors) {
+        this.errors = this.errors.slice(-this.maxErrors)
+      }
+
+      // Update node metrics
+      const metrics = this.nodeMetrics.get(nodeId)
+      if (metrics) {
+        metrics.errorCount++
+        metrics.lastError = message
+      }
+    },
+
+    clearErrors() {
+      this.errors = []
+    },
+
+    clearNodeMetrics() {
+      this.nodeMetrics.clear()
+    },
+
+    reset() {
+      this.stop()
+      this.clearErrors()
+      this.clearNodeMetrics()
+    },
+  },
+})

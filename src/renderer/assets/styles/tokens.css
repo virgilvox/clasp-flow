@@ -1,0 +1,208 @@
+/**
+ * CLASP Flow Design Tokens
+ * Based on CLASP Design System
+ */
+
+:root {
+  /* ═══════════════════════════════════════════════════════════════════════
+     PRIMARY COLORS (Teal)
+     ═══════════════════════════════════════════════════════════════════════ */
+  --color-primary-50: #E6F7F3;
+  --color-primary-100: #B3E8DA;
+  --color-primary-200: #80D9C1;
+  --color-primary-300: #4DCAA8;
+  --color-primary-400: #2AAB8A;
+  --color-primary-500: #1A9A7A;
+  --color-primary-600: #168A6D;
+  --color-primary-700: #127A60;
+  --color-primary-800: #0E6A53;
+  --color-primary-900: #0A5A46;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     NEUTRAL COLORS (Grays)
+     ═══════════════════════════════════════════════════════════════════════ */
+  --color-neutral-0: #FFFFFF;
+  --color-neutral-50: #F5F5F5;
+  --color-neutral-100: #E8E8E8;
+  --color-neutral-200: #D4D4D4;
+  --color-neutral-300: #B0B0B0;
+  --color-neutral-400: #8C8C8C;
+  --color-neutral-500: #6B6B6B;
+  --color-neutral-600: #4A4A4A;
+  --color-neutral-700: #3D3D3D;
+  --color-neutral-800: #2D2D2D;
+  --color-neutral-900: #1A1A1A;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     SEMANTIC COLORS
+     ═══════════════════════════════════════════════════════════════════════ */
+  --color-success: #22C55E;
+  --color-warning: #F59E0B;
+  --color-error: #EF4444;
+  --color-info: #3B82F6;
+  --color-selection: #FEF9E7;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     DATA TYPE COLORS (for connections)
+     ═══════════════════════════════════════════════════════════════════════ */
+  --color-type-trigger: #F59E0B;
+  --color-type-number: #2AAB8A;
+  --color-type-string: #8B5CF6;
+  --color-type-boolean: #EF4444;
+  --color-type-audio: #22C55E;
+  --color-type-video: #3B82F6;
+  --color-type-texture: #EC4899;
+  --color-type-data: #6B7280;
+  --color-type-any: #D4D4D4;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     PROTOCOL COLORS (for badges)
+     ═══════════════════════════════════════════════════════════════════════ */
+  --color-protocol-clasp: #2AAB8A;
+  --color-protocol-osc: #4A4A4A;
+  --color-protocol-midi: #7C3AED;
+  --color-protocol-dmx: #0891B2;
+  --color-protocol-http: #3B82F6;
+  --color-protocol-mqtt: #059669;
+  --color-protocol-serial: #D97706;
+  --color-protocol-ble: #2563EB;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     TYPOGRAPHY
+     ═══════════════════════════════════════════════════════════════════════ */
+  --font-mono: 'JetBrains Mono', 'SF Mono', 'Fira Code', 'Consolas', monospace;
+
+  --font-size-xs: 0.625rem;   /* 10px */
+  --font-size-sm: 0.75rem;    /* 12px */
+  --font-size-base: 0.875rem; /* 14px */
+  --font-size-lg: 1rem;       /* 16px */
+  --font-size-xl: 1.125rem;   /* 18px */
+  --font-size-2xl: 1.25rem;   /* 20px */
+  --font-size-3xl: 1.5rem;    /* 24px */
+  --font-size-4xl: 2rem;      /* 32px */
+
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+
+  --line-height-tight: 1.25;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.75;
+
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.05em;
+  --letter-spacing-wider: 0.1em;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     SPACING
+     ═══════════════════════════════════════════════════════════════════════ */
+  --space-0: 0;
+  --space-1: 0.25rem;  /* 4px */
+  --space-2: 0.5rem;   /* 8px */
+  --space-3: 0.75rem;  /* 12px */
+  --space-4: 1rem;     /* 16px */
+  --space-5: 1.25rem;  /* 20px */
+  --space-6: 1.5rem;   /* 24px */
+  --space-8: 2rem;     /* 32px */
+  --space-10: 2.5rem;  /* 40px */
+  --space-12: 3rem;    /* 48px */
+  --space-16: 4rem;    /* 64px */
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     BORDERS & RADIUS
+     ═══════════════════════════════════════════════════════════════════════ */
+  --radius-none: 0;
+  --radius-sm: 2px;
+  --radius-default: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+  --radius-full: 9999px;
+
+  --border-width-default: 1px;
+  --border-width-thick: 2px;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     SHADOWS
+     ═══════════════════════════════════════════════════════════════════════ */
+  --shadow-offset-sm: 2px 2px 0 0;
+  --shadow-offset: 4px 4px 0 0;
+  --shadow-offset-lg: 6px 6px 0 0;
+  --shadow-color: var(--color-neutral-900);
+
+  --shadow-sm: var(--shadow-offset-sm) var(--shadow-color);
+  --shadow-default: var(--shadow-offset) var(--shadow-color);
+  --shadow-lg: var(--shadow-offset-lg) var(--shadow-color);
+
+  /* Subtle shadows for cards/panels */
+  --shadow-subtle: 0 2px 4px rgba(0, 0, 0, 0.1);
+  --shadow-elevated: 0 4px 12px rgba(0, 0, 0, 0.15);
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     TRANSITIONS
+     ═══════════════════════════════════════════════════════════════════════ */
+  --transition-fast: 100ms ease;
+  --transition-default: 200ms ease;
+  --transition-slow: 300ms ease;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     Z-INDEX SCALE
+     ═══════════════════════════════════════════════════════════════════════ */
+  --z-base: 0;
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay: 300;
+  --z-modal: 400;
+  --z-popover: 500;
+  --z-tooltip: 600;
+  --z-toast: 700;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     LAYOUT
+     ═══════════════════════════════════════════════════════════════════════ */
+  --header-height: 48px;
+  --sidebar-width: 280px;
+  --sidebar-collapsed-width: 48px;
+  --statusbar-height: 28px;
+  --panel-min-width: 240px;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     NODE EDITOR
+     ═══════════════════════════════════════════════════════════════════════ */
+  --node-min-width: 140px;
+  --node-max-width: 320px;
+  --node-header-height: 32px;
+  --node-port-size: 12px;
+  --node-port-spacing: 24px;
+
+  --connection-width: 2px;
+  --connection-width-thick: 4px;
+  --connection-width-selected: 3px;
+
+  /* ═══════════════════════════════════════════════════════════════════════
+     CANVAS
+     ═══════════════════════════════════════════════════════════════════════ */
+  --canvas-background: var(--color-neutral-100);
+  --canvas-grid-color: var(--color-neutral-200);
+  --canvas-grid-size: 20px;
+}
+
+/* Dark theme overrides */
+[data-theme="dark"] {
+  --color-neutral-0: #1A1A1A;
+  --color-neutral-50: #2D2D2D;
+  --color-neutral-100: #3D3D3D;
+  --color-neutral-200: #4A4A4A;
+  --color-neutral-300: #6B6B6B;
+  --color-neutral-400: #8C8C8C;
+  --color-neutral-500: #B0B0B0;
+  --color-neutral-600: #D4D4D4;
+  --color-neutral-700: #E8E8E8;
+  --color-neutral-800: #F5F5F5;
+  --color-neutral-900: #FFFFFF;
+
+  --shadow-color: rgba(0, 0, 0, 0.5);
+  --canvas-background: #1A1A1A;
+  --canvas-grid-color: #2D2D2D;
+}

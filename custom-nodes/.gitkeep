@@ -1,0 +1,7 @@
+# This directory is for custom user nodes
+# Place your custom node folders here
+# Each folder should contain:
+#   - definition.json (required)
+#   - executor.ts (required)
+#   - ui.vue (optional)
+#   - icon.svg (optional)
