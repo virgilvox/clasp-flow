@@ -1,0 +1,30 @@
+import type { NodeDefinition } from '../types'
+
+export const oscNode: NodeDefinition = {
+  id: 'osc',
+  name: 'OSC',
+  version: '1.0.0',
+  category: 'connectivity',
+  description: 'Open Sound Control over WebSocket',
+  icon: 'radio-tower',
+  platforms: ['web', 'electron'],
+  inputs: [
+    { id: 'host', type: 'string', label: 'Host' },
+    { id: 'port', type: 'number', label: 'Port' },
+    { id: 'address', type: 'string', label: 'Address' },
+    { id: 'send', type: 'data', label: 'Send' },
+  ],
+  outputs: [
+    { id: 'address', type: 'string', label: 'Address' },
+    { id: 'args', type: 'data', label: 'Arguments' },
+    { id: 'value', type: 'number', label: 'Value' },
+    { id: 'connected', type: 'boolean', label: 'Connected' },
+    { id: 'error', type: 'string', label: 'Error' },
+  ],
+  controls: [
+    { id: 'host', type: 'text', label: 'Host', default: 'localhost' },
+    { id: 'port', type: 'number', label: 'Port', default: 8080, props: { min: 1, max: 65535 } },
+    { id: 'address', type: 'text', label: 'Address', default: '/clasp', props: { placeholder: '/path/to/param' } },
+    { id: 'connect', type: 'toggle', label: 'Connect', default: true },
+  ],
+}
