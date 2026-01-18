@@ -19,7 +19,43 @@
 ### Phase: 9 Complete - 3D System + Polish + Full Feature Set
 ### Next Step: Phase 10 - Polish & Export
 
-### Latest Session Accomplishments (Shader Node, Wire Colors, Import/Export, Logo):
+### Latest Session Accomplishments (Connection Manager, CI Fixes, Netlify):
+
+**Connection Manager System:**
+- Created modular connection manager service with adapter pattern
+- MQTT adapter with full config: transport (ws/wss/mqtt/mqtts), host, port, TLS, auth, protocol version, will messages
+- OSC adapter using osc-js over WebSocket
+- HTTP adapter for REST API connections
+- Auto-registration of built-in connection types on first manager access
+- Platform-aware transport options (browser vs Electron)
+
+**Electron Build Fix:**
+- Created `src/renderer/index.html` for electron-vite (expects HTML in that location)
+- Updated `electron.vite.config.ts` with proper root and rollupOptions
+- Fixed absolute path issue (`/src/...` → `./src/...`)
+- All CI builds now pass: Linux, macOS, Windows
+
+**Netlify Deployment:**
+- Added `netlify.toml` with build command and publish directory
+- SPA redirect rule for Vue Router
+
+**CI/Lint Fixes:**
+- Fixed MonacoEditor.vue unnecessary regex escapes
+- Fixed code.ts Function type eslint error
+- Commented out unused variables to pass typecheck
+
+**Files Created/Modified:**
+- `src/renderer/services/connections/` - Connection manager system
+- `src/renderer/services/connections/adapters/MqttAdapter.ts` - Full MQTT support
+- `src/renderer/services/connections/adapters/OscAdapter.ts` - NEW
+- `src/renderer/services/connections/adapters/HttpAdapter.ts` - NEW
+- `src/renderer/index.html` - NEW: Electron renderer entry
+- `electron.vite.config.ts` - Fixed renderer config
+- `netlify.toml` - NEW: Netlify deployment config
+
+---
+
+### Previous Session (Shader Node, Wire Colors, Import/Export, Logo):
 
 **Shader Node Improvements:**
 - Created ShaderPresets.ts with 17 built-in shaders:
@@ -508,24 +544,24 @@ npm run electron:dev
 | Issue | Description | Workaround |
 |-------|-------------|------------|
 | AI freezes UI | Transformers.js runs on main thread | Implement Web Workers (plan created) |
-| MqttAdapter type error | TS2345 in MqttAdapter.ts line 50 | Pre-existing, non-critical |
 
 ## Immediate TODOs for Next Session
 
 ```markdown
 ## High Priority
 - [ ] Implement AI Web Workers (see docs/plans/AI_WEB_WORKERS_PLAN.md)
-- [ ] Test shader presets thoroughly
+- [ ] Test connection manager with real MQTT/OSC servers
 
 ## Testing
 - [ ] Test shader node with all 17 presets
 - [ ] Test wire color matching
 - [ ] Test import/export round-trip
 - [ ] Test webcam node display
+- [ ] Test Netlify deployment
 
 ## Features Pending
 - [ ] Video file player node (use ffmpeg.wasm)
-- [ ] OSC protocol support
+- [ ] Connection manager UI (modal for managing connections)
 - [ ] Node development documentation for custom nodes
 
 ## Completed
@@ -533,6 +569,11 @@ npm run electron:dev
 - [x] Shader node improvements with presets and uniform detection
 - [x] Wire colors by data type
 - [x] Import/export functionality
+- [x] OSC protocol support (adapter created)
+- [x] MQTT protocol support (adapter with full config)
+- [x] HTTP protocol support (REST adapter)
+- [x] Electron build CI fix
+- [x] Netlify deployment config
 ```
 
 ---
@@ -555,6 +596,7 @@ npm run electron:dev
 | 2026-01-18 | Registry Extraction | Extracted 94 node definitions to src/renderer/registry/, reduced EditorView from 3062 to 776 lines |
 | 2026-01-18 | Wire Colors & UX | Wire colors by data type, selection chase animation, import/export, webcam fix, equalizer Tone.js fix |
 | 2026-01-18 | Shader & Logo | 17 shader presets, uniform auto-detection, vertex shader support, new LATCH logo, README with screenshots |
+| 2026-01-18 | Connection Manager | MQTT/OSC/HTTP adapters, Electron build fix, Netlify config, CI passing |
 
 ---
 
