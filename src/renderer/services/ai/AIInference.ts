@@ -2,18 +2,13 @@
  * AI Inference Service
  *
  * Manages AI model lifecycle and inference for the LATCH application.
+ * Uses a Web Worker for inference to prevent UI blocking.
  * Features:
  * - WebGPU acceleration support
  * - Model caching with IndexedDB
  * - Progress tracking during downloads
  * - Memory management and cleanup
  */
-
-import { pipeline, env } from '@huggingface/transformers'
-
-// Configure Transformers.js for browser usage
-env.allowLocalModels = false
-env.useBrowserCache = true
 
 // Model load states
 export type ModelLoadState = 'idle' | 'loading' | 'ready' | 'error'
@@ -177,24 +172,138 @@ export const AI_MODELS: ModelDefinition[] = [
   },
 ]
 
-// Use any for pipeline instances since the types are complex
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-type PipelineInstance = any
-
 // Progress callback type
 type ProgressCallback = (progress: number) => void
 
+// Pending request tracking
+interface PendingRequest {
+  resolve: (value: unknown) => void
+  reject: (error: Error) => void
+  onProgress?: ProgressCallback
+}
+
 class AIInferenceService {
   private _initialized = false
-  private _pipelines = new Map<string, PipelineInstance>()
+  private _worker: Worker | null = null
   private _modelInfo = new Map<string, ModelInfo>()
   private _listeners = new Set<() => void>()
   private _webgpuAvailable = false
   private _useWebGPU = false
   private _defaultDType: DType = 'q4'
+  private _pendingRequests = new Map<string, PendingRequest>()
+  private _requestIdCounter = 0
+  private _loadedModels = new Set<string>()
 
   constructor() {
+    this.initWorker()
     this.checkWebGPU()
+  }
+
+  // Initialize Web Worker
+  private initWorker(): void {
+    try {
+      // Create worker using Vite's import syntax for web workers
+      this._worker = new Worker(new URL('./ai.worker.ts', import.meta.url), {
+        type: 'module',
+      })
+
+      this._worker.onmessage = this.handleWorkerMessage.bind(this)
+      this._worker.onerror = (error) => {
+        console.error('[AIInference] Worker error:', error)
+      }
+
+      console.log('[AIInference] Web Worker initialized')
+    } catch (error) {
+      console.error('[AIInference] Failed to initialize Web Worker:', error)
+      // Fall back to main thread if worker fails
+      this._worker = null
+    }
+  }
+
+  // Handle messages from worker
+  private handleWorkerMessage(event: MessageEvent): void {
+    const msg = event.data
+    console.log('[AIInference] Received from worker:', msg.type, 'id:', msg.id)
+
+    switch (msg.type) {
+      case 'progress': {
+        const pending = this._pendingRequests.get(msg.id)
+        if (pending?.onProgress) {
+          pending.onProgress(msg.progress)
+        }
+        // Also update model info for UI
+        const loadingModels = Array.from(this._modelInfo.entries())
+          .filter(([, info]) => info.state === 'loading')
+        for (const [key] of loadingModels) {
+          this.updateModelInfo(key, { progress: msg.progress })
+        }
+        break
+      }
+
+      case 'loaded': {
+        const pending = this._pendingRequests.get(msg.id)
+        if (pending) {
+          this._pendingRequests.delete(msg.id)
+          if (msg.success) {
+            pending.resolve(true)
+          } else {
+            pending.reject(new Error(msg.error || 'Failed to load model'))
+          }
+        }
+        break
+      }
+
+      case 'result': {
+        console.log('[AIInference] Got result:', msg.success, msg.data?.substring?.(0, 50) || msg.data)
+        const pending = this._pendingRequests.get(msg.id)
+        if (pending) {
+          this._pendingRequests.delete(msg.id)
+          if (msg.success) {
+            pending.resolve(msg.data)
+          } else {
+            pending.reject(new Error(msg.error || 'Inference failed'))
+          }
+        }
+        break
+      }
+
+      case 'checkResult': {
+        const pending = this._pendingRequests.get(msg.id)
+        if (pending) {
+          this._pendingRequests.delete(msg.id)
+          pending.resolve(msg.loaded)
+        }
+        break
+      }
+    }
+  }
+
+  // Generate unique request ID
+  private nextRequestId(): string {
+    return `req_${++this._requestIdCounter}`
+  }
+
+  // Send message to worker and await response
+  private sendToWorker<T>(
+    message: Record<string, unknown>,
+    onProgress?: ProgressCallback
+  ): Promise<T> {
+    return new Promise((resolve, reject) => {
+      if (!this._worker) {
+        reject(new Error('Web Worker not available'))
+        return
+      }
+
+      const id = this.nextRequestId()
+      console.log('[AIInference] Sending to worker:', message.type, message.method, 'id:', id)
+      this._pendingRequests.set(id, {
+        resolve: resolve as (value: unknown) => void,
+        reject,
+        onProgress,
+      })
+
+      this._worker.postMessage({ ...message, id })
+    })
   }
 
   // Check WebGPU availability
@@ -260,11 +369,7 @@ class AIInferenceService {
   // Check if model is loaded
   isModelLoaded(task: string, modelId?: string): boolean {
     const key = `${task}:${modelId || this.getDefaultModel(task)}`
-    const loaded = this._pipelines.has(key)
-    if (!loaded && this._pipelines.size > 0) {
-      console.log('[AIInference] Model check failed:', key, 'Loaded models:', Array.from(this._pipelines.keys()))
-    }
-    return loaded
+    return this._loadedModels.has(key)
   }
 
   // Subscribe to state changes
@@ -314,7 +419,7 @@ class AIInferenceService {
     modelId?: string,
     onProgress?: ProgressCallback,
     options?: { device?: DeviceType; dtype?: DType }
-  ): Promise<PipelineInstance> {
+  ): Promise<boolean> {
     const model = modelId || this.getDefaultModel(task)
     if (!model) {
       throw new Error(`No model specified for task: ${task}`)
@@ -322,11 +427,11 @@ class AIInferenceService {
 
     const key = `${task}:${model}`
 
-    // Return cached pipeline if exists
-    if (this._pipelines.has(key)) {
+    // Return if already loaded
+    if (this._loadedModels.has(key)) {
       const existing = this._modelInfo.get(key)
       if (existing?.state === 'ready') {
-        return this._pipelines.get(key)!
+        return true
       }
     }
 
@@ -336,72 +441,23 @@ class AIInferenceService {
     try {
       console.log(`[AIInference] Loading model: ${model} for task: ${task}`)
 
-      // Determine device and dtype
       const device = options?.device || (this._useWebGPU ? 'webgpu' : undefined)
       const dtype = options?.dtype || this._defaultDType
 
-      // Track progress across multiple files
-      let totalFiles = 0
-      let completedFiles = 0
-      const fileProgress = new Map<string, number>()
-
-      // Build pipeline options
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pipelineOptions: Record<string, any> = {
-        progress_callback: (progress: { status?: string; progress?: number; file?: string; loaded?: number; total?: number }) => {
-          // Transformers.js progress values are already 0-100
-          const file = progress.file ?? 'default'
-
-          if (progress.status === 'initiate') {
-            totalFiles++
-            fileProgress.set(file, 0)
-          } else if (progress.status === 'progress') {
-            // Use loaded/total if available for accurate progress
-            let fileProgressValue = progress.progress ?? 0
-            if (progress.loaded !== undefined && progress.total !== undefined && progress.total > 0) {
-              fileProgressValue = (progress.loaded / progress.total) * 100
-            }
-            fileProgress.set(file, Math.min(100, fileProgressValue))
-          } else if (progress.status === 'done') {
-            completedFiles++
-            fileProgress.set(file, 100)
-          }
-
-          // Calculate aggregate progress
-          let aggregateProgress = 0
-          if (fileProgress.size > 0) {
-            let sum = 0
-            for (const p of fileProgress.values()) {
-              sum += p
-            }
-            aggregateProgress = sum / fileProgress.size
-          }
-
-          // Clamp to 0-100
-          aggregateProgress = Math.max(0, Math.min(99, aggregateProgress))
-
-          this.updateModelInfo(key, { progress: aggregateProgress })
-          onProgress?.(aggregateProgress)
+      await this.sendToWorker<boolean>(
+        {
+          type: 'load',
+          task,
+          model,
+          options: { device, dtype },
         },
-      }
+        (progress) => {
+          this.updateModelInfo(key, { progress })
+          onProgress?.(progress)
+        }
+      )
 
-      // Add device if WebGPU
-      if (device === 'webgpu' && this._webgpuAvailable) {
-        pipelineOptions.device = 'webgpu'
-        console.log('[AIInference] Using WebGPU acceleration')
-      }
-
-      // Add quantization for supported models
-      if (dtype && dtype !== 'fp32') {
-        pipelineOptions.dtype = dtype
-      }
-
-      // Create pipeline
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const pipe = await (pipeline as any)(task, model, pipelineOptions)
-
-      // Cache and update state
-      this._pipelines.set(key, pipe)
+      this._loadedModels.add(key)
       this.updateModelInfo(key, {
         state: 'ready',
         progress: 100,
@@ -411,7 +467,7 @@ class AIInferenceService {
       })
 
       console.log(`[AIInference] Model loaded: ${model}`)
-      return pipe
+      return true
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error)
       console.error(`[AIInference] Failed to load model: ${message}`)
@@ -425,14 +481,9 @@ class AIInferenceService {
     const model = modelId || this.getDefaultModel(task)
     const key = `${task}:${model}`
 
-    const pipe = this._pipelines.get(key)
-    if (pipe) {
-      // Dispose if method exists
-      if (typeof pipe.dispose === 'function') {
-        pipe.dispose()
-      }
-
-      this._pipelines.delete(key)
+    if (this._loadedModels.has(key)) {
+      await this.sendToWorker({ type: 'unload', task, model })
+      this._loadedModels.delete(key)
       this._modelInfo.delete(key)
       this.notifyListeners()
       console.log(`[AIInference] Unloaded model: ${model}`)
@@ -441,12 +492,12 @@ class AIInferenceService {
 
   // Dispose all models
   async dispose(): Promise<void> {
-    for (const [, pipe] of this._pipelines) {
-      if (pipe && typeof pipe.dispose === 'function') {
-        pipe.dispose()
-      }
+    if (this._worker) {
+      await this.sendToWorker({ type: 'dispose' })
+      this._worker.terminate()
+      this._worker = null
     }
-    this._pipelines.clear()
+    this._loadedModels.clear()
     this._modelInfo.clear()
     this._initialized = false
     this.notifyListeners()
@@ -461,14 +512,20 @@ class AIInferenceService {
     options?: { maxLength?: number; temperature?: number },
     modelId?: string
   ): Promise<string> {
-    const pipe = await this.loadModel('text-generation', modelId)
-    const result = await pipe(prompt, {
-      max_new_tokens: options?.maxLength ?? 100,
-      temperature: options?.temperature ?? 0.7,
-      do_sample: true,
+    const model = modelId || this.getDefaultModel('text-generation')
+    const key = `text-generation:${model}`
+
+    if (!this._loadedModels.has(key)) {
+      await this.loadModel('text-generation', model)
+    }
+
+    return this.sendToWorker<string>({
+      type: 'infer',
+      task: 'text-generation',
+      model,
+      method: 'generateText',
+      args: [prompt, options],
     })
-    const output = Array.isArray(result) ? result[0] : result
-    return output?.generated_text ?? ''
   }
 
   async text2text(
@@ -476,12 +533,20 @@ class AIInferenceService {
     options?: { maxLength?: number },
     modelId?: string
   ): Promise<string> {
-    const pipe = await this.loadModel('text2text-generation', modelId)
-    const result = await pipe(input, {
-      max_new_tokens: options?.maxLength ?? 100,
+    const model = modelId || this.getDefaultModel('text2text-generation')
+    const key = `text2text-generation:${model}`
+
+    if (!this._loadedModels.has(key)) {
+      await this.loadModel('text2text-generation', model)
+    }
+
+    return this.sendToWorker<string>({
+      type: 'infer',
+      task: 'text2text-generation',
+      model,
+      method: 'text2text',
+      args: [input, options],
     })
-    const output = Array.isArray(result) ? result[0] : result
-    return output?.generated_text ?? ''
   }
 
   async classifyImage(
@@ -489,22 +554,23 @@ class AIInferenceService {
     topK = 5,
     modelId?: string
   ): Promise<Array<{ label: string; score: number }>> {
-    const pipe = await this.loadModel('image-classification', modelId)
+    const model = modelId || this.getDefaultModel('image-classification')
+    const key = `image-classification:${model}`
 
-    let input: string | HTMLCanvasElement | HTMLImageElement
-    if (image instanceof ImageData) {
-      const canvas = document.createElement('canvas')
-      canvas.width = image.width
-      canvas.height = image.height
-      const ctx = canvas.getContext('2d')!
-      ctx.putImageData(image, 0, 0)
-      input = canvas
-    } else {
-      input = image
+    if (!this._loadedModels.has(key)) {
+      await this.loadModel('image-classification', model)
     }
 
-    const result = await pipe(input, { topk: topK })
-    return Array.isArray(result) ? result : [result]
+    // Convert image to serializable format for worker
+    const imageData = this.imageToSerializable(image)
+
+    return this.sendToWorker<Array<{ label: string; score: number }>>({
+      type: 'infer',
+      task: 'image-classification',
+      model,
+      method: 'classifyImage',
+      args: [imageData, topK],
+    })
   }
 
   async detectObjects(
@@ -512,75 +578,140 @@ class AIInferenceService {
     threshold = 0.5,
     modelId?: string
   ): Promise<Array<{ label: string; score: number; box: { xmin: number; ymin: number; xmax: number; ymax: number } }>> {
-    const pipe = await this.loadModel('object-detection', modelId)
+    const model = modelId || this.getDefaultModel('object-detection')
+    const key = `object-detection:${model}`
 
-    let input: string | HTMLCanvasElement | HTMLImageElement
-    if (image instanceof ImageData) {
-      const canvas = document.createElement('canvas')
-      canvas.width = image.width
-      canvas.height = image.height
-      const ctx = canvas.getContext('2d')!
-      ctx.putImageData(image, 0, 0)
-      input = canvas
-    } else {
-      input = image
+    if (!this._loadedModels.has(key)) {
+      await this.loadModel('object-detection', model)
     }
 
-    return await pipe(input, { threshold })
+    const imageData = this.imageToSerializable(image)
+
+    return this.sendToWorker<Array<{ label: string; score: number; box: { xmin: number; ymin: number; xmax: number; ymax: number } }>>({
+      type: 'infer',
+      task: 'object-detection',
+      model,
+      method: 'detectObjects',
+      args: [imageData, threshold],
+    })
   }
 
   async transcribe(
     audio: Float32Array | Blob | string,
     modelId?: string
   ): Promise<string> {
-    const pipe = await this.loadModel('automatic-speech-recognition', modelId)
-    const result = await pipe(audio)
-    return result?.text ?? ''
+    const model = modelId || this.getDefaultModel('automatic-speech-recognition')
+    const key = `automatic-speech-recognition:${model}`
+
+    if (!this._loadedModels.has(key)) {
+      await this.loadModel('automatic-speech-recognition', model)
+    }
+
+    // Convert Float32Array to regular array for serialization
+    const audioData = audio instanceof Float32Array ? Array.from(audio) : audio
+
+    return this.sendToWorker<string>({
+      type: 'infer',
+      task: 'automatic-speech-recognition',
+      model,
+      method: 'transcribe',
+      args: [audioData],
+    })
   }
 
   async analyzeSentiment(
     text: string,
     modelId?: string
   ): Promise<Array<{ label: string; score: number }>> {
-    const pipe = await this.loadModel('sentiment-analysis', modelId)
-    const result = await pipe(text)
-    return Array.isArray(result) ? result : [result]
+    const model = modelId || this.getDefaultModel('sentiment-analysis')
+    const key = `sentiment-analysis:${model}`
+
+    if (!this._loadedModels.has(key)) {
+      await this.loadModel('sentiment-analysis', model)
+    }
+
+    return this.sendToWorker<Array<{ label: string; score: number }>>({
+      type: 'infer',
+      task: 'sentiment-analysis',
+      model,
+      method: 'analyzeSentiment',
+      args: [text],
+    })
   }
 
   async extractFeatures(
     text: string,
     modelId?: string
   ): Promise<number[]> {
-    const pipe = await this.loadModel('feature-extraction', modelId)
-    const result = await pipe(text, { pooling: 'mean', normalize: true })
+    const model = modelId || this.getDefaultModel('feature-extraction')
+    const key = `feature-extraction:${model}`
 
-    if (result?.data) {
-      return Array.from(result.data)
+    if (!this._loadedModels.has(key)) {
+      await this.loadModel('feature-extraction', model)
     }
-    return Array.isArray(result) ? result.flat() : []
+
+    return this.sendToWorker<number[]>({
+      type: 'infer',
+      task: 'feature-extraction',
+      model,
+      method: 'extractFeatures',
+      args: [text],
+    })
   }
 
   async captionImage(
     image: ImageData | HTMLCanvasElement | HTMLImageElement | string,
     modelId?: string
   ): Promise<string> {
-    const pipe = await this.loadModel('image-to-text', modelId)
+    const model = modelId || this.getDefaultModel('image-to-text')
+    const key = `image-to-text:${model}`
 
-    let input: string | HTMLCanvasElement | HTMLImageElement
-    if (image instanceof ImageData) {
-      const canvas = document.createElement('canvas')
-      canvas.width = image.width
-      canvas.height = image.height
-      const ctx = canvas.getContext('2d')!
-      ctx.putImageData(image, 0, 0)
-      input = canvas
-    } else {
-      input = image
+    if (!this._loadedModels.has(key)) {
+      await this.loadModel('image-to-text', model)
     }
 
-    const result = await pipe(input)
-    const output = Array.isArray(result) ? result[0] : result
-    return output?.generated_text ?? ''
+    const imageData = this.imageToSerializable(image)
+
+    return this.sendToWorker<string>({
+      type: 'infer',
+      task: 'image-to-text',
+      model,
+      method: 'captionImage',
+      args: [imageData],
+    })
+  }
+
+  // Helper to convert image to serializable format for worker
+  private imageToSerializable(
+    image: ImageData | HTMLCanvasElement | HTMLImageElement | string
+  ): { width: number; height: number; data: number[] } | string {
+    if (typeof image === 'string') {
+      return image
+    }
+
+    let imageData: ImageData
+
+    if (image instanceof ImageData) {
+      imageData = image
+    } else if (image instanceof HTMLCanvasElement) {
+      const ctx = image.getContext('2d')!
+      imageData = ctx.getImageData(0, 0, image.width, image.height)
+    } else if (image instanceof HTMLImageElement) {
+      const canvas = document.createElement('canvas')
+      canvas.width = image.naturalWidth || image.width
+      canvas.height = image.naturalHeight || image.height
+      const ctx = canvas.getContext('2d')!
+      ctx.drawImage(image, 0, 0)
+      imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+    } else {
+      throw new Error('Unsupported image type')
+    }
+
+    return {
+      width: imageData.width,
+      height: imageData.height,
+      data: Array.from(imageData.data),
+    }
   }
 }
 

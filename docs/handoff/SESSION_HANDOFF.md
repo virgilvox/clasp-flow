@@ -22,7 +22,58 @@
 ### Next Step: Phase 10 - Polish & Export
 ### Latest Release: v0.1.2
 
-### Latest Session Accomplishments (Repo Migration, CI/CD, AI Fixes):
+### Latest Session Accomplishments (AI Web Workers, Node Fixes, Full Audit):
+
+**AI Web Worker Implementation:**
+- Created dedicated Web Worker for all Transformers.js inference (`ai.worker.ts`)
+- All AI inference now runs off the main thread - UI stays responsive
+- Worker handles model loading, inference, and cleanup
+- Progress tracking still works via message passing
+- Main bundle reduced from 6.3MB to 5.4MB (Transformers.js only in worker)
+
+**AI Node Fixes - Missing Trigger Inputs:**
+- Added trigger input to `sentiment-analysis` node
+- Added trigger input to `feature-extraction` node
+- Added trigger input to `image-classification` node
+- Added trigger input to `object-detection` node
+- These nodes were missing triggers but executors expected them
+
+**Texture-to-Data Node - Implemented Missing Executor:**
+- Node definition existed but executor was missing - now implemented
+- Reads pixels from WebGL texture via framebuffer
+- Flips image vertically (WebGL textures are upside-down)
+- Supports ImageData, base64, or blob output formats
+- Supports trigger-based or continuous capture modes
+- Enables webcam/shader → AI node pipeline
+
+**Delay Executor Key Collision Fixed:**
+- Audio delay and timing delay both used key `delay`
+- Audio delay was shadowing timing delay
+- Renamed audio delay to `audio-delay` in both node definition and executor
+
+**AI Executor Improvements:**
+- Removed `setTimeout(0)` workarounds (no longer needed with worker)
+- Added `hasTriggerValue()` helper for consistent trigger detection
+- All AI nodes now accept flexible trigger values (boolean, number, string, truthy)
+- Still tracks pending operations to prevent duplicate requests
+
+**Files Created:**
+- `src/renderer/services/ai/ai.worker.ts` - NEW: AI inference Web Worker
+
+**Files Modified:**
+- `src/renderer/services/ai/AIInference.ts` - Rewritten for worker communication
+- `src/renderer/engine/executors/ai.ts` - Simplified for worker-based inference
+- `src/renderer/engine/executors/visual.ts` - Added texture-to-data executor
+- `src/renderer/engine/executors/audio.ts` - Renamed delay to audio-delay
+- `src/renderer/registry/ai/sentiment-analysis.ts` - Added trigger input
+- `src/renderer/registry/ai/feature-extraction.ts` - Added trigger input
+- `src/renderer/registry/ai/image-classification.ts` - Added trigger input
+- `src/renderer/registry/ai/object-detection.ts` - Added trigger input
+- `src/renderer/registry/audio/audio-delay.ts` - Renamed id to audio-delay
+
+---
+
+### Previous Session Accomplishments (Repo Migration, CI/CD, AI Fixes):
 
 **Repository Migration:**
 - Moved from `virgilvox/clasp-flow` to `lumencanvas/latch`
@@ -317,15 +368,16 @@
 
 | File | Changes |
 |------|---------|
-| `src/renderer/components/nodes/BaseNode.vue` | Label editing, compact nodes, collapsed CSS fixes |
-| `src/renderer/components/nodes/XYPadNode.vue` | Refactored to handles-column pattern |
-| `src/renderer/components/nodes/OscilloscopeNode.vue` | Added audio input, dual-mode display |
-| `src/renderer/components/nodes/GraphNode.vue` | NEW - Flexible X/Y plotter |
-| `src/renderer/components/nodes/EqualizerNode.vue` | NEW - Audio frequency visualizer |
-| `src/renderer/components/layout/PropertiesPanel.vue` | Color picker, label editing, deep watch for reactivity |
-| `src/renderer/components/layout/AppHeader.vue` | Properties panel toggle button |
-| `src/renderer/engine/executors/index.ts` | Updated oscilloscopeExecutor, added graphExecutor, equalizerExecutor |
-| `src/renderer/views/EditorView.vue` | Registered Graph, Equalizer nodes, updated Oscilloscope inputs |
+| `src/renderer/services/ai/ai.worker.ts` | NEW - Web Worker for Transformers.js inference |
+| `src/renderer/services/ai/AIInference.ts` | Rewritten for worker communication |
+| `src/renderer/engine/executors/ai.ts` | Simplified for worker, added hasTriggerValue helper |
+| `src/renderer/engine/executors/visual.ts` | Added texture-to-data executor |
+| `src/renderer/engine/executors/audio.ts` | Renamed delay to audio-delay |
+| `src/renderer/registry/ai/sentiment-analysis.ts` | Added trigger input |
+| `src/renderer/registry/ai/feature-extraction.ts` | Added trigger input |
+| `src/renderer/registry/ai/image-classification.ts` | Added trigger input |
+| `src/renderer/registry/ai/object-detection.ts` | Added trigger input |
+| `src/renderer/registry/audio/audio-delay.ts` | Renamed id to audio-delay |
 
 ---
 
@@ -614,14 +666,15 @@ npm run dev:electron
 
 | Issue | Description | Workaround |
 |-------|-------------|------------|
-| AI freezes UI | Transformers.js runs on main thread | Implement Web Workers (plan created) |
+| Large bundle size | Main bundle is 5.4MB | Consider code splitting |
 
 ## Immediate TODOs for Next Session
 
 ```markdown
 ## High Priority
-- [ ] Implement AI Web Workers (see docs/plans/AI_WEB_WORKERS_PLAN.md)
+- [ ] Test AI nodes with Web Worker (text gen, image classification, etc.)
 - [ ] Test connection manager with real MQTT/OSC servers
+- [ ] Test texture-to-data → AI node pipeline
 
 ## Testing
 - [ ] Test shader node with all 17 presets
@@ -636,6 +689,10 @@ npm run dev:electron
 - [ ] Node development documentation for custom nodes
 
 ## Completed
+- [x] AI Web Workers - all inference runs off main thread
+- [x] texture-to-data executor implemented
+- [x] AI node trigger inputs fixed
+- [x] Audio delay / timing delay collision fixed
 - [x] Break up EditorView.vue - Node registry extracted to src/renderer/registry/
 - [x] Shader node improvements with presets and uniform detection
 - [x] Wire colors by data type
@@ -671,6 +728,7 @@ npm run dev:electron
 | 2026-01-18 | Repo Migration & CI/CD | Moved to lumencanvas/latch, demo at latch.design, sample flow on first visit, GitHub releases |
 | 2026-01-18 | LATCH Rename & Builds | Renamed to LATCH, separate arm64/x64 macOS builds, preload script fix |
 | 2026-01-18 | AI & Trigger Fixes | Trigger connects to trigger inputs, AI uses trigger value as prompt |
+| 2026-01-18 | AI Web Workers & Audit | Web Worker for AI inference, fixed missing triggers on AI nodes, texture-to-data executor, audio-delay collision fix |
 
 ---
 

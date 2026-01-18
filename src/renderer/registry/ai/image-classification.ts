@@ -10,6 +10,7 @@ export const imageClassificationNode: NodeDefinition = {
   platforms: ['web', 'electron'],
   inputs: [
     { id: 'image', type: 'data', label: 'Image' },
+    { id: 'trigger', type: 'trigger', label: 'Classify' },
   ],
   outputs: [
     { id: 'labels', type: 'data', label: 'Labels' },

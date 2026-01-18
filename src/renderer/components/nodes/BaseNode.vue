@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, nextTick } from 'vue'
+import { computed, ref, nextTick, onMounted, onUnmounted } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import type { NodeProps } from '@vue-flow/core'
 import {
@@ -22,9 +22,11 @@ import {
   Wifi,
   Layers,
   Puzzle,
+  Loader2,
 } from 'lucide-vue-next'
 import { categoryMeta, dataTypeMeta, type NodeDefinition, type NodeCategory, useNodesStore } from '@/stores/nodes'
 import { useFlowsStore } from '@/stores/flows'
+import { getExecutionEngine } from '@/engine/ExecutionEngine'
 import TexturePreview from '@/components/preview/TexturePreview.vue'
 
 const props = defineProps<NodeProps>()
@@ -36,6 +38,33 @@ const hoveredPort = ref<string | null>(null)
 const isEditingLabel = ref(false)
 const editedLabel = ref('')
 const labelInputRef = ref<HTMLInputElement | null>(null)
+const isLoading = ref(false)
+let loadingCheckInterval: number | null = null
+
+// Check if node has a loading output (AI nodes)
+const hasLoadingOutput = computed(() => {
+  return definition.value?.outputs.some(o => o.id === 'loading') ?? false
+})
+
+// Poll for loading state from execution engine
+function checkLoadingState() {
+  if (!hasLoadingOutput.value) return
+  const engine = getExecutionEngine()
+  const loading = engine.getOutputValue(props.id, 'loading')
+  isLoading.value = loading === true
+}
+
+onMounted(() => {
+  if (hasLoadingOutput.value) {
+    loadingCheckInterval = window.setInterval(checkLoadingState, 100)
+  }
+})
+
+onUnmounted(() => {
+  if (loadingCheckInterval) {
+    clearInterval(loadingCheckInterval)
+  }
+})
 
 // Get definition from nodesStore using nodeType (more reliable than props.data.definition)
 const definition = computed<NodeDefinition | null>(() => {
@@ -340,6 +369,11 @@ function onLabelKeydown(e: KeyboardEvent) {
           title="Double-click to edit label"
           @dblclick.stop.prevent="startEditingLabel"
         >{{ nodeLabel }}</span>
+        <Loader2
+          v-if="isLoading"
+          :size="12"
+          class="loading-indicator"
+        />
         <button
           v-if="!isSimpleNode"
           class="node-collapse-btn"
@@ -623,6 +657,21 @@ function onLabelKeydown(e: KeyboardEvent) {
   padding: 1px 4px;
   outline: none;
   min-width: 60px;
+}
+
+.loading-indicator {
+  color: var(--color-primary-500);
+  animation: spin 1s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .node-collapse-btn {

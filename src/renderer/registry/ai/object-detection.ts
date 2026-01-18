@@ -10,6 +10,7 @@ export const objectDetectionNode: NodeDefinition = {
   platforms: ['web', 'electron'],
   inputs: [
     { id: 'image', type: 'data', label: 'Image' },
+    { id: 'trigger', type: 'trigger', label: 'Detect' },
   ],
   outputs: [
     { id: 'objects', type: 'data', label: 'Objects' },

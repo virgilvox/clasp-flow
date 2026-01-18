@@ -830,6 +830,127 @@ export const transform2DExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
 }
 
 // ============================================================================
+// Texture to Data Node (convert GPU texture to CPU image data for AI)
+// ============================================================================
+
+// Cache for converted image data per node
+const textureDataCache = new Map<string, { data: ImageData | string | Blob; width: number; height: number }>()
+
+export const textureToDataExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const texture = ctx.inputs.get('texture') as WebGLTexture | null
+  const trigger = ctx.inputs.get('trigger')
+  const format = (ctx.controls.get('format') as string) ?? 'imageData'
+  const continuous = (ctx.controls.get('continuous') as boolean) ?? false
+
+  const outputs = new Map<string, unknown>()
+
+  if (!texture) {
+    outputs.set('data', null)
+    outputs.set('width', 0)
+    outputs.set('height', 0)
+    return outputs
+  }
+
+  // Only capture on trigger or continuous mode
+  const hasTrigger = trigger === true || trigger === 1 || (typeof trigger === 'number' && trigger > 0) || (typeof trigger === 'string' && trigger.length > 0)
+
+  if (!hasTrigger && !continuous) {
+    // Return cached data
+    const cached = textureDataCache.get(ctx.nodeId)
+    if (cached) {
+      outputs.set('data', cached.data)
+      outputs.set('width', cached.width)
+      outputs.set('height', cached.height)
+    } else {
+      outputs.set('data', null)
+      outputs.set('width', 0)
+      outputs.set('height', 0)
+    }
+    return outputs
+  }
+
+  const renderer = getShaderRenderer()
+  const gl = renderer.getCanvas().getContext('webgl2')
+
+  if (!gl) {
+    outputs.set('data', null)
+    outputs.set('width', 0)
+    outputs.set('height', 0)
+    outputs.set('_error', 'WebGL2 context not available')
+    return outputs
+  }
+
+  const canvas = renderer.getCanvas()
+  const width = canvas.width
+  const height = canvas.height
+
+  // Create a framebuffer to read the texture
+  const fbo = gl.createFramebuffer()
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo)
+  gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, texture, 0)
+
+  // Check framebuffer status
+  const status = gl.checkFramebufferStatus(gl.FRAMEBUFFER)
+  if (status !== gl.FRAMEBUFFER_COMPLETE) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+    gl.deleteFramebuffer(fbo)
+    outputs.set('data', null)
+    outputs.set('width', 0)
+    outputs.set('height', 0)
+    outputs.set('_error', 'Framebuffer incomplete')
+    return outputs
+  }
+
+  // Read pixels from texture
+  const pixels = new Uint8Array(width * height * 4)
+  gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, pixels)
+
+  // Clean up
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null)
+  gl.deleteFramebuffer(fbo)
+
+  // WebGL texture is upside down, need to flip vertically
+  const flipped = new Uint8Array(width * height * 4)
+  for (let y = 0; y < height; y++) {
+    const srcRow = (height - 1 - y) * width * 4
+    const dstRow = y * width * 4
+    flipped.set(pixels.subarray(srcRow, srcRow + width * 4), dstRow)
+  }
+
+  // Convert to requested format
+  let data: ImageData | string | Blob
+
+  if (format === 'imageData') {
+    // Create ImageData directly from pixels
+    const clampedArray = new Uint8ClampedArray(flipped)
+    data = new ImageData(clampedArray, width, height)
+  } else {
+    // For base64 and blob, we need a canvas
+    const tempCanvas = document.createElement('canvas')
+    tempCanvas.width = width
+    tempCanvas.height = height
+    const tempCtx = tempCanvas.getContext('2d')!
+    const imageData = new ImageData(new Uint8ClampedArray(flipped), width, height)
+    tempCtx.putImageData(imageData, 0, 0)
+
+    if (format === 'base64') {
+      data = tempCanvas.toDataURL('image/png')
+    } else {
+      // blob - convert synchronously using data URL for now
+      data = tempCanvas.toDataURL('image/png')
+    }
+  }
+
+  // Cache the result
+  textureDataCache.set(ctx.nodeId, { data, width, height })
+
+  outputs.set('data', data)
+  outputs.set('width', width)
+  outputs.set('height', height)
+  return outputs
+}
+
+// ============================================================================
 // Registry
 // ============================================================================
 
@@ -844,4 +965,5 @@ export const visualExecutors: Record<string, NodeExecutorFn> = {
   'color-correction': colorCorrectionExecutor,
   displacement: displacementExecutor,
   'transform-2d': transform2DExecutor,
+  'texture-to-data': textureToDataExecutor,
 }

@@ -1,7 +1,7 @@
 import type { NodeDefinition } from '../types'
 
 export const audioDelayNode: NodeDefinition = {
-  id: 'delay',
+  id: 'audio-delay',
   name: 'Delay',
   version: '1.0.0',
   category: 'audio',

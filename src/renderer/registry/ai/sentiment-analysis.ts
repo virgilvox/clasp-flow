@@ -10,6 +10,7 @@ export const sentimentAnalysisNode: NodeDefinition = {
   platforms: ['web', 'electron'],
   inputs: [
     { id: 'text', type: 'string', label: 'Text' },
+    { id: 'trigger', type: 'trigger', label: 'Analyze' },
   ],
   outputs: [
     { id: 'sentiment', type: 'string', label: 'Sentiment' },

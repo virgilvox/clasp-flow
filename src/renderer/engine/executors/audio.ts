@@ -697,7 +697,7 @@ export const audioExecutors: Record<string, NodeExecutorFn> = {
   'audio-analyzer': audioAnalyzerExecutor,
   gain: gainExecutor,
   filter: filterExecutor,
-  delay: delayExecutor,
+  'audio-delay': delayExecutor,
   'beat-detect': beatDetectExecutor,
   'audio-player': audioPlayerExecutor,
   envelope: envelopeExecutor,

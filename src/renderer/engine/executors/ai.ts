@@ -1,9 +1,9 @@
 /**
  * AI Node Executors
  *
- * These executors handle AI/ML nodes using Transformers.js.
+ * These executors handle AI/ML nodes using Transformers.js via Web Worker.
  * IMPORTANT: Models must be pre-loaded via the AI Model Manager.
- * Executors will NOT auto-load models to prevent UI freezing.
+ * All inference runs off the main thread for smooth UI performance.
  */
 
 import type { ExecutionContext, NodeExecutorFn } from '../ExecutionEngine'
@@ -22,6 +22,11 @@ function getCached<T>(key: string, defaultValue: T): T {
 
 function setCached(key: string, value: unknown): void {
   nodeCache.set(key, value)
+}
+
+// Helper to check for truthy trigger values
+function hasTriggerValue(trigger: unknown): boolean {
+  return trigger !== undefined && trigger !== null && trigger !== false && trigger !== 0 && trigger !== ''
 }
 
 // ============================================================================
@@ -45,14 +50,9 @@ export const textGenerationExecutor: NodeExecutorFn = (ctx: ExecutionContext) =>
     prompt = (ctx.controls.get('prompt') as string) ?? ''
   }
 
-  // Check if model is loaded (non-blocking)
+  // Check if model is loaded
   const modelId = ctx.controls.get('model') as string | undefined
   const isLoaded = aiInference.isModelLoaded('text-generation', modelId)
-
-  // Debug logging - log every frame when trigger is present
-  if (trigger !== undefined) {
-    console.log('[AI TextGen] TRIGGER RECEIVED:', trigger, 'Type:', typeof trigger, 'Prompt:', prompt.substring(0, 50))
-  }
 
   if (!isLoaded) {
     outputs.set('text', getCached(`${ctx.nodeId}:lastOutput`, ''))
@@ -61,11 +61,8 @@ export const textGenerationExecutor: NodeExecutorFn = (ctx: ExecutionContext) =>
     return outputs
   }
 
-  // ONLY run on explicit trigger - accepts boolean, number, string, or any truthy value
-  // This allows string triggers, timestamps, JSON objects, etc.
-  const hasTrigger = trigger !== undefined && trigger !== null && trigger !== false && trigger !== 0 && trigger !== ''
-
-  if (!hasTrigger) {
+  // Only run on explicit trigger
+  if (!hasTriggerValue(trigger)) {
     outputs.set('text', getCached(`${ctx.nodeId}:lastOutput`, ''))
     outputs.set('loading', getCached(`${ctx.nodeId}:loading`, false))
     return outputs
@@ -84,31 +81,31 @@ export const textGenerationExecutor: NodeExecutorFn = (ctx: ExecutionContext) =>
     return outputs
   }
 
-  // Start async generation in next tick to not block current frame
+  // Start async generation - runs in web worker, non-blocking
   setCached(`${ctx.nodeId}:loading`, true)
 
   const maxTokens = (ctx.controls.get('maxTokens') as number) ?? 50
   const temperature = (ctx.controls.get('temperature') as number) ?? 0.7
 
-  // Use setTimeout to defer to next event loop, preventing frame blocking
-  const operation = new Promise<void>((resolve) => {
-    setTimeout(async () => {
-      try {
-        const result = await aiInference.generateText(prompt, {
-          maxLength: maxTokens,
-          temperature,
-        }, modelId)
-        setCached(`${ctx.nodeId}:lastOutput`, result)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } catch (error) {
-        console.error('[AI] Text generation error:', error)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } finally {
-        pendingOperations.delete(ctx.nodeId)
-        resolve()
-      }
-    }, 0)
-  })
+  console.log('[AI Executor] Starting text generation for prompt:', prompt.substring(0, 50))
+
+  const operation = (async () => {
+    try {
+      console.log('[AI Executor] Calling aiInference.generateText...')
+      const result = await aiInference.generateText(prompt, {
+        maxLength: maxTokens,
+        temperature,
+      }, modelId)
+      console.log('[AI Executor] Got result:', result?.substring(0, 100))
+      setCached(`${ctx.nodeId}:lastOutput`, result)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } catch (error) {
+      console.error('[AI Executor] Text generation error:', error)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } finally {
+      pendingOperations.delete(ctx.nodeId)
+    }
+  })()
 
   pendingOperations.set(ctx.nodeId, operation)
 
@@ -147,8 +144,8 @@ export const imageClassificationExecutor: NodeExecutorFn = (ctx: ExecutionContex
     return outputs
   }
 
-  // Only run on explicit trigger or frame interval (default 60 frames = ~1 sec)
-  const hasTrigger = trigger === true || trigger === 1
+  // Run on explicit trigger or frame interval
+  const hasTrigger = hasTriggerValue(trigger)
   const currentFrame = ctx.frameCount
   const lastFrame = getCached<number>(`${ctx.nodeId}:lastFrame`, 0)
   const interval = (ctx.controls.get('interval') as number) ?? 60
@@ -175,25 +172,21 @@ export const imageClassificationExecutor: NodeExecutorFn = (ctx: ExecutionContex
 
   const topK = (ctx.controls.get('topK') as number) ?? 5
 
-  // Defer to next event loop tick
-  const operation = new Promise<void>((resolve) => {
-    setTimeout(async () => {
-      try {
-        const results = await aiInference.classifyImage(imageData, topK, modelId)
-        setCached(`${ctx.nodeId}:labels`, results)
-        const topResult = results[0]
-        setCached(`${ctx.nodeId}:topLabel`, topResult?.label ?? '')
-        setCached(`${ctx.nodeId}:topScore`, topResult?.score ?? 0)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } catch (error) {
-        console.error('[AI] Image classification error:', error)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } finally {
-        pendingOperations.delete(ctx.nodeId)
-        resolve()
-      }
-    }, 0)
-  })
+  const operation = (async () => {
+    try {
+      const results = await aiInference.classifyImage(imageData, topK, modelId)
+      setCached(`${ctx.nodeId}:labels`, results)
+      const topResult = results[0]
+      setCached(`${ctx.nodeId}:topLabel`, topResult?.label ?? '')
+      setCached(`${ctx.nodeId}:topScore`, topResult?.score ?? 0)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } catch (error) {
+      console.error('[AI] Image classification error:', error)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } finally {
+      pendingOperations.delete(ctx.nodeId)
+    }
+  })()
 
   pendingOperations.set(ctx.nodeId, operation)
 
@@ -236,8 +229,8 @@ export const sentimentAnalysisExecutor: NodeExecutorFn = (ctx: ExecutionContext)
     return outputs
   }
 
-  // Only run on explicit trigger or text change
-  const hasTrigger = trigger === true || trigger === 1
+  // Run on explicit trigger or text change
+  const hasTrigger = hasTriggerValue(trigger)
   const lastText = getCached<string>(`${ctx.nodeId}:lastText`, '')
   const textChanged = text !== lastText
 
@@ -263,37 +256,33 @@ export const sentimentAnalysisExecutor: NodeExecutorFn = (ctx: ExecutionContext)
   setCached(`${ctx.nodeId}:loading`, true)
   setCached(`${ctx.nodeId}:lastText`, text)
 
-  // Defer to next event loop tick
-  const operation = new Promise<void>((resolve) => {
-    setTimeout(async () => {
-      try {
-        const results = await aiInference.analyzeSentiment(text, modelId)
+  const operation = (async () => {
+    try {
+      const results = await aiInference.analyzeSentiment(text, modelId)
 
-        let positive = 0
-        let negative = 0
-        for (const result of results) {
-          if (result.label.toLowerCase().includes('positive')) {
-            positive = result.score
-          } else if (result.label.toLowerCase().includes('negative')) {
-            negative = result.score
-          }
+      let positive = 0
+      let negative = 0
+      for (const result of results) {
+        if (result.label.toLowerCase().includes('positive')) {
+          positive = result.score
+        } else if (result.label.toLowerCase().includes('negative')) {
+          negative = result.score
         }
-
-        const topResult = results[0]
-        setCached(`${ctx.nodeId}:sentiment`, topResult?.label ?? '')
-        setCached(`${ctx.nodeId}:score`, topResult?.score ?? 0)
-        setCached(`${ctx.nodeId}:positive`, positive)
-        setCached(`${ctx.nodeId}:negative`, negative)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } catch (error) {
-        console.error('[AI] Sentiment analysis error:', error)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } finally {
-        pendingOperations.delete(ctx.nodeId)
-        resolve()
       }
-    }, 0)
-  })
+
+      const topResult = results[0]
+      setCached(`${ctx.nodeId}:sentiment`, topResult?.label ?? '')
+      setCached(`${ctx.nodeId}:score`, topResult?.score ?? 0)
+      setCached(`${ctx.nodeId}:positive`, positive)
+      setCached(`${ctx.nodeId}:negative`, negative)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } catch (error) {
+      console.error('[AI] Sentiment analysis error:', error)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } finally {
+      pendingOperations.delete(ctx.nodeId)
+    }
+  })()
 
   pendingOperations.set(ctx.nodeId, operation)
 
@@ -331,8 +320,8 @@ export const imageCaptioningExecutor: NodeExecutorFn = (ctx: ExecutionContext) =
     return outputs
   }
 
-  // Only run on explicit trigger or frame interval (default 120 frames = ~2 sec)
-  const hasTrigger = trigger === true || trigger === 1
+  // Run on explicit trigger or frame interval
+  const hasTrigger = hasTriggerValue(trigger)
   const currentFrame = ctx.frameCount
   const lastFrame = getCached<number>(`${ctx.nodeId}:lastFrame`, 0)
   const interval = (ctx.controls.get('interval') as number) ?? 120
@@ -353,22 +342,18 @@ export const imageCaptioningExecutor: NodeExecutorFn = (ctx: ExecutionContext) =
   setCached(`${ctx.nodeId}:loading`, true)
   setCached(`${ctx.nodeId}:lastFrame`, currentFrame)
 
-  // Defer to next event loop tick
-  const operation = new Promise<void>((resolve) => {
-    setTimeout(async () => {
-      try {
-        const caption = await aiInference.captionImage(imageData, modelId)
-        setCached(`${ctx.nodeId}:caption`, caption)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } catch (error) {
-        console.error('[AI] Image captioning error:', error)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } finally {
-        pendingOperations.delete(ctx.nodeId)
-        resolve()
-      }
-    }, 0)
-  })
+  const operation = (async () => {
+    try {
+      const caption = await aiInference.captionImage(imageData, modelId)
+      setCached(`${ctx.nodeId}:caption`, caption)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } catch (error) {
+      console.error('[AI] Image captioning error:', error)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } finally {
+      pendingOperations.delete(ctx.nodeId)
+    }
+  })()
 
   pendingOperations.set(ctx.nodeId, operation)
 
@@ -405,8 +390,8 @@ export const featureExtractionExecutor: NodeExecutorFn = (ctx: ExecutionContext)
     return outputs
   }
 
-  // Only run on explicit trigger or text change
-  const hasTrigger = trigger === true || trigger === 1
+  // Run on explicit trigger or text change
+  const hasTrigger = hasTriggerValue(trigger)
   const lastText = getCached<string>(`${ctx.nodeId}:lastText`, '')
   const textChanged = text !== lastText
 
@@ -428,28 +413,172 @@ export const featureExtractionExecutor: NodeExecutorFn = (ctx: ExecutionContext)
   setCached(`${ctx.nodeId}:loading`, true)
   setCached(`${ctx.nodeId}:lastText`, text)
 
-  // Defer to next event loop tick
-  const operation = new Promise<void>((resolve) => {
-    setTimeout(async () => {
-      try {
-        const embedding = await aiInference.extractFeatures(text, modelId)
-        setCached(`${ctx.nodeId}:embedding`, embedding)
-        setCached(`${ctx.nodeId}:dimensions`, embedding.length)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } catch (error) {
-        console.error('[AI] Feature extraction error:', error)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } finally {
-        pendingOperations.delete(ctx.nodeId)
-        resolve()
-      }
-    }, 0)
-  })
+  const operation = (async () => {
+    try {
+      const embedding = await aiInference.extractFeatures(text, modelId)
+      setCached(`${ctx.nodeId}:embedding`, embedding)
+      setCached(`${ctx.nodeId}:dimensions`, embedding.length)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } catch (error) {
+      console.error('[AI] Feature extraction error:', error)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } finally {
+      pendingOperations.delete(ctx.nodeId)
+    }
+  })()
 
   pendingOperations.set(ctx.nodeId, operation)
 
   outputs.set('embedding', getCached(`${ctx.nodeId}:embedding`, []))
   outputs.set('dimensions', getCached(`${ctx.nodeId}:dimensions`, 0))
+  outputs.set('loading', true)
+  return outputs
+}
+
+// ============================================================================
+// Speech Recognition Node
+// ============================================================================
+
+export const speechRecognitionExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const outputs = new Map<string, unknown>()
+  const audio = ctx.inputs.get('audio') as Float32Array | null
+  const trigger = ctx.inputs.get('trigger')
+
+  // Check if model is loaded
+  const modelId = ctx.controls.get('model') as string | undefined
+  const isLoaded = aiInference.isModelLoaded('automatic-speech-recognition', modelId)
+
+  if (!isLoaded) {
+    outputs.set('text', getCached(`${ctx.nodeId}:text`, ''))
+    outputs.set('loading', false)
+    outputs.set('_error', 'Model not loaded. Open AI Model Manager to load.')
+    return outputs
+  }
+
+  if (!audio || audio.length === 0) {
+    outputs.set('text', getCached(`${ctx.nodeId}:text`, ''))
+    outputs.set('loading', false)
+    return outputs
+  }
+
+  // Only run on explicit trigger
+  if (!hasTriggerValue(trigger)) {
+    outputs.set('text', getCached(`${ctx.nodeId}:text`, ''))
+    outputs.set('loading', getCached(`${ctx.nodeId}:loading`, false))
+    return outputs
+  }
+
+  // Check if already processing
+  if (pendingOperations.has(ctx.nodeId)) {
+    outputs.set('text', getCached(`${ctx.nodeId}:text`, ''))
+    outputs.set('loading', true)
+    return outputs
+  }
+
+  setCached(`${ctx.nodeId}:loading`, true)
+
+  const operation = (async () => {
+    try {
+      const text = await aiInference.transcribe(audio, modelId)
+      setCached(`${ctx.nodeId}:text`, text)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } catch (error) {
+      console.error('[AI] Speech recognition error:', error)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } finally {
+      pendingOperations.delete(ctx.nodeId)
+    }
+  })()
+
+  pendingOperations.set(ctx.nodeId, operation)
+
+  outputs.set('text', getCached(`${ctx.nodeId}:text`, ''))
+  outputs.set('loading', true)
+  return outputs
+}
+
+// ============================================================================
+// Text Transformation Node
+// ============================================================================
+
+export const textTransformationExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const outputs = new Map<string, unknown>()
+  const trigger = ctx.inputs.get('trigger')
+
+  // Get text from input or control
+  let text = (ctx.inputs.get('text') as string) ?? ''
+  if (!text) {
+    text = (ctx.controls.get('text') as string) ?? ''
+  }
+
+  // Check if model is loaded
+  const modelId = ctx.controls.get('model') as string | undefined
+  const isLoaded = aiInference.isModelLoaded('text2text-generation', modelId)
+
+  if (!isLoaded) {
+    outputs.set('result', getCached(`${ctx.nodeId}:result`, ''))
+    outputs.set('loading', false)
+    outputs.set('_error', 'Model not loaded. Open AI Model Manager to load.')
+    return outputs
+  }
+
+  if (!text.trim()) {
+    outputs.set('result', '')
+    outputs.set('loading', false)
+    return outputs
+  }
+
+  // Only run on explicit trigger
+  if (!hasTriggerValue(trigger)) {
+    outputs.set('result', getCached(`${ctx.nodeId}:result`, ''))
+    outputs.set('loading', getCached(`${ctx.nodeId}:loading`, false))
+    return outputs
+  }
+
+  // Check if already processing
+  if (pendingOperations.has(ctx.nodeId)) {
+    outputs.set('result', getCached(`${ctx.nodeId}:result`, ''))
+    outputs.set('loading', true)
+    return outputs
+  }
+
+  setCached(`${ctx.nodeId}:loading`, true)
+
+  const task = (ctx.controls.get('task') as string) ?? 'summarize'
+  const maxTokens = (ctx.controls.get('maxTokens') as number) ?? 100
+
+  // Prepend task instruction for T5/Flan models
+  let taskPrompt: string
+  switch (task) {
+    case 'summarize':
+      taskPrompt = `summarize: ${text}`
+      break
+    case 'translate':
+      taskPrompt = `translate English to French: ${text}`
+      break
+    case 'paraphrase':
+      taskPrompt = `paraphrase: ${text}`
+      break
+    default:
+      taskPrompt = text
+  }
+
+  const operation = (async () => {
+    try {
+      const result = await aiInference.text2text(taskPrompt, { maxLength: maxTokens }, modelId)
+      setCached(`${ctx.nodeId}:result`, result)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } catch (error) {
+      console.error('[AI] Text transformation error:', error)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } finally {
+      pendingOperations.delete(ctx.nodeId)
+    }
+  })()
+
+  pendingOperations.set(ctx.nodeId, operation)
+
+  outputs.set('result', getCached(`${ctx.nodeId}:result`, ''))
   outputs.set('loading', true)
   return outputs
 }
@@ -482,8 +611,8 @@ export const objectDetectionExecutor: NodeExecutorFn = (ctx: ExecutionContext) =
     return outputs
   }
 
-  // Only run on explicit trigger or frame interval (default 60 frames = ~1 sec)
-  const hasTrigger = trigger === true || trigger === 1
+  // Run on explicit trigger or frame interval
+  const hasTrigger = hasTriggerValue(trigger)
   const currentFrame = ctx.frameCount
   const lastFrame = getCached<number>(`${ctx.nodeId}:lastFrame`, 0)
   const interval = (ctx.controls.get('interval') as number) ?? 60
@@ -508,23 +637,19 @@ export const objectDetectionExecutor: NodeExecutorFn = (ctx: ExecutionContext) =
 
   const threshold = (ctx.controls.get('threshold') as number) ?? 0.5
 
-  // Defer to next event loop tick
-  const operation = new Promise<void>((resolve) => {
-    setTimeout(async () => {
-      try {
-        const objects = await aiInference.detectObjects(imageData, threshold, modelId)
-        setCached(`${ctx.nodeId}:objects`, objects)
-        setCached(`${ctx.nodeId}:count`, objects.length)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } catch (error) {
-        console.error('[AI] Object detection error:', error)
-        setCached(`${ctx.nodeId}:loading`, false)
-      } finally {
-        pendingOperations.delete(ctx.nodeId)
-        resolve()
-      }
-    }, 0)
-  })
+  const operation = (async () => {
+    try {
+      const objects = await aiInference.detectObjects(imageData, threshold, modelId)
+      setCached(`${ctx.nodeId}:objects`, objects)
+      setCached(`${ctx.nodeId}:count`, objects.length)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } catch (error) {
+      console.error('[AI] Object detection error:', error)
+      setCached(`${ctx.nodeId}:loading`, false)
+    } finally {
+      pendingOperations.delete(ctx.nodeId)
+    }
+  })()
 
   pendingOperations.set(ctx.nodeId, operation)
 
@@ -560,4 +685,6 @@ export const aiExecutors: Record<string, NodeExecutorFn> = {
   'image-captioning': imageCaptioningExecutor,
   'feature-extraction': featureExtractionExecutor,
   'object-detection': objectDetectionExecutor,
+  'speech-recognition': speechRecognitionExecutor,
+  'text-transformation': textTransformationExecutor,
 }

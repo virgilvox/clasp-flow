@@ -10,6 +10,7 @@ export const featureExtractionNode: NodeDefinition = {
   platforms: ['web', 'electron'],
   inputs: [
     { id: 'text', type: 'string', label: 'Text' },
+    { id: 'trigger', type: 'trigger', label: 'Extract' },
   ],
   outputs: [
     { id: 'embedding', type: 'data', label: 'Embedding' },
