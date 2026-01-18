@@ -1,16 +1,16 @@
-# CLASP Flow - Master Project Plan
+# LATCH - Master Project Plan
 
-**Project**: CLASP Flow - The Ultimate Creative Flow Programming Engine
+**Project**: LATCH - Live Art Tool for Creative Humans
 **Organization**: LumenCanvas
 **Version**: 0.1.0
 **Last Updated**: 2026-01-17
-**Status**: Phase 0 Complete - Ready for Phase 1
+**Status**: Phase 9 Complete + UX Polish + Debug Nodes (Graph, Equalizer, Enhanced Oscilloscope)
 
 ---
 
 ## Executive Summary
 
-CLASP Flow is an ambitious open-source visual flow/node programming environment that combines the best features of TouchDesigner, PureData, Max/MSP, Node-RED, and nodes.io. It runs as both a web application and an Electron desktop app, enabling creative professionals to build complex audio-visual pipelines, IoT integrations, AI workflows, and interactive experiences through an intuitive node-based interface.
+LATCH (Live Art Tool for Creative Humans) is an ambitious open-source visual flow/node programming environment that combines the best features of TouchDesigner, PureData, Max/MSP, Node-RED, and nodes.io. It runs as both a web application and an Electron desktop app, enabling creative professionals to build complex audio-visual pipelines, IoT integrations, AI workflows, and interactive experiences through an intuitive node-based interface.
 
 ### Key Differentiators
 - **Dual Runtime**: Web browser + Electron (with hardware access)
@@ -224,114 +224,162 @@ Create the most powerful, accessible, and extensible visual programming environm
 - [x] Layout components (AppHeader, AppSidebar, StatusBar)
 - [x] Core views (EditorView, ControlPanelView, SettingsView)
 
-### Phase 1: Core Editor (Current)
+### Phase 1: Core Editor ✅ COMPLETE
 **Goal**: Functional node editor with basic nodes
 
 - [x] Node canvas with zoom/pan (Vue Flow)
 - [x] Node palette/library sidebar (AppSidebar)
-- [ ] Node search functionality (fuzzy matching)
-- [ ] Connection drawing and validation (type checking)
-- [ ] Node selection and multi-select
-- [ ] Copy/paste/duplicate nodes
-- [ ] Undo/redo system
+- [x] Node search functionality (fuzzy matching)
+- [x] Connection drawing and validation (type checking)
+- [x] Node selection and multi-select
+- [x] Copy/paste/duplicate nodes (Ctrl+C/V/X/D)
+- [x] Undo/redo system (Ctrl+Z, Ctrl+Shift+Z)
 - [x] Mini-map component (Vue Flow MiniMap)
-- [ ] Keyboard shortcuts
+- [x] Keyboard shortcuts (delete, select all, copy, paste, undo/redo)
 - [x] Basic nodes: Debug, Monitor, Constant, Math (demo nodes registered)
+- [x] IndexedDB persistence with Dexie.js (auto-save)
 
-### Phase 2: Data Flow
+### Phase 2: Data Flow ✅ COMPLETE
 **Goal**: Working execution engine with data types
 
-- [ ] Graph execution (topological sort)
-- [ ] Data type validation
-- [ ] Connection type checking
-- [ ] Worker thread execution
-- [ ] Flow controls (start/stop/pause)
-- [ ] Real-time value inspection
-- [ ] Error handling and display
-- [ ] Performance monitoring
-- [ ] Logic nodes: Compare, Switch, Gate
-- [ ] Math nodes: Add, Multiply, MapRange, Clamp
+- [x] Graph execution (topological sort - Kahn's algorithm)
+- [x] Data type validation
+- [x] Connection type checking
+- [ ] Worker thread execution (deferred)
+- [x] Flow controls (start/stop/pause)
+- [x] Real-time value inspection
+- [x] Error handling and display
+- [ ] Performance monitoring (deferred)
+- [x] Logic nodes: Compare, Switch, Gate, And, Or, Not, Select
+- [x] Math nodes: Add, Subtract, Multiply, Divide, MapRange, Clamp, Abs, Smooth, Random
+- [x] Input nodes: Constant, Slider, Trigger, Time, LFO
+- [x] Debug nodes: Monitor, Console
 
-### Phase 3: Audio System
+### Phase 3: Audio System ✅ COMPLETE
 **Goal**: Full audio input/output/synthesis
 
-- [ ] Audio context management
-- [ ] Audio Input node (microphone)
-- [ ] Audio Output node (speakers)
-- [ ] Audio Player node (files)
-- [ ] Audio Analysis node (Meyda integration)
-- [ ] Beat Detection node
-- [ ] Oscillator node (basic synth)
-- [ ] Envelope node (ADSR)
-- [ ] Filter node (LP, HP, BP)
-- [ ] Effects nodes (delay, reverb, distortion)
-- [ ] Audio visualization worker
+- [x] Audio context management (AudioManager service)
+- [x] Audio Input node (microphone)
+- [x] Audio Output node (speakers)
+- [ ] Audio Player node (files) (deferred)
+- [x] Audio Analysis node (Meyda integration - level, bass, mid, high)
+- [ ] Beat Detection node (deferred)
+- [x] Oscillator node (sine, square, triangle, sawtooth)
+- [ ] Envelope node (ADSR) (deferred)
+- [x] Filter node (LP, HP, BP, Notch)
+- [x] Effects nodes: Delay with feedback, Gain
+- [ ] Audio visualization worker (deferred)
 
-### Phase 4: Visual System
+### Phase 4: Visual System ✅ COMPLETE
 **Goal**: Video and shader processing
 
-- [ ] Video Input node (webcam)
-- [ ] Video Player node (files)
-- [ ] Display Output node
-- [ ] Shader node (GLSL editor)
-- [ ] Shadertoy compatibility layer
-- [ ] Uniform detection and binding
-- [ ] Texture node
-- [ ] Blend modes node
-- [ ] Color adjustment nodes
-- [ ] ffmpeg.wasm integration
-- [ ] Video export
+- [x] Video Input node (webcam via WebcamCapture service)
+- [ ] Video Player node (files) (deferred)
+- [x] Display Output node (TextureDisplay, MainOutput)
+- [x] Shader node (GLSL editor with ShaderEditorModal)
+- [x] Shadertoy compatibility layer (iTime, iResolution, iMouse, iChannel0)
+- [x] Uniform detection and binding
+- [x] Texture node (Color generator)
+- [x] Blend modes node (normal, multiply, screen, overlay, etc.)
+- [ ] Color adjustment nodes (deferred)
+- [ ] ffmpeg.wasm integration (deferred)
+- [ ] Video export (deferred)
 
-### Phase 5: Connectivity
+### Phase 4.5: UI Enhancement ✅ COMPLETE
+**Goal**: Improve node UI and workflow
+
+- [x] Right-side Properties Panel (node info, controls, texture preview)
+- [x] Inline node controls (sliders, toggles, selects, numbers)
+- [x] Texture preview thumbnails on visual nodes
+- [x] MainOutput node with large live preview canvas
+- [x] ShaderEditorModal with live preview and Shadertoy hints
+- [x] Simplified AppSidebar (just node palette)
+- [x] TexturePreview reusable component
+
+### Phase 5: Connectivity ✅ CORE COMPLETE
 **Goal**: External communication protocols
 
-- [ ] HTTP Request node
-- [ ] WebSocket node
-- [ ] MQTT node
-- [ ] OSC node (web-limited)
-- [ ] MIDI Input/Output nodes (Web MIDI)
-- [ ] Serial node (Web Serial / Electron)
-- [ ] BLE node (Web Bluetooth / Electron)
-- [ ] CLASP protocol integration
+- [x] HTTP Request node (GET/POST/PUT/DELETE/PATCH)
+- [x] WebSocket node (connect, send, receive)
+- [ ] MQTT node (deferred)
+- [ ] OSC node (deferred - Electron only)
+- [x] MIDI Input/Output nodes (Web MIDI API)
+- [ ] Serial node (deferred - Web Serial / Electron)
+- [ ] BLE node (deferred - Web Bluetooth / Electron)
+- [ ] CLASP protocol integration (deferred)
+- [x] JSON Parse node (with path navigation)
+- [x] JSON Stringify node (with pretty print)
 
-### Phase 6: AI Integration
+### Phase 6: AI Integration ✅ COMPLETE
 **Goal**: Browser-based AI capabilities
 
-- [ ] Transformers.js integration
-- [ ] Text generation node
-- [ ] Text embedding node
-- [ ] Image classification node
-- [ ] Object detection node
-- [ ] Speech-to-text node
-- [ ] Text-to-speech node
-- [ ] Custom ONNX model node
-- [ ] WASM binary execution node
+- [x] Transformers.js integration (@huggingface/transformers)
+- [x] Text generation node (GPT-2)
+- [x] Text embedding node (feature extraction)
+- [x] Image classification node (ViT)
+- [x] Object detection node (DETR)
+- [x] Sentiment analysis node
+- [x] Image captioning node
+- [ ] Speech-to-text node (deferred - Whisper available)
+- [ ] Text-to-speech node (deferred)
+- [ ] Custom ONNX model node (deferred)
 
-### Phase 7: Advanced Features
+### Phase 7: Advanced Features ✅ COMPLETE
 **Goal**: Power-user features
 
-- [ ] Function node (JavaScript execution)
-- [ ] Blockly integration node
-- [ ] Subflows (node groups)
-- [ ] Custom node creation wizard
-- [ ] Node auto-discovery from folder
-- [ ] Control panel view
-- [ ] Multi-flow support
-- [ ] Flow linking
+- [x] Function node (JavaScript sandbox with state management)
+- [x] Expression node (inline math with trig/utility functions)
+- [x] Template node (string interpolation)
+- [x] Counter node (stateful counter with min/max/wrap)
+- [x] Toggle node (flip-flop with set/reset)
+- [x] Sample & Hold node (capture value on trigger)
+- [x] Value Delay node (frame-based delay buffer)
+- [x] Subflows (reusable node groups with input/output ports)
+  - Create from selection (Ctrl+G)
+  - Edit subflow (Ctrl+E)
+  - Unpack to nodes (Ctrl+Shift+G)
+- [x] Control Panel view (ControlPanelView.vue)
+  - Exposed controls with groups
+  - Live value display
+  - Edit mode for layout
+  - View switching (Editor/Controls)
+- [x] Multi-flow support (FlowTabs.vue)
+  - Tab bar with all main flows
+  - Create, close, rename, duplicate flows
+  - Context menu with right-click
+  - Persistence integration
+- [ ] Blockly integration node (deferred)
+- [ ] Custom node creation wizard (deferred - Phase 8)
+- [ ] Node auto-discovery from folder (deferred - Phase 8)
+- [ ] Flow linking (deferred)
 
-### Phase 8: 3D System
+### Phase 8: Custom Nodes ✅ COMPLETE
+**Goal**: Extensible node system
+
+- [x] Custom node loader system (CustomNodeLoader.ts)
+- [x] Node package format specification (definition.json + executor.js)
+- [x] Hot-reload support for custom nodes (file watcher)
+- [x] Example custom nodes (double-value, random-range)
+- [x] Node auto-discovery from folder
+- [ ] Node development documentation (deferred)
+- [ ] Node creation wizard UI (deferred)
+
+### Phase 9: 3D System ✅ COMPLETE
 **Goal**: 3D graphics capabilities
 
-- [ ] 3D Scene node
-- [ ] 3D Camera node
-- [ ] 3D Geometry nodes (primitives)
-- [ ] 3D Transform node
-- [ ] 3D Material node
-- [ ] 3D Light nodes
-- [ ] GLTF/GLB loader node
-- [ ] 3D to 2D render node
+- [x] 3D Scene node
+- [x] 3D Camera node (perspective/orthographic)
+- [x] 3D Geometry nodes (Box, Sphere, Plane, Cylinder, Torus)
+- [x] 3D Transform node (position/rotation/scale)
+- [x] 3D Material node (Standard, Basic, Phong, Physical)
+- [x] 3D Light nodes (Ambient, Directional, Point, Spot)
+- [x] GLTF/GLB loader node
+- [x] 3D to 2D render node (Render 3D)
+- [x] Group 3D node (combine objects)
+- [x] 7 new data types (scene3d, object3d, geometry3d, material3d, camera3d, light3d, transform3d)
+- [x] ThreeRenderer service with render targets
 
-### Phase 9: Polish & Export
+### Phase 10: Polish & Export
 **Goal**: Production-ready experience
 
 - [ ] Mobile responsive UI
@@ -345,7 +393,7 @@ Create the most powerful, accessible, and extensible visual programming environm
 - [ ] User documentation
 - [ ] Landing page
 
-### Phase 10: Distribution
+### Phase 11: Distribution
 **Goal**: Public release
 
 - [ ] GitHub Actions multi-platform builds
@@ -651,8 +699,8 @@ platforms:
 
 ## Progress Tracking
 
-### Current Phase: 1 (Core Editor)
-### Current Status: Phase 0 Complete, Phase 1 In Progress
+### Current Phase: 9 Complete
+### Current Status: 3D system implemented with ThreeRenderer service, 17 node types, 7 new data types. Ready for Phase 10 (Polish & Export) or additional testing/deferred features.
 
 ### Milestone Checklist
 
@@ -667,15 +715,144 @@ platforms:
 - [x] TypeScript compilation clean
 - [x] Web build verified
 
-#### Phase 1: Core Editor (In Progress)
+#### Phase 1: Core Editor ✅
 - [x] Vue Flow canvas working
-- [x] Node palette sidebar
+- [x] Node palette sidebar with fuzzy search
 - [x] Demo nodes registered
-- [ ] Connection type validation
-- [ ] Node selection system
-- [ ] Undo/redo
-- [ ] Keyboard shortcuts
-- [ ] IndexedDB persistence
+- [x] Connection type validation
+- [x] Node selection system (single + multi-select)
+- [x] Undo/redo with command pattern
+- [x] Keyboard shortcuts (Ctrl+Z/Y/A/C/V/X/D, Delete)
+- [x] IndexedDB persistence with Dexie.js
+- [x] Copy/paste/duplicate nodes
+- [x] 56 unit tests passing
+
+#### Phase 2: Data Flow Engine (Core) ✅
+- [x] ExecutionEngine with topological sort (Kahn's algorithm)
+- [x] Node executor system with built-in executors
+- [x] Math executors: Add, Subtract, Multiply, Divide, MapRange, Clamp, Abs, Smooth, Random
+- [x] Logic executors: Compare, And, Or, Not, Gate, Select, Switch
+- [x] Input executors: Constant, Slider, Trigger, Time, LFO
+- [x] Debug executors: Monitor, Console
+- [x] Start/stop/pause playback controls
+- [x] Real-time value inspection on nodes
+- [x] Animated edges showing data flow
+- [x] Runtime store for FPS, metrics, errors
+- [x] Provide/inject for engine controls
+- [ ] Worker thread pool (deferred)
+- [ ] Performance monitoring UI (deferred)
+
+#### Phase 3: Audio System (Core) ✅
+- [x] Tone.js and Meyda.js installed
+- [x] AudioManager service (context, devices, mic access)
+- [x] Oscillator executor (sine, square, triangle, sawtooth)
+- [x] Audio Input executor (microphone)
+- [x] Audio Output executor (speakers)
+- [x] Audio Analyzer executor (level, bass, mid, high)
+- [x] Gain executor
+- [x] Filter executor (lowpass, highpass, bandpass, notch)
+- [x] Delay executor (feedback delay)
+- [x] Audio node definitions in EditorView
+- [ ] Beat detection (deferred)
+- [ ] MIDI input/output (deferred)
+- [ ] Audio file player (deferred)
+
+#### Phase 4: Visual System ✅
+- [x] ShaderRenderer service (WebGL2, Shadertoy compatibility)
+- [x] WebcamCapture service
+- [x] Shader executor with live GLSL editing
+- [x] Webcam executor
+- [x] Color generator executor
+- [x] Texture Display executor
+- [x] Blend executor (normal, multiply, screen, overlay, add, darken, lighten)
+- [x] MainOutput executor for final render
+- [x] Visual node definitions in EditorView
+- [x] Vue Flow markRaw fixes for component reactivity
+- [x] Persistence migration for visual node types
+
+#### Phase 4.5: UI Enhancement ✅
+- [x] PropertiesPanel.vue - Right-side panel with node info, controls, preview
+- [x] TexturePreview.vue - Reusable canvas for texture preview
+- [x] MainOutputNode.vue - Special viewer node with large preview
+- [x] ShaderEditorModal.vue - Full shader editor with live preview
+- [x] BaseNode.vue inline controls (sliders, toggles, selects, numbers)
+- [x] BaseNode.vue texture preview thumbnails (120x80)
+- [x] AppSidebar.vue simplified to node palette only
+- [x] UI store restructured (propertiesPanelOpen, shaderEditor state)
+- [x] 56 unit tests passing
+
+#### Phase 5: Connectivity ✅
+- [x] Connectivity executors file created
+- [x] HTTP Request node (GET/POST/PUT/DELETE/PATCH with headers, body)
+- [x] WebSocket node (connect, disconnect, send, receive)
+- [x] MIDI Input node (notes, velocity, CC messages)
+- [x] MIDI Output node (send notes with velocity)
+- [x] JSON Parse node (with path navigation like "data.items[0]")
+- [x] JSON Stringify node (with pretty print option)
+- [x] Connectivity node definitions in EditorView
+- [x] 56 unit tests passing
+
+#### Phase 6: AI Integration ✅
+- [x] Transformers.js installed (@huggingface/transformers)
+- [x] AIInference service (model loading, caching, multiple tasks)
+- [x] AI executors (6 node types)
+- [x] Text Generation node (Xenova/gpt2)
+- [x] Image Classification node (Xenova/vit-base-patch16-224)
+- [x] Sentiment Analysis node (Xenova/distilbert-base)
+- [x] Image Captioning node (Xenova/vit-gpt2-image-captioning)
+- [x] Feature Extraction/Embedding node (Xenova/all-MiniLM-L6-v2)
+- [x] Object Detection node (Xenova/detr-resnet-50)
+- [x] AI node definitions in EditorView
+- [x] 56 unit tests passing
+
+#### Phase 7: Advanced Features ✅
+- [x] Code executors created (Function, Expression, Template, Counter, Toggle, Sample-Hold, Value-Delay)
+- [x] Function node with JavaScript sandbox
+- [x] Expression node for inline math
+- [x] Counter, Toggle, Sample & Hold, Value Delay nodes
+- [x] Subflow system (isSubflow, subflowInputs, subflowOutputs)
+- [x] Subflow executors (subflow-input, subflow-output, subflow)
+- [x] Create/edit/unpack subflow actions
+- [x] Keyboard shortcuts (Ctrl+G, Ctrl+E, Ctrl+Shift+G)
+- [x] Control Panel view (ControlPanelView.vue)
+- [x] ExposedControl and ControlPanelGroup system
+- [x] View switching (Editor/Controls)
+- [x] Control exposure UI in PropertiesPanel
+- [x] Multi-flow support (FlowTabs.vue)
+- [x] Tab context menu (rename, duplicate, close)
+- [x] Tab persistence (save/delete to database)
+- [x] 56 unit tests passing
+
+#### Phase 8: Custom Nodes ✅
+- [x] CustomNodeLoader service created
+- [x] Definition validator module (validator.ts)
+- [x] Executor compiler module (compiler.ts)
+- [x] IPC handlers for file operations (main process)
+- [x] Preload bindings for customNodes API
+- [x] File watcher for hot-reload support
+- [x] Example custom nodes (double-value, random-range)
+- [x] Node package format: definition.json + executor.js
+- [x] Auto-discovery from custom-nodes folder
+- [x] EditorView integration
+- [x] 56 unit tests passing
+
+#### Phase 9: 3D System ✅
+- [x] Three.js installed (three, @types/three)
+- [x] ThreeRenderer service created
+- [x] 3D executors file (3d.ts) with 17 node types
+- [x] 7 new data types (scene3d, object3d, geometry3d, material3d, camera3d, light3d, transform3d)
+- [x] Scene 3D executor (object collection, background, grid)
+- [x] Camera 3D executor (perspective/orthographic)
+- [x] Render 3D executor (scene to texture)
+- [x] Geometry executors: Box, Sphere, Plane, Cylinder, Torus
+- [x] Transform 3D executor (position/rotation/scale)
+- [x] Material 3D executor (Standard, Basic, Phong, Physical)
+- [x] Group 3D executor (combine objects)
+- [x] Light executors: Ambient, Directional, Point, Spot
+- [x] GLTF Loader executor
+- [x] Type compatibility in connections.ts
+- [x] 17 node definitions in EditorView
+- [x] 56 unit tests passing
 
 ### Session Handoff
 See: [docs/handoff/SESSION_HANDOFF.md](../handoff/SESSION_HANDOFF.md)

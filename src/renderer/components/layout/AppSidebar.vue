@@ -1,119 +1,289 @@
 <script setup lang="ts">
-import { computed } from 'vue'
-import { useUIStore, type SidebarPanel } from '@/stores/ui'
-import { useNodesStore, categoryMeta, type NodeCategory } from '@/stores/nodes'
-import { Search, Boxes, Settings2, SlidersHorizontal } from 'lucide-vue-next'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
+import { useUIStore } from '@/stores/ui'
+import { useNodesStore, categoryMeta, type NodeCategory, type NodeDefinition } from '@/stores/nodes'
+import { Search, PanelLeftClose, PanelLeft, ChevronDown, ChevronRight, Brain, Download } from 'lucide-vue-next'
+import { aiInference } from '@/services/ai/AIInference'
 
 const uiStore = useUIStore()
 const nodesStore = useNodesStore()
+
+// Categories to keep EXPANDED by default (first 3)
+const defaultExpanded = new Set(['debug', 'inputs', 'outputs', 'timing'])
+
+// Get all categories that should be collapsed (everything except the first few)
+function getDefaultCollapsed(): Set<string> {
+  const allCategories = Object.keys(categoryMeta)
+  return new Set(allCategories.filter(cat => !defaultExpanded.has(cat)))
+}
+
+// Track collapsed categories (stored locally, could be persisted)
+const collapsedCategories = ref<Set<string>>(getDefaultCollapsed())
+
+// Track dropdown open state
+const dropdownOpen = ref(false)
+
+// Track if any AI models are loaded
+const hasLoadedModels = ref(false)
+let aiUnsubscribe: (() => void) | null = null
+
+onMounted(() => {
+  updateAIModelStatus()
+  aiUnsubscribe = aiInference.subscribe(() => {
+    updateAIModelStatus()
+  })
+  // Close dropdown on outside click
+  document.addEventListener('click', handleClickOutside)
+})
+
+function handleClickOutside(event: MouseEvent) {
+  const target = event.target as HTMLElement
+  if (!target.closest('.custom-select')) {
+    dropdownOpen.value = false
+  }
+}
+
+onUnmounted(() => {
+  aiUnsubscribe?.()
+  document.removeEventListener('click', handleClickOutside)
+})
+
+function updateAIModelStatus() {
+  const state = aiInference.getState()
+  hasLoadedModels.value = state.loadedModels.size > 0
+}
 
 const sidebarStyle = computed(() => ({
   width: uiStore.sidebarOpen ? `${uiStore.sidebarWidth}px` : '0px',
 }))
 
-const panels: { id: SidebarPanel; label: string; icon: typeof Search }[] = [
-  { id: 'nodes', label: 'Nodes', icon: Boxes },
-  { id: 'properties', label: 'Properties', icon: Settings2 },
-  { id: 'controls', label: 'Controls', icon: SlidersHorizontal },
-]
-
-function selectCategory(category: NodeCategory | null) {
-  nodesStore.setCategoryFilter(category)
-}
-
+// Get all categories with their metadata
 const categories = computed(() => {
   return Object.entries(categoryMeta) as [NodeCategory, typeof categoryMeta[NodeCategory]][]
 })
+
+// Get node counts per category
+const categoryCounts = computed(() => {
+  const counts: Record<string, number> = {}
+  for (const def of nodesStore.definitions.values()) {
+    counts[def.category] = (counts[def.category] ?? 0) + 1
+  }
+  return counts
+})
+
+// Group nodes by category (considering search and filter)
+const nodesByCategory = computed(() => {
+  const groups = new Map<string, NodeDefinition[]>()
+
+  // Initialize all categories
+  for (const [id] of categories.value) {
+    groups.set(id, [])
+  }
+
+  // Get filtered definitions (respects search and category filter)
+  const filtered = nodesStore.filteredDefinitions
+
+  // Group by category
+  for (const def of filtered) {
+    const categoryNodes = groups.get(def.category) ?? []
+    categoryNodes.push(def)
+    groups.set(def.category, categoryNodes)
+  }
+
+  return groups
+})
+
+// Categories that have nodes to show
+const visibleCategories = computed(() => {
+  return categories.value.filter(([id]) => {
+    const nodes = nodesByCategory.value.get(id)
+    return nodes && nodes.length > 0
+  })
+})
+
+// Handle category filter dropdown change
+function onCategoryFilterChange(event: Event) {
+  const value = (event.target as HTMLSelectElement).value
+  nodesStore.setCategoryFilter(value === 'all' ? null : value as NodeCategory)
+}
+
+// Toggle custom dropdown
+function toggleDropdown() {
+  dropdownOpen.value = !dropdownOpen.value
+}
+
+// Select category from custom dropdown
+function selectCategory(categoryId: NodeCategory | null) {
+  nodesStore.setCategoryFilter(categoryId)
+  dropdownOpen.value = false
+}
+
+// Toggle category collapse
+function toggleCategory(categoryId: string) {
+  if (collapsedCategories.value.has(categoryId)) {
+    collapsedCategories.value.delete(categoryId)
+  } else {
+    collapsedCategories.value.add(categoryId)
+  }
+}
+
+// Check if a category is collapsed
+function isCategoryCollapsed(categoryId: string): boolean {
+  return collapsedCategories.value.has(categoryId)
+}
+
+// Handle node drag start
+function onDragStart(event: DragEvent, nodeId: string) {
+  event.dataTransfer?.setData('application/clasp-node', nodeId)
+}
+
+// Open AI model manager
+function openAIModelManager() {
+  uiStore.openAIModelManager()
+}
 </script>
 
 <template>
   <aside class="app-sidebar" :style="sidebarStyle">
     <div class="sidebar-content" v-if="uiStore.sidebarOpen">
-      <!-- Panel Tabs -->
-      <div class="sidebar-tabs">
-        <button
-          v-for="panel in panels"
-          :key="panel.id"
-          class="sidebar-tab"
-          :class="{ active: uiStore.sidebarPanel === panel.id }"
-          @click="uiStore.setSidebarPanel(panel.id)"
-        >
-          <component :is="panel.icon" />
+      <!-- Header -->
+      <div class="sidebar-header">
+        <span class="sidebar-title">Nodes</span>
+        <button class="collapse-btn" @click="uiStore.toggleSidebar" title="Collapse sidebar">
+          <PanelLeftClose :size="16" />
         </button>
       </div>
 
-      <!-- Nodes Panel -->
-      <div v-if="uiStore.sidebarPanel === 'nodes'" class="sidebar-panel">
-        <div class="search-wrapper">
-          <Search class="search-icon" />
-          <input
-            type="text"
-            class="search-input"
-            placeholder="Search nodes..."
-            :value="nodesStore.searchQuery"
-            @input="nodesStore.setSearchQuery(($event.target as HTMLInputElement).value)"
-          />
-        </div>
+      <!-- Search -->
+      <div class="search-wrapper">
+        <Search class="search-icon" />
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search nodes..."
+          :value="nodesStore.searchQuery"
+          @input="nodesStore.setSearchQuery(($event.target as HTMLInputElement).value)"
+        />
+      </div>
 
-        <div class="category-list">
-          <button
-            class="category-item"
-            :class="{ active: nodesStore.categoryFilter === null }"
-            @click="selectCategory(null)"
-          >
-            <span class="category-color" style="background: var(--color-neutral-400)" />
-            <span class="category-label">All Nodes</span>
-          </button>
-
-          <button
-            v-for="[id, meta] in categories"
-            :key="id"
-            class="category-item"
-            :class="{ active: nodesStore.categoryFilter === id }"
-            @click="selectCategory(id)"
-          >
-            <span class="category-color" :style="{ background: meta.color }" />
-            <span class="category-label">{{ meta.label }}</span>
-          </button>
-        </div>
-
-        <div class="node-list">
-          <div
-            v-for="node in nodesStore.filteredDefinitions"
-            :key="node.id"
-            class="node-item"
-            draggable="true"
-            @dragstart="(e) => {
-              e.dataTransfer?.setData('application/clasp-node', node.id)
-            }"
-          >
+      <!-- Category Filter Dropdown -->
+      <div class="filter-wrapper">
+        <label class="filter-label">Filter by category</label>
+        <div class="custom-select" @click="toggleDropdown">
+          <div class="select-display">
             <span
-              class="node-item-color"
-              :style="{ background: categoryMeta[node.category]?.color ?? '#6B7280' }"
+              v-if="nodesStore.categoryFilter"
+              class="select-color"
+              :style="{ background: categoryMeta[nodesStore.categoryFilter]?.color }"
             />
-            <span class="node-item-name">{{ node.name }}</span>
+            <span class="select-text">
+              {{ nodesStore.categoryFilter ? categoryMeta[nodesStore.categoryFilter]?.label : 'All Categories' }}
+              ({{ nodesStore.categoryFilter ? (categoryCounts[nodesStore.categoryFilter] ?? 0) : nodesStore.definitions.size }})
+            </span>
+            <ChevronDown :size="14" class="select-arrow" />
           </div>
-
-          <div v-if="nodesStore.filteredDefinitions.length === 0" class="no-results">
-            No nodes found
+          <div v-if="dropdownOpen" class="select-options">
+            <div
+              class="select-option"
+              :class="{ active: !nodesStore.categoryFilter }"
+              @click.stop="selectCategory(null)"
+            >
+              <span class="option-color all-color" />
+              <span>All Categories ({{ nodesStore.definitions.size }})</span>
+            </div>
+            <div
+              v-for="[id, meta] in categories"
+              :key="id"
+              class="select-option"
+              :class="{ active: nodesStore.categoryFilter === id }"
+              @click.stop="selectCategory(id)"
+            >
+              <span class="option-color" :style="{ background: meta.color }" />
+              <span>{{ meta.label }} ({{ categoryCounts[id] ?? 0 }})</span>
+            </div>
           </div>
         </div>
       </div>
 
-      <!-- Properties Panel -->
-      <div v-else-if="uiStore.sidebarPanel === 'properties'" class="sidebar-panel">
-        <div class="panel-placeholder">
-          <p>Select a node to view properties</p>
-        </div>
-      </div>
+      <!-- Node List with Collapsible Sections -->
+      <div class="node-list">
+        <template v-if="visibleCategories.length > 0">
+          <div
+            v-for="[categoryId, meta] in visibleCategories"
+            :key="categoryId"
+            class="category-section"
+          >
+            <!-- Category Header -->
+            <div class="category-header-row" :class="{ 'is-ai': categoryId === 'ai' }">
+              <button
+                class="category-header"
+                @click="toggleCategory(categoryId)"
+                :style="{ '--category-color': meta.color }"
+              >
+                <span class="category-expand">
+                  <ChevronRight v-if="isCategoryCollapsed(categoryId)" :size="14" />
+                  <ChevronDown v-else :size="14" />
+                </span>
+                <span v-if="categoryId === 'ai'" class="category-icon ai-icon">
+                  <Brain :size="12" />
+                </span>
+                <span v-else class="category-color" :style="{ background: meta.color }" />
+                <span class="category-name">{{ meta.label }}</span>
+                <span class="category-count">{{ nodesByCategory.get(categoryId)?.length ?? 0 }}</span>
+              </button>
 
-      <!-- Controls Panel -->
-      <div v-else-if="uiStore.sidebarPanel === 'controls'" class="sidebar-panel">
-        <div class="panel-placeholder">
-          <p>No exposed controls</p>
+              <!-- AI Load Models Button -->
+              <button
+                v-if="categoryId === 'ai' && !hasLoadedModels"
+                class="ai-load-btn"
+                @click.stop="openAIModelManager"
+                title="Load Local AI Models"
+              >
+                <Download :size="12" />
+                <span>Load Models</span>
+              </button>
+            </div>
+
+            <!-- Category Nodes -->
+            <div
+              v-if="!isCategoryCollapsed(categoryId)"
+              class="category-nodes"
+            >
+              <div
+                v-for="node in nodesByCategory.get(categoryId)"
+                :key="node.id"
+                class="node-item"
+                draggable="true"
+                @dragstart="(e) => onDragStart(e, node.id)"
+              >
+                <span
+                  class="node-item-color"
+                  :style="{ background: meta.color }"
+                />
+                <div class="node-item-info">
+                  <span class="node-item-name">{{ node.name }}</span>
+                  <span class="node-item-desc">{{ node.description }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </template>
+
+        <div v-else class="no-results">
+          No nodes found
         </div>
       </div>
     </div>
+
+    <!-- Collapsed state - show expand button -->
+    <button
+      v-if="!uiStore.sidebarOpen"
+      class="expand-btn"
+      @click="uiStore.toggleSidebar"
+      title="Expand sidebar"
+    >
+      <PanelLeft :size="18" />
+    </button>
   </aside>
 </template>
 
@@ -124,55 +294,72 @@ const categories = computed(() => {
   overflow: hidden;
   transition: width var(--transition-default);
   flex-shrink: 0;
+  position: relative;
 }
 
 .sidebar-content {
   display: flex;
   flex-direction: column;
   height: 100%;
-  width: var(--sidebar-width);
+  width: 100%;
+  min-width: 200px;
 }
 
-.sidebar-tabs {
+.sidebar-header {
   display: flex;
-  border-bottom: 1px solid var(--color-neutral-200);
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--space-3) var(--space-4);
   background: var(--color-neutral-50);
+  border-bottom: 1px solid var(--color-neutral-200);
 }
 
-.sidebar-tab {
-  flex: 1;
+.sidebar-title {
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-neutral-600);
+}
+
+.collapse-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: var(--space-3);
-  color: var(--color-neutral-500);
-  border: none;
+  width: 24px;
+  height: 24px;
+  padding: 0;
   background: none;
+  border: none;
+  color: var(--color-neutral-400);
+  cursor: pointer;
+  transition: color var(--transition-fast);
+}
+
+.collapse-btn:hover {
+  color: var(--color-neutral-700);
+}
+
+.expand-btn {
+  position: absolute;
+  top: var(--space-3);
+  left: var(--space-2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  background: var(--color-neutral-0);
+  border: 1px solid var(--color-neutral-200);
+  color: var(--color-neutral-500);
   cursor: pointer;
   transition: all var(--transition-fast);
 }
 
-.sidebar-tab:hover {
-  color: var(--color-neutral-900);
-  background: var(--color-neutral-100);
-}
-
-.sidebar-tab.active {
-  color: var(--color-primary-400);
-  background: var(--color-neutral-0);
-  box-shadow: inset 0 -2px 0 var(--color-primary-400);
-}
-
-.sidebar-tab svg {
-  width: 18px;
-  height: 18px;
-}
-
-.sidebar-panel {
-  flex: 1;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
+.expand-btn:hover {
+  background: var(--color-neutral-50);
+  color: var(--color-neutral-700);
 }
 
 .search-wrapper {
@@ -183,22 +370,22 @@ const categories = computed(() => {
 
 .search-icon {
   position: absolute;
-  left: calc(var(--space-3) + var(--space-3));
+  left: calc(var(--space-3) + var(--space-2));
   top: 50%;
   transform: translateY(-50%);
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   color: var(--color-neutral-400);
   pointer-events: none;
 }
 
 .search-input {
   width: 100%;
-  padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 24px);
+  padding: var(--space-2) var(--space-3) var(--space-2) calc(var(--space-3) + 20px);
   font-family: var(--font-mono);
   font-size: var(--font-size-sm);
   border: 1px solid var(--color-neutral-200);
-  border-radius: var(--radius-none);
+  border-radius: var(--radius-xs);
   background: var(--color-neutral-50);
 }
 
@@ -208,83 +395,282 @@ const categories = computed(() => {
   background: var(--color-neutral-0);
 }
 
-.category-list {
-  padding: var(--space-2);
+/* Filter Dropdown */
+.filter-wrapper {
+  padding: var(--space-3);
   border-bottom: 1px solid var(--color-neutral-100);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-1);
 }
 
-.category-item {
+.filter-label {
+  display: block;
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-neutral-500);
+  margin-bottom: var(--space-2);
+}
+
+.filter-select {
+  width: 100%;
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-xs);
+  background: var(--color-neutral-50);
+  cursor: pointer;
+  color: var(--color-neutral-700);
+}
+
+.filter-select:focus {
+  outline: none;
+  border-color: var(--color-primary-400);
+  background: var(--color-neutral-0);
+}
+
+/* Custom Select Dropdown */
+.custom-select {
+  position: relative;
+  cursor: pointer;
+}
+
+.select-display {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-1) var(--space-2);
-  font-size: var(--font-size-xs);
-  color: var(--color-neutral-600);
-  background: none;
-  border: 1px solid transparent;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+  padding: var(--space-2);
+  font-family: var(--font-mono);
+  font-size: var(--font-size-sm);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-xs);
+  background: var(--color-neutral-50);
   transition: all var(--transition-fast);
 }
 
-.category-item:hover {
+.select-display:hover {
+  border-color: var(--color-neutral-300);
+  background: var(--color-neutral-0);
+}
+
+.select-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.select-text {
+  flex: 1;
+  color: var(--color-neutral-700);
+}
+
+.select-arrow {
+  color: var(--color-neutral-400);
+  flex-shrink: 0;
+}
+
+.select-options {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  margin-top: 2px;
+  background: var(--color-neutral-0);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: var(--radius-xs);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 100;
+  max-height: 240px;
+  overflow-y: auto;
+}
+
+.select-option {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--font-size-sm);
+  color: var(--color-neutral-700);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.select-option:hover {
   background: var(--color-neutral-100);
 }
 
-.category-item.active {
+.select-option.active {
+  background: var(--color-primary-50);
+  color: var(--color-primary-700);
+}
+
+.option-color {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.option-color.all-color {
+  background: linear-gradient(135deg, #EF4444 0%, #F59E0B 25%, #10B981 50%, #3B82F6 75%, #8B5CF6 100%);
+}
+
+/* Node List with Collapsible Sections */
+.node-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.category-section {
+  border-bottom: 1px solid var(--color-neutral-100);
+}
+
+.category-header-row {
+  display: flex;
+  align-items: center;
+  background: var(--color-neutral-50);
+}
+
+.category-header-row.is-ai {
+  background: linear-gradient(90deg, var(--color-neutral-50) 0%, rgba(168, 85, 247, 0.08) 100%);
+}
+
+.category-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex: 1;
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition-fast);
+}
+
+.category-header:hover {
   background: var(--color-neutral-100);
-  border-color: var(--color-neutral-300);
+}
+
+.category-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+
+.ai-icon {
+  background: #A855F7;
+  color: white;
+}
+
+.ai-load-btn {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 4px var(--space-2);
+  margin-right: var(--space-2);
+  background: #A855F7;
+  border: none;
+  border-radius: var(--radius-xs);
+  color: white;
+  font-size: 10px;
+  font-weight: var(--font-weight-medium);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  white-space: nowrap;
+}
+
+.ai-load-btn:hover {
+  background: #9333EA;
+}
+
+.category-expand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--color-neutral-400);
 }
 
 .category-color {
   width: 8px;
   height: 8px;
-  border-radius: var(--radius-full);
+  border-radius: 50%;
   flex-shrink: 0;
 }
 
-.category-label {
-  white-space: nowrap;
+.category-name {
+  flex: 1;
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-neutral-700);
+  text-align: left;
 }
 
-.node-list {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-2);
+.category-count {
+  font-size: 10px;
+  color: var(--color-neutral-400);
+  background: var(--color-neutral-200);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.category-nodes {
+  padding: var(--space-1) var(--space-2);
+  background: var(--color-neutral-0);
 }
 
 .node-item {
   display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-3);
+  align-items: flex-start;
+  gap: var(--space-2);
+  padding: var(--space-2);
   font-size: var(--font-size-sm);
   color: var(--color-neutral-700);
   cursor: grab;
-  border-radius: var(--radius-sm);
+  border-radius: var(--radius-xs);
   transition: all var(--transition-fast);
+  border: 1px solid transparent;
+  margin: 2px 0;
 }
 
 .node-item:hover {
-  background: var(--color-neutral-100);
+  background: var(--color-neutral-50);
+  border-color: var(--color-neutral-200);
 }
 
 .node-item:active {
   cursor: grabbing;
+  background: var(--color-neutral-100);
 }
 
 .node-item-color {
-  width: 4px;
-  height: 16px;
-  border-radius: var(--radius-sm);
+  width: 3px;
+  height: 100%;
+  min-height: 32px;
+  border-radius: 1px;
   flex-shrink: 0;
 }
 
-.node-item-name {
+.node-item-info {
   flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.node-item-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-neutral-800);
+}
+
+.node-item-desc {
+  font-size: 10px;
+  color: var(--color-neutral-500);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -293,15 +679,6 @@ const categories = computed(() => {
 .no-results {
   padding: var(--space-4);
   text-align: center;
-  color: var(--color-neutral-400);
-  font-size: var(--font-size-sm);
-}
-
-.panel-placeholder {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   color: var(--color-neutral-400);
   font-size: var(--font-size-sm);
 }

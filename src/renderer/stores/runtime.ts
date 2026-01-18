@@ -8,6 +8,7 @@ export interface NodeMetrics {
   lastExecuted: Date | null
   errorCount: number
   lastError: string | null
+  outputValues?: Record<string, unknown>
 }
 
 export interface RuntimeError {
@@ -107,15 +108,47 @@ export const useRuntimeStore = defineStore('runtime', {
       this.frameCount++
     },
 
-    updateNodeMetrics(nodeId: string, executionTime: number) {
+    updateNodeMetrics(nodeId: string, data: { lastExecutionTime?: number; outputValues?: Record<string, unknown> }) {
       const existing = this.nodeMetrics.get(nodeId)
       this.nodeMetrics.set(nodeId, {
         nodeId,
-        executionTime,
+        executionTime: data.lastExecutionTime ?? existing?.executionTime ?? 0,
         lastExecuted: new Date(),
         errorCount: existing?.errorCount ?? 0,
         lastError: existing?.lastError ?? null,
+        outputValues: data.outputValues ?? existing?.outputValues,
       })
+    },
+
+    updateFps(deltaTime: number) {
+      // Smooth FPS calculation
+      const instantFps = 1 / deltaTime
+      this.fps = Math.round(this.fps * 0.9 + instantFps * 0.1)
+      this.frameCount++
+    },
+
+    addError(error: { nodeId: string; message: string; timestamp: number }) {
+      const runtimeError: RuntimeError = {
+        id: `${error.nodeId}-${error.timestamp}`,
+        nodeId: error.nodeId,
+        nodeName: error.nodeId, // Will be resolved later if needed
+        message: error.message,
+        timestamp: new Date(error.timestamp),
+      }
+
+      this.errors.push(runtimeError)
+
+      // Limit error history
+      if (this.errors.length > this.maxErrors) {
+        this.errors = this.errors.slice(-this.maxErrors)
+      }
+
+      // Update node metrics
+      const metrics = this.nodeMetrics.get(error.nodeId)
+      if (metrics) {
+        metrics.errorCount++
+        metrics.lastError = error.message
+      }
     },
 
     recordNodeError(nodeId: string, nodeName: string, message: string) {

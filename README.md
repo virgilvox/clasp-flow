@@ -1,12 +1,12 @@
-# CLASP Flow
+# LATCH
 
-**The Ultimate Creative Flow Programming Engine**
+**Live Art Tool for Creative Humans**
 
-CLASP Flow is an open-source visual flow/node programming environment that combines the best of TouchDesigner, PureData, Max/MSP, and Node-RED. Build complex audio-visual pipelines, IoT integrations, AI workflows, and interactive experiences through an intuitive node-based interface.
+LATCH is an open-source visual flow/node programming environment that combines the best of TouchDesigner, PureData, Max/MSP, and Node-RED. Build complex audio-visual pipelines, 3D scenes, IoT integrations, AI workflows, and interactive experiences through an intuitive node-based interface.
 
 Built with Vue 3 + TypeScript. Runs in the browser and as a desktop app (Electron).
 
-> **Status**: Phase 0 Complete ✅ | Phase 1 In Progress
+> **Status**: Phase 9 Complete + Stability Polish | MiniMap with node colors | AI Model Manager | Debug Nodes: Oscilloscope, Graph, Equalizer
 
 ---
 
@@ -17,44 +17,64 @@ Built with Vue 3 + TypeScript. Runs in the browser and as a desktop app (Electro
 - Type-safe connections with color-coded data types
 - Real-time value inspection and monitoring
 - Animated connection lines showing data flow
-- Collapsible nodes for complex flows
-- Mini-map navigation and zoom controls
+- Multi-flow support with tabs (create, rename, duplicate, close)
+- Mini-map with nodes colored by category
+- Undo/redo with command pattern
+- Copy/paste/duplicate nodes
+- Category filter with color badges
+- Fuzzy search for nodes
 
 ### Audio
 - Audio input from microphone/devices
-- Real-time audio analysis (levels, frequency bands)
-- Beat detection and BPM extraction
-- Full synthesizer capabilities (oscillators, envelopes, filters)
-- Effects processing (delay, reverb, distortion)
+- Real-time audio analysis (levels, bass, mid, high frequencies)
+- Full synthesizer capabilities (oscillators with multiple waveforms)
+- Effects processing (gain, filter, delay with feedback)
 - Powered by Tone.js and Meyda.js
 
 ### Video & Shaders
-- Webcam capture and video file playback
+- Webcam capture with device selection
 - GLSL shader editor with Shadertoy compatibility
-- Automatic uniform detection
-- Video effects and filters
-- Video encoding/decoding via ffmpeg.wasm
+- Live shader preview with real-time compilation feedback
+- Blend modes (normal, multiply, screen, overlay, add, darken, lighten)
+- Color generator and texture display nodes
+- Main output node with large preview canvas
+
+### 3D (Three.js)
+- Real-time 3D rendering with Three.js
+- Primitives: Box, Sphere, Plane, Cylinder, Torus
+- Materials with PBR properties (metalness, roughness)
+- Lights: Ambient, Directional, Point, Spot
+- Scene composition and camera control
+- GLTF model loading
+- Renders to texture for integration with 2D pipeline
 
 ### AI Integration
 - Browser-based ML with Transformers.js
-- Text generation, speech-to-text, image classification
-- Run models locally - no server required
-- Custom ONNX model support
+- AI Model Manager modal with progress tracking
+- Pre-load models before using AI nodes
+- Text generation (GPT-2)
+- Image classification and object detection
+- Sentiment analysis
+- Image captioning
+- Feature extraction/embeddings
+- Models run locally - no server required
 
 ### Connectivity
-- HTTP/REST requests
-- WebSocket connections
-- MQTT for IoT
-- MIDI input/output
-- Serial port (Chrome/Electron)
-- Bluetooth LE
-- OSC (Electron)
+- HTTP/REST requests (GET/POST/PUT/DELETE/PATCH)
+- WebSocket connections (connect, disconnect, send, receive)
+- MIDI input/output (notes, velocity, CC messages)
+- JSON parse/stringify utilities
 
 ### Code Nodes
 - JavaScript function nodes with sandboxed execution
-- Google Blockly integration for visual coding
-- Custom WASM binary execution
-- Expression evaluator for quick math
+- Expression evaluator for inline math
+- Template string node
+- Counter, Toggle, Sample & Hold, Value Delay utilities
+
+### Advanced Features
+- **Subflows**: Create reusable node groups (Ctrl+G to create, Ctrl+E to edit)
+- **Control Panel**: Live performance view with exposed controls
+- **Multi-flow Tabs**: Work with multiple flows simultaneously
 
 ### Platform Support
 - **Web**: Runs in modern browsers (Chrome, Firefox, Safari, Edge)
@@ -73,8 +93,8 @@ Built with Vue 3 + TypeScript. Runs in the browser and as a desktop app (Electro
 
 ```bash
 # Clone the repository
-git clone https://github.com/lumencanvas/clasp-flow.git
-cd clasp-flow
+git clone https://github.com/lumencanvas/latch.git
+cd latch
 
 # Install dependencies
 npm install
@@ -112,27 +132,25 @@ npx vue-tsc --noEmit
 - [Master Plan](docs/plans/MASTER_PLAN.md) - Project roadmap and phases
 - [Architecture](docs/architecture/ARCHITECTURE.md) - Technical architecture
 - [Node Specification](docs/architecture/NODE_SPEC.md) - Creating custom nodes
-- [Phase 0 Tasks](docs/plans/PHASE_0_FOUNDATION.md) - Foundation implementation
 - [Session Handoff](docs/handoff/SESSION_HANDOFF.md) - Development continuity
 
 ---
 
 ## Node Categories
 
-| Category | Description |
-|----------|-------------|
-| **Debug** | Monitor, Console, Meter |
-| **Inputs** | Audio, MIDI, Slider, XY Pad, LFO, Time, Trigger |
-| **Outputs** | Display, Audio Output, Shader Uniform |
-| **Math** | Add, Multiply, Map Range, Expression |
-| **Logic** | Compare, Gate, Switch, Counter |
-| **Audio** | Analysis, Beat Detect, Oscillator, Filter, Effects |
-| **Video** | Webcam, Player, Blend, Transform |
-| **Shaders** | GLSL Editor, Uniform, Texture |
-| **Data** | HTTP, WebSocket, MQTT, JSON |
-| **AI** | Text Generate, Transcribe, Classify |
-| **Code** | Function, Blockly, WASM |
-| **Connectivity** | Serial, BLE, MIDI, OSC |
+| Category | Implemented Nodes |
+|----------|-------------------|
+| **Debug** | Monitor, Console, Oscilloscope, Graph, Equalizer |
+| **Inputs** | Constant, Slider, Trigger, Time, LFO, XY Pad, Textbox |
+| **Math** | Add, Subtract, Multiply, Divide, MapRange, Clamp, Abs, Smooth, Random |
+| **Logic** | Compare, And, Or, Not, Gate, Select, Switch |
+| **Audio** | Oscillator, Audio Input, Audio Output, Analyzer, Gain, Filter, Delay |
+| **Visual** | Shader, Webcam, Color, Texture Display, Blend, Main Output |
+| **3D** | Scene 3D, Camera 3D, Render 3D, Transform 3D, Box, Sphere, Plane, Cylinder, Torus, Material, Ambient Light, Directional Light, Point Light, Spot Light, GLTF Loader, Group 3D |
+| **AI** | Text Generation, Image Classification, Sentiment, Captioning, Embedding, Object Detection |
+| **Connectivity** | HTTP Request, WebSocket, MIDI Input, MIDI Output, JSON Parse, JSON Stringify |
+| **Code** | Function, Expression, Template, Counter, Toggle, Sample & Hold, Value Delay |
+| **Subflows** | Subflow Input, Subflow Output, Subflow Instance |
 
 ---
 
@@ -164,6 +182,7 @@ See [Node Specification](docs/architecture/NODE_SPEC.md) for details.
 | Desktop | Electron Forge |
 | Audio | Tone.js, Meyda.js, Web Audio API |
 | Video | ffmpeg.wasm, WebGL2 |
+| 3D | Three.js |
 | AI | Transformers.js (ONNX Runtime) |
 | Storage | IndexedDB (Dexie.js) |
 
@@ -171,14 +190,12 @@ See [Node Specification](docs/architecture/NODE_SPEC.md) for details.
 
 ## Design System
 
-CLASP Flow follows a custom design system with:
+LATCH follows a warm, craft-inspired design system:
 
-- **Colors**: Teal primary (#2AAB8A), neutral grays, semantic colors
+- **Colors**: Warm cream background (#f5f2eb), charcoal text (#2a2a2a), amber accents (#f59e0b)
 - **Typography**: JetBrains Mono (monospace), industrial aesthetic
-- **Style**: Sharp corners, offset shadows, uppercase labels
+- **Style**: Sharp corners, offset shadows, uppercase labels, bracket logo motif
 - **Icons**: Lucide icon library
-
-See [design-system (1).html](design-system%20(1).html) for the full component library.
 
 ---
 
@@ -196,22 +213,29 @@ Connections are color-coded by data type:
 | `video` | Blue | Video frames |
 | `texture` | Pink | WebGL textures |
 | `data` | Gray | JSON objects |
+| `scene3d` | Cyan | Three.js scenes |
+| `object3d` | Sky Blue | 3D objects/meshes |
+| `camera3d` | Deep Blue | 3D cameras |
+| `light3d` | Amber | 3D lights |
+| `material3d` | Light Blue | 3D materials |
 
 ---
 
 ## Roadmap
 
-- [x] **Phase 0: Foundation** - Project setup, Vue Flow, Pinia stores, design system, CI/CD ✅
-- [ ] **Phase 1: Core Editor** (Current) - Selection, undo/redo, persistence, keyboard shortcuts
-- [ ] Phase 2: Data Flow Engine
-- [ ] Phase 3: Audio System
-- [ ] Phase 4: Visual System
-- [ ] Phase 5: Connectivity
-- [ ] Phase 6: AI Integration
-- [ ] Phase 7: Advanced Features
-- [ ] Phase 8: 3D System
-- [ ] Phase 9: Polish & Export
-- [ ] Phase 10: Public Release
+- [x] **Phase 0: Foundation** - Project setup, Vue Flow, Pinia stores, design system
+- [x] **Phase 1: Core Editor** - Selection, undo/redo, persistence, keyboard shortcuts, fuzzy search
+- [x] **Phase 2: Data Flow Engine** - Execution engine, node executors, playback controls, value inspection
+- [x] **Phase 3: Audio System** - Tone.js integration, oscillator, filters, delay, analysis
+- [x] **Phase 4: Visual System** - WebGL2 shaders (Shadertoy compatible), webcam input, blend modes
+- [x] **Phase 4.5: UI Enhancement** - Properties panel, inline controls, shader editor modal
+- [x] **Phase 5: Connectivity** - HTTP, WebSocket, MIDI, JSON utilities
+- [x] **Phase 6: AI Integration** - Transformers.js, text/image/speech models
+- [x] **Phase 7: Advanced Features** - Function nodes, subflows, control panel, multi-flow tabs
+- [x] **Phase 8: Custom Nodes** - Drop-in custom node system
+- [x] **Phase 9: 3D System** - Three.js integration, primitives, materials, lighting, GLTF
+- [ ] Phase 10: Polish & Export - Flow export, standalone apps
+- [ ] Phase 11: Public Release
 
 See [Master Plan](docs/plans/MASTER_PLAN.md) for detailed phase breakdown.
 
@@ -251,6 +275,7 @@ Inspired by:
 Built with:
 - [Vue Flow](https://vueflow.dev/) - Vue 3 flowchart library
 - [Tone.js](https://tonejs.github.io/) - Web Audio framework
+- [Three.js](https://threejs.org/) - 3D graphics library
 - [Transformers.js](https://huggingface.co/docs/transformers.js/) - Browser ML
 - [ffmpeg.wasm](https://ffmpegwasm.netlify.app/) - Video processing
 - [Meyda.js](https://meyda.js.org/) - Audio feature extraction
@@ -259,8 +284,8 @@ Built with:
 
 ## Support
 
-- [GitHub Issues](https://github.com/lumencanvas/clasp-flow/issues) - Bug reports and feature requests
-- [Discussions](https://github.com/lumencanvas/clasp-flow/discussions) - Questions and community
+- [GitHub Issues](https://github.com/lumencanvas/latch/issues) - Bug reports and feature requests
+- [Discussions](https://github.com/lumencanvas/latch/discussions) - Questions and community
 
 ---
 

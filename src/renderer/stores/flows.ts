@@ -2,6 +2,16 @@ import { defineStore } from 'pinia'
 import { nanoid } from 'nanoid'
 import type { Node, Edge, XYPosition } from '@vue-flow/core'
 
+/**
+ * Port definition for subflow inputs/outputs
+ */
+export interface SubflowPort {
+  id: string
+  name: string
+  type: string // 'number', 'string', 'any', 'texture', 'audio', etc.
+  nodeId: string // ID of the SubflowInput/SubflowOutput node inside the subflow
+}
+
 export interface FlowState {
   id: string
   name: string
@@ -11,6 +21,13 @@ export interface FlowState {
   createdAt: Date
   updatedAt: Date
   dirty: boolean
+  // Subflow-specific properties
+  isSubflow: boolean
+  subflowInputs: SubflowPort[]
+  subflowOutputs: SubflowPort[]
+  // Icon and category for when used as a node
+  icon?: string
+  category?: string
 }
 
 interface FlowsStoreState {
@@ -48,10 +65,24 @@ export const useFlowsStore = defineStore('flows', {
     getFlowById: (state) => (id: string): FlowState | undefined => {
       return state.flows.find((f) => f.id === id)
     },
+
+    /**
+     * Get all subflows (flows that can be used as nodes)
+     */
+    subflows: (state): FlowState[] => {
+      return state.flows.filter((f) => f.isSubflow)
+    },
+
+    /**
+     * Get all main flows (not subflows)
+     */
+    mainFlows: (state): FlowState[] => {
+      return state.flows.filter((f) => !f.isSubflow)
+    },
   },
 
   actions: {
-    createFlow(name: string = 'Untitled Flow'): FlowState {
+    createFlow(name: string = 'Untitled Flow', isSubflow: boolean = false): FlowState {
       const now = new Date()
       const flow: FlowState = {
         id: nanoid(),
@@ -62,10 +93,22 @@ export const useFlowsStore = defineStore('flows', {
         createdAt: now,
         updatedAt: now,
         dirty: false,
+        isSubflow,
+        subflowInputs: [],
+        subflowOutputs: [],
+        icon: isSubflow ? 'box' : undefined,
+        category: isSubflow ? 'subflows' : undefined,
       }
       this.flows.push(flow)
       this.activeFlowId = flow.id
       return flow
+    },
+
+    /**
+     * Create a new empty subflow
+     */
+    createSubflow(name: string = 'New Subflow'): FlowState {
+      return this.createFlow(name, true)
     },
 
     deleteFlow(flowId: string) {
@@ -107,6 +150,11 @@ export const useFlowsStore = defineStore('flows', {
         createdAt: now,
         updatedAt: now,
         dirty: false,
+        isSubflow: source.isSubflow,
+        subflowInputs: JSON.parse(JSON.stringify(source.subflowInputs)),
+        subflowOutputs: JSON.parse(JSON.stringify(source.subflowOutputs)),
+        icon: source.icon,
+        category: source.category,
       }
       this.flows.push(flow)
       return flow
@@ -120,9 +168,14 @@ export const useFlowsStore = defineStore('flows', {
     ): Node | null {
       if (!this.activeFlow) return null
 
+      // Determine Vue Flow node type
+      // Special nodes get their own type, others use 'custom' (BaseNode)
+      const specialNodeTypes = ['main-output', 'trigger', 'xy-pad', 'monitor', 'oscilloscope', 'graph', 'equalizer', 'textbox']
+      const vueFlowType = specialNodeTypes.includes(nodeType) ? nodeType : 'custom'
+
       const node: Node = {
         id: nanoid(),
-        type: nodeType,
+        type: vueFlowType,
         position,
         data: {
           ...data,
@@ -227,6 +280,15 @@ export const useFlowsStore = defineStore('flows', {
       this.activeFlow.dirty = true
     },
 
+    removeEdges(edgeIds: string[]) {
+      if (!this.activeFlow || edgeIds.length === 0) return
+
+      const idsSet = new Set(edgeIds)
+      this.activeFlow.edges = this.activeFlow.edges.filter((e) => !idsSet.has(e.id))
+      this.activeFlow.updatedAt = new Date()
+      this.activeFlow.dirty = true
+    },
+
     // Sync with Vue Flow
     setNodes(nodes: Node[]) {
       if (!this.activeFlow) return
@@ -274,6 +336,11 @@ export const useFlowsStore = defineStore('flows', {
           createdAt: now,
           updatedAt: now,
           dirty: false,
+          isSubflow: data.isSubflow ?? false,
+          subflowInputs: data.subflowInputs ?? [],
+          subflowOutputs: data.subflowOutputs ?? [],
+          icon: data.icon,
+          category: data.category,
         }
 
         this.flows.push(flow)
@@ -283,6 +350,444 @@ export const useFlowsStore = defineStore('flows', {
         console.error('Failed to import flow:', e)
         return null
       }
+    },
+
+    // =========================================================================
+    // Subflow Operations
+    // =========================================================================
+
+    /**
+     * Add an input port to a subflow
+     */
+    addSubflowInput(flowId: string, name: string, type: string = 'any'): SubflowPort | null {
+      const flow = this.flows.find((f) => f.id === flowId)
+      if (!flow || !flow.isSubflow) return null
+
+      // Create a SubflowInput node inside the subflow
+      const nodeId = nanoid()
+      const portId = nanoid()
+
+      // Add the SubflowInput node
+      const inputNode: Node = {
+        id: nodeId,
+        type: 'custom',
+        position: { x: 50, y: 50 + flow.subflowInputs.length * 100 },
+        data: {
+          nodeType: 'subflow-input',
+          label: name,
+          portName: name,
+          portType: type,
+          portId: portId,
+        },
+      }
+      flow.nodes.push(inputNode)
+
+      // Create the port definition
+      const port: SubflowPort = {
+        id: portId,
+        name,
+        type,
+        nodeId,
+      }
+      flow.subflowInputs.push(port)
+      flow.updatedAt = new Date()
+      flow.dirty = true
+
+      return port
+    },
+
+    /**
+     * Add an output port to a subflow
+     */
+    addSubflowOutput(flowId: string, name: string, type: string = 'any'): SubflowPort | null {
+      const flow = this.flows.find((f) => f.id === flowId)
+      if (!flow || !flow.isSubflow) return null
+
+      // Create a SubflowOutput node inside the subflow
+      const nodeId = nanoid()
+      const portId = nanoid()
+
+      // Add the SubflowOutput node
+      const outputNode: Node = {
+        id: nodeId,
+        type: 'custom',
+        position: { x: 400, y: 50 + flow.subflowOutputs.length * 100 },
+        data: {
+          nodeType: 'subflow-output',
+          label: name,
+          portName: name,
+          portType: type,
+          portId: portId,
+        },
+      }
+      flow.nodes.push(outputNode)
+
+      // Create the port definition
+      const port: SubflowPort = {
+        id: portId,
+        name,
+        type,
+        nodeId,
+      }
+      flow.subflowOutputs.push(port)
+      flow.updatedAt = new Date()
+      flow.dirty = true
+
+      return port
+    },
+
+    /**
+     * Remove a subflow port (and its associated node)
+     */
+    removeSubflowPort(flowId: string, portId: string, isInput: boolean) {
+      const flow = this.flows.find((f) => f.id === flowId)
+      if (!flow || !flow.isSubflow) return
+
+      const ports = isInput ? flow.subflowInputs : flow.subflowOutputs
+      const portIndex = ports.findIndex((p) => p.id === portId)
+      if (portIndex === -1) return
+
+      const port = ports[portIndex]
+
+      // Remove the associated node and its edges
+      flow.nodes = flow.nodes.filter((n) => n.id !== port.nodeId)
+      flow.edges = flow.edges.filter(
+        (e) => e.source !== port.nodeId && e.target !== port.nodeId
+      )
+
+      // Remove the port
+      ports.splice(portIndex, 1)
+      flow.updatedAt = new Date()
+      flow.dirty = true
+    },
+
+    /**
+     * Update a subflow port's properties
+     */
+    updateSubflowPort(flowId: string, portId: string, updates: { name?: string; type?: string }) {
+      const flow = this.flows.find((f) => f.id === flowId)
+      if (!flow || !flow.isSubflow) return
+
+      // Find the port in inputs or outputs
+      let port = flow.subflowInputs.find((p) => p.id === portId)
+      if (!port) {
+        port = flow.subflowOutputs.find((p) => p.id === portId)
+      }
+      if (!port) return
+
+      // Update port
+      if (updates.name !== undefined) port.name = updates.name
+      if (updates.type !== undefined) port.type = updates.type
+
+      // Update the associated node's data
+      const node = flow.nodes.find((n) => n.id === port!.nodeId)
+      if (node) {
+        if (updates.name !== undefined) {
+          node.data = { ...node.data, label: updates.name, portName: updates.name }
+        }
+        if (updates.type !== undefined) {
+          node.data = { ...node.data, portType: updates.type }
+        }
+      }
+
+      flow.updatedAt = new Date()
+      flow.dirty = true
+    },
+
+    /**
+     * Create a subflow from selected nodes in the active flow
+     * Returns the new subflow and replaces selected nodes with a subflow instance
+     */
+    createSubflowFromSelection(
+      nodeIds: string[],
+      name: string = 'New Subflow'
+    ): { subflow: FlowState; instanceNodeId: string } | null {
+      if (!this.activeFlow || nodeIds.length === 0) return null
+
+      const sourceFlow = this.activeFlow
+
+      // Get selected nodes
+      const selectedNodes = sourceFlow.nodes.filter((n) => nodeIds.includes(n.id))
+      if (selectedNodes.length === 0) return null
+
+      // Get edges between selected nodes
+      const nodeIdSet = new Set(nodeIds)
+      const internalEdges = sourceFlow.edges.filter(
+        (e) => nodeIdSet.has(e.source) && nodeIdSet.has(e.target)
+      )
+
+      // Find edges that cross the selection boundary (inputs/outputs)
+      const incomingEdges = sourceFlow.edges.filter(
+        (e) => !nodeIdSet.has(e.source) && nodeIdSet.has(e.target)
+      )
+      const outgoingEdges = sourceFlow.edges.filter(
+        (e) => nodeIdSet.has(e.source) && !nodeIdSet.has(e.target)
+      )
+
+      // Calculate bounding box for positioning
+      const minX = Math.min(...selectedNodes.map((n) => n.position.x))
+      const minY = Math.min(...selectedNodes.map((n) => n.position.y))
+
+      // Create the subflow
+      const subflow = this.createSubflow(name)
+
+      // Copy nodes with adjusted positions
+      const nodeIdMap = new Map<string, string>() // old ID -> new ID
+      for (const node of selectedNodes) {
+        const newId = nanoid()
+        nodeIdMap.set(node.id, newId)
+
+        const newNode: Node = {
+          ...JSON.parse(JSON.stringify(node)),
+          id: newId,
+          position: {
+            x: node.position.x - minX + 150, // Offset to leave room for input nodes
+            y: node.position.y - minY + 50,
+          },
+        }
+        subflow.nodes.push(newNode)
+      }
+
+      // Copy internal edges with updated IDs
+      for (const edge of internalEdges) {
+        const newEdge: Edge = {
+          id: nanoid(),
+          source: nodeIdMap.get(edge.source)!,
+          sourceHandle: edge.sourceHandle,
+          target: nodeIdMap.get(edge.target)!,
+          targetHandle: edge.targetHandle,
+        }
+        subflow.edges.push(newEdge)
+      }
+
+      // Create subflow inputs for incoming connections
+      const inputPortMap = new Map<string, SubflowPort>() // "targetNodeId:targetHandle" -> port
+      for (const edge of incomingEdges) {
+        const key = `${edge.target}:${edge.targetHandle}`
+        if (!inputPortMap.has(key)) {
+          const port = this.addSubflowInput(subflow.id, edge.targetHandle ?? 'input', 'any')
+          if (port) {
+            inputPortMap.set(key, port)
+
+            // Connect the input node to the internal node
+            const targetId = nodeIdMap.get(edge.target)
+            if (targetId) {
+              subflow.edges.push({
+                id: nanoid(),
+                source: port.nodeId,
+                sourceHandle: 'value',
+                target: targetId,
+                targetHandle: edge.targetHandle,
+              })
+            }
+          }
+        }
+      }
+
+      // Create subflow outputs for outgoing connections
+      const outputPortMap = new Map<string, SubflowPort>() // "sourceNodeId:sourceHandle" -> port
+      for (const edge of outgoingEdges) {
+        const key = `${edge.source}:${edge.sourceHandle}`
+        if (!outputPortMap.has(key)) {
+          const port = this.addSubflowOutput(subflow.id, edge.sourceHandle ?? 'output', 'any')
+          if (port) {
+            outputPortMap.set(key, port)
+
+            // Connect the internal node to the output node
+            const sourceId = nodeIdMap.get(edge.source)
+            if (sourceId) {
+              subflow.edges.push({
+                id: nanoid(),
+                source: sourceId,
+                sourceHandle: edge.sourceHandle,
+                target: port.nodeId,
+                targetHandle: 'value',
+              })
+            }
+          }
+        }
+      }
+
+      // Calculate center position of selected nodes for subflow instance placement
+      const centerX = selectedNodes.reduce((sum, n) => sum + n.position.x, 0) / selectedNodes.length
+      const centerY = selectedNodes.reduce((sum, n) => sum + n.position.y, 0) / selectedNodes.length
+
+      // Remove selected nodes and their edges from source flow
+      sourceFlow.nodes = sourceFlow.nodes.filter((n) => !nodeIdSet.has(n.id))
+      sourceFlow.edges = sourceFlow.edges.filter(
+        (e) => !nodeIdSet.has(e.source) && !nodeIdSet.has(e.target)
+      )
+
+      // Add subflow instance node to source flow
+      const instanceNodeId = nanoid()
+      const instanceNode: Node = {
+        id: instanceNodeId,
+        type: 'custom',
+        position: { x: centerX, y: centerY },
+        data: {
+          nodeType: 'subflow',
+          label: name,
+          subflowId: subflow.id,
+        },
+      }
+      sourceFlow.nodes.push(instanceNode)
+
+      // Reconnect incoming edges to the subflow instance
+      for (const edge of incomingEdges) {
+        const key = `${edge.target}:${edge.targetHandle}`
+        const port = inputPortMap.get(key)
+        if (port) {
+          sourceFlow.edges.push({
+            id: nanoid(),
+            source: edge.source,
+            sourceHandle: edge.sourceHandle,
+            target: instanceNodeId,
+            targetHandle: port.id, // Use port ID as handle
+          })
+        }
+      }
+
+      // Reconnect outgoing edges from the subflow instance
+      for (const edge of outgoingEdges) {
+        const key = `${edge.source}:${edge.sourceHandle}`
+        const port = outputPortMap.get(key)
+        if (port) {
+          sourceFlow.edges.push({
+            id: nanoid(),
+            source: instanceNodeId,
+            sourceHandle: port.id, // Use port ID as handle
+            target: edge.target,
+            targetHandle: edge.targetHandle,
+          })
+        }
+      }
+
+      sourceFlow.updatedAt = new Date()
+      sourceFlow.dirty = true
+
+      // Switch back to source flow
+      this.activeFlowId = sourceFlow.id
+
+      return { subflow, instanceNodeId }
+    },
+
+    /**
+     * Convert a subflow back to its constituent nodes (unpack/explode)
+     */
+    unpackSubflowInstance(instanceNodeId: string): string[] | null {
+      if (!this.activeFlow) return null
+
+      const flow = this.activeFlow
+      const instanceNode = flow.nodes.find((n) => n.id === instanceNodeId)
+      if (!instanceNode || instanceNode.data?.nodeType !== 'subflow') return null
+
+      const subflowId = instanceNode.data.subflowId as string
+      const subflow = this.flows.find((f) => f.id === subflowId)
+      if (!subflow) return null
+
+      // Get edges connected to the instance
+      const incomingEdges = flow.edges.filter((e) => e.target === instanceNodeId)
+      const outgoingEdges = flow.edges.filter((e) => e.source === instanceNodeId)
+
+      // Copy subflow nodes (excluding subflow-input and subflow-output nodes)
+      const nodeIdMap = new Map<string, string>()
+      const newNodeIds: string[] = []
+
+      for (const node of subflow.nodes) {
+        if (node.data?.nodeType === 'subflow-input' || node.data?.nodeType === 'subflow-output') {
+          continue
+        }
+
+        const newId = nanoid()
+        nodeIdMap.set(node.id, newId)
+        newNodeIds.push(newId)
+
+        const newNode: Node = {
+          ...JSON.parse(JSON.stringify(node)),
+          id: newId,
+          position: {
+            x: instanceNode.position.x + node.position.x - 150,
+            y: instanceNode.position.y + node.position.y - 50,
+          },
+        }
+        flow.nodes.push(newNode)
+      }
+
+      // Copy internal edges (excluding those connected to input/output nodes)
+      for (const edge of subflow.edges) {
+        const sourceNode = subflow.nodes.find((n) => n.id === edge.source)
+        const targetNode = subflow.nodes.find((n) => n.id === edge.target)
+
+        if (
+          sourceNode?.data?.nodeType === 'subflow-input' ||
+          targetNode?.data?.nodeType === 'subflow-output'
+        ) {
+          continue
+        }
+
+        if (nodeIdMap.has(edge.source) && nodeIdMap.has(edge.target)) {
+          flow.edges.push({
+            id: nanoid(),
+            source: nodeIdMap.get(edge.source)!,
+            sourceHandle: edge.sourceHandle,
+            target: nodeIdMap.get(edge.target)!,
+            targetHandle: edge.targetHandle,
+          })
+        }
+      }
+
+      // Reconnect incoming edges
+      for (const edge of incomingEdges) {
+        // Find which input port this was connected to
+        const inputPort = subflow.subflowInputs.find((p) => p.id === edge.targetHandle)
+        if (inputPort) {
+          // Find what the input node was connected to inside the subflow
+          const internalEdge = subflow.edges.find(
+            (e) => e.source === inputPort.nodeId
+          )
+          if (internalEdge && nodeIdMap.has(internalEdge.target)) {
+            flow.edges.push({
+              id: nanoid(),
+              source: edge.source,
+              sourceHandle: edge.sourceHandle,
+              target: nodeIdMap.get(internalEdge.target)!,
+              targetHandle: internalEdge.targetHandle,
+            })
+          }
+        }
+      }
+
+      // Reconnect outgoing edges
+      for (const edge of outgoingEdges) {
+        // Find which output port this was connected from
+        const outputPort = subflow.subflowOutputs.find((p) => p.id === edge.sourceHandle)
+        if (outputPort) {
+          // Find what was connected to the output node inside the subflow
+          const internalEdge = subflow.edges.find(
+            (e) => e.target === outputPort.nodeId
+          )
+          if (internalEdge && nodeIdMap.has(internalEdge.source)) {
+            flow.edges.push({
+              id: nanoid(),
+              source: nodeIdMap.get(internalEdge.source)!,
+              sourceHandle: internalEdge.sourceHandle,
+              target: edge.target,
+              targetHandle: edge.targetHandle,
+            })
+          }
+        }
+      }
+
+      // Remove the instance node and its edges
+      flow.nodes = flow.nodes.filter((n) => n.id !== instanceNodeId)
+      flow.edges = flow.edges.filter(
+        (e) => e.source !== instanceNodeId && e.target !== instanceNodeId
+      )
+
+      flow.updatedAt = new Date()
+      flow.dirty = true
+
+      return newNodeIds
     },
   },
 })

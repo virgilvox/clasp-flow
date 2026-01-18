@@ -1,20 +1,24 @@
 import { defineStore } from 'pinia'
 import type { Component } from 'vue'
+import { fuzzySearch } from '@/utils/fuzzySearch'
 
 export type NodeCategory =
   | 'debug'
   | 'inputs'
   | 'outputs'
+  | 'timing'
   | 'math'
   | 'logic'
   | 'audio'
   | 'video'
+  | 'visual'
   | 'shaders'
   | 'data'
   | 'ai'
   | 'code'
   | '3d'
   | 'connectivity'
+  | 'subflows'
   | 'custom'
 
 export type DataType =
@@ -28,6 +32,14 @@ export type DataType =
   | 'data'
   | 'array'
   | 'any'
+  // 3D types
+  | 'scene3d'
+  | 'object3d'
+  | 'geometry3d'
+  | 'material3d'
+  | 'camera3d'
+  | 'light3d'
+  | 'transform3d'
 
 export type Platform = 'web' | 'electron'
 
@@ -96,15 +108,14 @@ export const useNodesStore = defineStore('nodes', {
         results = results.filter((d) => d.category === this.categoryFilter)
       }
 
-      // Filter by search
+      // Filter by search with fuzzy matching
       if (this.searchQuery.trim()) {
-        const query = this.searchQuery.toLowerCase()
-        results = results.filter(
-          (d) =>
-            d.name.toLowerCase().includes(query) ||
-            d.description.toLowerCase().includes(query) ||
-            d.tags?.some((t) => t.toLowerCase().includes(query))
+        const searchResults = fuzzySearch(
+          results,
+          this.searchQuery,
+          (d) => [d.name, d.description, ...(d.tags ?? [])]
         )
+        results = searchResults.map(r => r.item)
       }
 
       return results
@@ -172,16 +183,19 @@ export const categoryMeta: Record<NodeCategory, { label: string; icon: string; c
   debug: { label: 'Debug', icon: 'bug', color: '#8B5CF6' },
   inputs: { label: 'Inputs', icon: 'download', color: '#22C55E' },
   outputs: { label: 'Outputs', icon: 'upload', color: '#3B82F6' },
+  timing: { label: 'Timing', icon: 'clock', color: '#F97316' },
   math: { label: 'Math', icon: 'calculator', color: '#F59E0B' },
   logic: { label: 'Logic', icon: 'git-branch', color: '#EF4444' },
   audio: { label: 'Audio', icon: 'music', color: '#22C55E' },
   video: { label: 'Video', icon: 'video', color: '#3B82F6' },
+  visual: { label: 'Visual', icon: 'image', color: '#EC4899' },
   shaders: { label: 'Shaders', icon: 'code', color: '#EC4899' },
   data: { label: 'Data', icon: 'database', color: '#6B7280' },
-  ai: { label: 'AI', icon: 'brain', color: '#8B5CF6' },
+  ai: { label: 'AI (Local)', icon: 'brain', color: '#A855F7' },
   code: { label: 'Code', icon: 'terminal', color: '#F59E0B' },
   '3d': { label: '3D', icon: 'box', color: '#0EA5E9' },
   connectivity: { label: 'Connectivity', icon: 'plug', color: '#2AAB8A' },
+  subflows: { label: 'Subflows', icon: 'layers', color: '#7C3AED' },
   custom: { label: 'Custom', icon: 'puzzle', color: '#6B7280' },
 }
 
@@ -197,4 +211,12 @@ export const dataTypeMeta: Record<DataType, { label: string; color: string; line
   data: { label: 'Data', color: '#6B7280', lineStyle: 'solid' },
   array: { label: 'Array', color: '#0EA5E9', lineStyle: 'solid' },
   any: { label: 'Any', color: '#D4D4D4', lineStyle: 'dotted' },
+  // 3D types
+  scene3d: { label: 'Scene 3D', color: '#0EA5E9', lineStyle: 'solid' },
+  object3d: { label: 'Object 3D', color: '#38BDF8', lineStyle: 'solid' },
+  geometry3d: { label: 'Geometry 3D', color: '#7DD3FC', lineStyle: 'solid' },
+  material3d: { label: 'Material 3D', color: '#BAE6FD', lineStyle: 'solid' },
+  camera3d: { label: 'Camera 3D', color: '#0284C7', lineStyle: 'solid' },
+  light3d: { label: 'Light 3D', color: '#FCD34D', lineStyle: 'solid' },
+  transform3d: { label: 'Transform 3D', color: '#A5F3FC', lineStyle: 'solid' },
 }

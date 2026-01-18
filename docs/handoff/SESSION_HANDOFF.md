@@ -1,12 +1,12 @@
-# CLASP Flow - Session Handoff Document
+# LATCH - Session Handoff Document
 
-**Purpose**: This document ensures continuity when starting new sessions or clearing context. It provides the essential information needed to quickly resume work on CLASP Flow.
+**Purpose**: This document ensures continuity when starting new sessions or clearing context. It provides the essential information needed to quickly resume work on LATCH.
 
 ---
 
 ## Quick Context
 
-**Project**: CLASP Flow - Visual flow programming environment for creatives
+**Project**: LATCH - Live Art Tool for Creative Humans
 **Organization**: LumenCanvas (2026)
 **Repository**: `/Users/obsidian/Projects/lumencanvas/clasp-flow`
 **Type**: Web + Electron application
@@ -16,31 +16,114 @@
 
 ## Current Status
 
-### Phase: 0 - Foundation ✅ COMPLETE
-### Next Step: Phase 1 - Core Editor
+### Phase: 9 Complete - 3D System + Polish + UX/Debug Node Improvements
+### Next Step: Phase 10 - Node UX Review & Export / Testing
 
-**Last Action Completed**:
-- Full project scaffolding with Vite + Vue 3 + TypeScript
-- Electron Forge integration configured
-- Design system implemented (tokens, base, components CSS)
-- Vue Flow integrated with custom BaseNode component
-- Pinia stores created (flows, nodes, runtime, ui)
-- Layout components built (AppHeader, AppSidebar, StatusBar)
-- Views implemented (EditorView, ControlPanelView, SettingsView)
-- Testing infrastructure set up (Vitest with 16 passing tests)
-- GitHub Actions CI/CD workflows created
-- TypeScript compilation verified (no errors)
-- Web build verified (produces optimized bundle)
+### Latest Session Accomplishments (Memory Leaks, AI Fixes, UI Polish):
 
-**What Needs to Happen Next** (Phase 1 - Core Editor):
-1. Enhance node drag-and-drop with proper positioning
-2. Implement connection validation by data type
-3. Add node selection and multi-select
-4. Build undo/redo history system
-5. Set up flow persistence with IndexedDB (Dexie.js)
-6. Add copy/paste/duplicate functionality
-7. Implement keyboard shortcuts
-8. Build node search in sidebar
+**Memory Leak Fixes:**
+- Fixed nested `onUnmounted` anti-pattern in AppSidebar, AppHeader, AIModelManagerModal
+- Subscription cleanup now uses module-scope variables with top-level onUnmounted
+- Added click-outside handler cleanup for custom dropdown
+
+**AI System Fixes:**
+- Fixed progress bar showing 6395% - now properly tracks per-file progress
+- AI executors rewritten to be non-blocking (require pre-loaded models)
+- Fixed trigger detection: only `true` or `1` triggers AI nodes (not just any truthy value)
+
+**MiniMap Enhancement:**
+- Nodes in MiniMap now colored by their category color
+- Uses `getNodeMinimapColor()` function in EditorView
+
+**Category Dropdown Redesign:**
+- Custom dropdown replacing native select in AppSidebar
+- Color badges next to each category name
+- Rainbow gradient badge for "All Categories"
+- Click-outside closes dropdown
+
+**Equalizer Node Improvement:**
+- Demo animation shows when not running (animated wave pattern)
+- Live FFT visualization when running with audio
+- Shows "DEMO" label in demo mode
+- Fixed: Added `equalizer` and `graph` to specialNodeTypes in flows.ts (was rendering as BaseNode)
+
+**Bug Fix - Custom Node Types:**
+- `equalizer` and `graph` were missing from `specialNodeTypes` array in flows.ts
+- This caused them to render as BaseNode instead of their custom components
+- Fix: Added to specialNodeTypes list alongside monitor, oscilloscope, etc.
+
+---
+
+### Previous Session Accomplishments (UX Polish & Debug Nodes):
+
+**Node Label Editing:**
+- Double-click on node title in BaseNode to edit label
+- Label editing in PropertiesPanel with pencil icon
+- Properly stops event propagation to allow editing without triggering drag
+
+**Compact Node Design:**
+- Nodes with many properties (math, logic, 3d, audio categories) now use compact design
+- Shows category color fill with centered icon instead of full controls
+- Control nodes excluded: slider, trigger, xy-pad, constant, lfo, monitor, oscilloscope
+
+**Handle Consistency & Collapsed Nodes:**
+- XYPadNode refactored to use same handles-column pattern as BaseNode
+- All handles use consistent port-label styling with hover behavior
+- Collapsed nodes now show only header (fixed white body issue)
+- Collapsed nodes stack all handles at same position (appear as single handle per side)
+
+**Properties Panel Improvements:**
+- Added color picker control type support
+- Added toggle button in AppHeader to reopen properties panel when closed
+- Fixed reactivity - panel now updates when node properties change directly on nodes
+
+**New Debug Nodes:**
+- **Oscilloscope**: Now accepts both number signals AND audio input (universal signal viewer)
+  - Auto-detects mode based on connected input
+  - Uses Tone.js Waveform analyzer for audio
+  - Shows "AUDIO" or signal value indicator
+- **Equalizer**: Audio frequency spectrum visualization
+  - Animated bar display with FFT data
+  - Controls: bar count (8-32), color mode (gradient/spectrum/solid), smoothing
+  - Color modes: gradient (green→red), spectrum (rainbow), solid (cyan)
+- **Graph**: Flexible X/Y plotter
+  - Starts with 1 point (x, y), can add up to 8 series via +/- buttons
+  - Display modes: line (connected) or scatter (dots with trail)
+  - Auto-scaling, grid overlay, point history for trail effects
+  - Color-coded series (green, blue, amber, red, purple, pink, teal, orange)
+
+---
+
+## New/Modified Files This Session
+
+| File | Changes |
+|------|---------|
+| `src/renderer/components/nodes/BaseNode.vue` | Label editing, compact nodes, collapsed CSS fixes |
+| `src/renderer/components/nodes/XYPadNode.vue` | Refactored to handles-column pattern |
+| `src/renderer/components/nodes/OscilloscopeNode.vue` | Added audio input, dual-mode display |
+| `src/renderer/components/nodes/GraphNode.vue` | NEW - Flexible X/Y plotter |
+| `src/renderer/components/nodes/EqualizerNode.vue` | NEW - Audio frequency visualizer |
+| `src/renderer/components/layout/PropertiesPanel.vue` | Color picker, label editing, deep watch for reactivity |
+| `src/renderer/components/layout/AppHeader.vue` | Properties panel toggle button |
+| `src/renderer/engine/executors/index.ts` | Updated oscilloscopeExecutor, added graphExecutor, equalizerExecutor |
+| `src/renderer/views/EditorView.vue` | Registered Graph, Equalizer nodes, updated Oscilloscope inputs |
+
+---
+
+## Previous Session Summary (3D System + Polish)
+
+**3D System (Phase 9):**
+- ThreeRenderer.ts service with WebGL rendering
+- 17 new 3D nodes: Scene, Camera, Render, primitives, lights, materials, transforms
+- 7 new data types: scene3d, object3d, geometry3d, material3d, camera3d, light3d, transform3d
+- Texture-to-3D pipeline with convertToThreeTexture() helper
+
+**Rebrand & Polish:**
+- Renamed from "CLASP Flow" to "LATCH" (Live Art Tool for Creative Humans)
+- LATCH logo (brackets with diagonal latch bar, orange accents)
+- Animated loading screen with bracket drawing animation
+- Monitor/Trigger/XYPad node fixes for persistence
+- Console node only logs on value change
 
 ---
 
@@ -49,32 +132,196 @@
 | Document | Location | Purpose |
 |----------|----------|---------|
 | Master Plan | `docs/plans/MASTER_PLAN.md` | Complete project roadmap, phases, node types |
+| UI Redesign Plan | `docs/plans/UI_REDESIGN_PLAN.md` | UI enhancement design document |
 | Architecture | `docs/architecture/ARCHITECTURE.md` | Technical architecture, file structure, APIs |
-| Design System | `design-system (1).html` | UI components, colors, typography |
-| Screenshots | `Screen Shot 2026-01-17*.png` | Inspiration for node editor UI |
 | This Handoff | `docs/handoff/SESSION_HANDOFF.md` | Session continuity |
 
 ---
 
-## Project Vision (Quick Summary)
+## Project Architecture Summary
 
-CLASP Flow combines:
-- **TouchDesigner**: Real-time visuals, shaders, video
-- **PureData/Max**: Audio synthesis, MIDI, signals
-- **Node-RED**: Data flow, IoT, protocols
-- **nodes.io**: Web-based creative coding
+### Debug Nodes (Visual)
+| Node | Purpose | Inputs | Features |
+|------|---------|--------|----------|
+| Monitor | Display any value | any | Color-coded type display, passthrough |
+| Oscilloscope | Waveform viewer | number, audio | Dual-mode, canvas-based, TIME/AMP controls |
+| Equalizer | Frequency spectrum | audio | FFT bars, gradient/spectrum/solid colors |
+| Graph | X/Y plotter | x0/y0 to x7/y7 | Dynamic series, line/scatter, auto-scale |
 
-Key Features:
-- Runs in browser AND Electron (with hardware access)
-- Shader nodes with GLSL editor (Shadertoy compatible)
-- Audio input/output with analysis, beat detection, synthesis
-- Video input/processing with ffmpeg.wasm
-- AI nodes (Transformers.js for browser-based ML)
-- IoT nodes (MQTT, Serial, BLE, OSC)
-- Function nodes (JavaScript) and Blockly visual coding
-- Custom node drop-in system
-- Export flows as standalone apps
-- Control panel view for live performance
+### Custom Node Components
+| Component | Purpose |
+|-----------|---------|
+| BaseNode.vue | Standard node with handles-column pattern, compact mode, label editing |
+| TriggerNode.vue | Large trigger button with output modes |
+| XYPadNode.vue | 2D touch/mouse input with raw/normalized outputs |
+| MonitorNode.vue | Value display with type-based coloring |
+| OscilloscopeNode.vue | Canvas waveform for signals/audio |
+| GraphNode.vue | Canvas X/Y plotter with multiple series |
+| EqualizerNode.vue | Canvas FFT bar display |
+| MainOutputNode.vue | Final output preview with expand toggle |
+
+---
+
+## Data Flow Patterns
+
+### Signal Visualization
+```
+[LFO] ──(number)──→ [Oscilloscope/Graph]
+```
+
+### Audio Visualization
+```
+[Oscillator] ──(audio)──→ [Oscilloscope]  (waveform)
+[Oscillator] ──(audio)──→ [Equalizer]     (spectrum)
+```
+
+### 3D Pipeline
+```
+[Box 3D] ──(object3d)──→ [Scene 3D] ──(scene3d)──→ [Render 3D] ──(texture)──→ [Main Output]
+[Light] ────(object3d)──→ [Scene 3D]                     ↑
+[Camera 3D] ──(camera3d)─────────────────────────────────┘
+```
+
+---
+
+## How to Use 3D Nodes
+
+The 3D system requires a specific setup to render anything. Here's the minimum required:
+
+### Minimum Setup for 3D Rendering
+
+You need **exactly 3 essential nodes** connected in the right order:
+
+1. **Scene 3D** - Container for all 3D objects
+2. **Camera 3D** - Viewpoint for rendering
+3. **Render 3D** - Outputs the final texture
+
+```
+                                    ┌─────────────┐
+                                    │  Camera 3D  │
+                                    │  posY: 2    │
+                                    │  posZ: 5    │
+                                    └──────┬──────┘
+                                           │ camera
+                                           ▼
+┌──────────┐ object   ┌────────────┐ scene ┌────────────┐ texture ┌─────────────┐
+│  Box 3D  │─────────▶│  Scene 3D  │──────▶│  Render 3D │────────▶│ Main Output │
+└──────────┘          └────────────┘       └────────────┘         └─────────────┘
+```
+
+### Step-by-Step Instructions
+
+1. **Create Scene 3D node** (3D > Scene)
+   - This is the container for all 3D objects
+   - Optional: Enable "Show Grid" to see the ground plane
+   - Optional: Change background color
+
+2. **Create Camera 3D node** (3D > Camera)
+   - Set position: posX=0, posY=2, posZ=5 (default is good)
+   - Connect `camera` output → `camera` input of Render 3D
+
+3. **Create Render 3D node** (3D > Render)
+   - Connect `scene` input ← `scene` output of Scene 3D
+   - Connect `camera` input ← `camera` output of Camera 3D
+   - Set width/height for resolution (512x512 default)
+   - Connect `texture` output → Main Output
+
+4. **Add objects** (3D > Primitives)
+   - Create Box, Sphere, Cylinder, Torus, or Plane
+   - Connect `object` output → `objects` input of Scene 3D
+   - Objects at origin (0,0,0) will be visible if camera is positioned correctly
+
+### Adding Lights
+
+Without explicit lights, Scene 3D adds a default ambient light. For better lighting:
+
+```
+┌─────────────────┐ object
+│ Directional     │────────▶ Scene 3D (objects input)
+│ Light 3D        │
+│ posX:5 posY:5   │
+└─────────────────┘
+```
+
+- **Ambient Light**: Even lighting everywhere
+- **Directional Light**: Sun-like, casts shadows
+- **Point Light**: Bulb-like, radiates from position
+- **Spot Light**: Cone-shaped, like a flashlight
+
+### Adding Materials
+
+Connect a Material 3D node to change object appearance:
+
+```
+┌───────────────┐ material  ┌──────────┐ object  ┌────────────┐
+│  Material 3D  │──────────▶│  Box 3D  │────────▶│  Scene 3D  │
+│  color: red   │           └──────────┘         └────────────┘
+│  metalness: 1 │
+└───────────────┘
+```
+
+Material properties:
+- **type**: standard, basic, phong, physical
+- **color**: Hex color
+- **metalness**: 0-1 (for standard/physical)
+- **roughness**: 0-1 (shiny to matte)
+- **wireframe**: Show as wireframe
+- **colorMap**: Connect a texture input
+
+### Transforming Objects
+
+Use Transform 3D to position, rotate, and scale:
+
+```
+┌──────────┐ object  ┌──────────────┐ object  ┌────────────┐
+│  Box 3D  │────────▶│ Transform 3D │────────▶│  Scene 3D  │
+└──────────┘         │ rotY: 45     │         └────────────┘
+                     │ scaleX: 2    │
+                     └──────────────┘
+```
+
+Or animate with LFO:
+
+```
+┌───────┐ value  ┌──────────────┐
+│  LFO  │───────▶│ Transform 3D │──▶ rotY input
+└───────┘        └──────────────┘
+```
+
+### Grouping Objects
+
+Use Group 3D to combine multiple objects:
+
+```
+┌──────────┐ object
+│  Box 3D  │────────┐
+└──────────┘        │
+                    ▼ objects
+┌───────────┐ object  ┌──────────┐ object  ┌────────────┐
+│  Sphere   │────────▶│ Group 3D │────────▶│  Scene 3D  │
+└───────────┘         └──────────┘         └────────────┘
+```
+
+### Loading 3D Models
+
+Use GLTF Loader for external models:
+
+```
+┌─────────────┐ object  ┌────────────┐
+│ GLTF Loader │────────▶│  Scene 3D  │
+│ url: *.glb  │         └────────────┘
+└─────────────┘
+```
+
+### Common Issues
+
+| Problem | Solution |
+|---------|----------|
+| Black screen | Check Camera 3D is connected AND positioned (posZ: 5) |
+| Nothing visible | Objects at origin; ensure camera isn't at same position |
+| No lighting | Add Directional Light or Ambient Light |
+| Objects too small | Increase scale or move camera closer (posZ: 2) |
+| Objects clipped | Adjust camera near/far planes |
 
 ---
 
@@ -91,85 +338,22 @@ Key Features:
 
 ### Audio
 - **Synthesis**: Tone.js
-- **Analysis**: Meyda.js + web-audio-beat-detector
+- **Analysis**: Meyda.js + web-audio-beat-detector + Tone.FFT/Waveform
 - **Core**: Web Audio API
 
 ### Video/Graphics
 - **2D**: Canvas 2D, WebGL2
-- **Shaders**: GLSL (WebGL2), WGSL (WebGPU where available)
+- **3D**: Three.js
+- **Shaders**: GLSL (WebGL2)
 - **Processing**: ffmpeg.wasm
 
 ### AI
 - **Runtime**: Transformers.js (ONNX Runtime)
-- **Capabilities**: Text, speech, vision models in browser
 
 ### Styling
-- **System**: Custom CSS with design tokens (from design-system.html)
+- **System**: Custom CSS with design tokens
 - **Icons**: Lucide
 - **Font**: JetBrains Mono
-
----
-
-## Design System Key Points
-
-From `design-system (1).html`:
-
-### Colors
-```css
---color-primary-400: #2AAB8A;  /* Main teal */
---color-neutral-800: #2D2D2D;  /* Dark surfaces */
---color-neutral-0: #FFFFFF;    /* Light surfaces */
---color-success: #22C55E;
---color-warning: #F59E0B;
---color-error: #EF4444;
-```
-
-### Style Rules
-- Sharp corners (border-radius: 0)
-- Offset box shadows (3-4px solid)
-- Monospace typography (JetBrains Mono)
-- Uppercase labels with letter-spacing
-- Dark sidebar/header with light content areas
-
-### Connection Lines (Enhanced from screenshots)
-- Color-coded by data type
-- Animated when data flows
-- Dashed for intermittent, solid for continuous
-- Thickness varies by signal type (audio/video thicker)
-
----
-
-## Data Types & Colors
-
-| Type | Color | Style | Use |
-|------|-------|-------|-----|
-| trigger | #F59E0B | Thin solid | Events/bangs |
-| number | #2AAB8A | Solid | Numeric values |
-| string | #8B5CF6 | Solid | Text |
-| boolean | #EF4444 | Dotted | True/false |
-| audio | #22C55E | Thick solid | Audio buffers |
-| video | #3B82F6 | Thick solid | Video frames |
-| texture | #EC4899 | Dashed | WebGL textures |
-| data | #6B7280 | Solid | JSON objects |
-| any | #FFFFFF | Dotted | Universal |
-
----
-
-## Immediate TODOs for Next Session
-
-```markdown
-## Phase 1 Tasks - Core Editor
-- [ ] Connection type validation (prevent incompatible connections)
-- [ ] Node selection state (single and multi-select with Shift+click)
-- [ ] Undo/redo with command pattern
-- [ ] IndexedDB persistence for flows (Dexie.js)
-- [ ] Copy/paste/duplicate nodes (Ctrl+C, Ctrl+V, Ctrl+D)
-- [ ] Delete selected nodes (Delete/Backspace)
-- [ ] Keyboard shortcuts system
-- [ ] Node search with fuzzy matching
-- [ ] Context menu for nodes and canvas
-- [ ] Node inspector panel for selected node
-```
 
 ---
 
@@ -185,70 +369,37 @@ npm run dev
 # Run tests
 npm run test
 
+# Type check
+npm run typecheck
+
 # Build for web
-npm run build:web
+npm run build
 
 # Start Electron dev mode
 npm run electron:dev
-
-# Type check
-npx vue-tsc --noEmit
-
-# Lint
-npm run lint
 ```
 
 ---
 
-## Key Architectural Patterns
+## Immediate TODOs for Next Session
 
-### Node Definition
-```typescript
-interface NodeDefinition {
-  id: string;
-  name: string;
-  category: string;
-  platforms: ('web' | 'electron')[];
-  inputs: PortDefinition[];
-  outputs: PortDefinition[];
-  controls: ControlDefinition[];
-  executor: string;
-  ui?: string;  // Custom Vue component
-}
+```markdown
+## Testing
+- [ ] Test new debug nodes (Graph, Equalizer) with live data
+- [ ] Test Oscilloscope with audio input
+- [ ] Test collapsed node handle stacking
+- [ ] Test label editing on nodes
+- [ ] Test properties panel reactivity when changing values on nodes
+
+## Features Pending
+- [ ] AI Model Loading UI with modal and quick-load button
+- [ ] Video file player node (use ffmpeg.wasm)
+- [ ] Node development documentation for custom nodes
+
+## Polish
+- [ ] Review all node handle positioning consistency
+- [ ] Test control panel with new debug nodes
 ```
-
-### Node Executor
-```typescript
-abstract class BaseNodeExecutor {
-  abstract execute(inputs: Map<string, any>): Promise<Map<string, any>>;
-}
-```
-
-### Platform Abstraction
-```typescript
-// Detect platform and provide appropriate services
-const platform = detectPlatform(); // 'web' | 'electron'
-const services = createServices(platform);
-```
-
----
-
-## Important URLs
-
-- CLASP Protocol: https://clasp.to, https://github.com/lumencanvas/clasp
-- Vue Flow: https://vueflow.dev/
-- Tone.js: https://tonejs.github.io/
-- Transformers.js: https://huggingface.co/docs/transformers.js/
-- ffmpeg.wasm: https://ffmpegwasm.netlify.app/
-
----
-
-## Questions Answered
-
-1. **Why Vue over React?** - Preference for Vue ecosystem, native composition API patterns
-2. **Why Vue Flow over React Flow?** - Native Vue 3 support, similar features
-3. **Why not use Node-RED directly?** - Need custom UI, shader nodes, audio synthesis not available
-4. **Why both Web and Electron?** - Web for accessibility, Electron for hardware access
 
 ---
 
@@ -256,8 +407,14 @@ const services = createServices(platform);
 
 | Date | Session | Accomplishments |
 |------|---------|-----------------|
-| 2026-01-17 | Initial Planning | Research complete, master plan created, architecture documented |
-| 2026-01-17 | Phase 0 Implementation | Full project scaffolding, all core infrastructure built, 16 tests passing, web build verified |
+| 2026-01-17 | Initial - Phase 0-4 | Full project setup, execution engine, audio, visual, persistence |
+| 2026-01-17 | Phase 5-7 | AI integration, connectivity, code nodes, subflows, control panel, multi-flow tabs |
+| 2026-01-17 | Phase 8 | Custom node loader system |
+| 2026-01-17 | Phase 9 | 3D system with Three.js |
+| 2026-01-17 | Polish & Rebrand | LATCH rebrand, logo, loading screen, node fixes |
+| 2026-01-17 | UX Fixes | Handle positioning, control data flow, Oscilloscope node |
+| 2026-01-17 | Debug Nodes & UX | Label editing, compact nodes, collapsed node fixes, Graph node, Equalizer node, Oscilloscope audio support, Properties panel reactivity |
+| 2026-01-17 | Stability & Polish | Memory leak fixes, AI executor fixes (non-blocking, progress bar), MiniMap colors, category dropdown colors, Equalizer demo animation, 3D documentation |
 
 ---
 
@@ -265,7 +422,7 @@ const services = createServices(platform);
 
 When starting a new session, you can use this prompt:
 
-> I'm continuing work on CLASP Flow. Please read the handoff document at `docs/handoff/SESSION_HANDOFF.md` and the master plan at `docs/plans/MASTER_PLAN.md`. The current status should be at the top of the handoff document. Let's continue from where we left off.
+> I'm continuing work on LATCH (Live Art Tool for Creative Humans). Please read the handoff document at `docs/handoff/SESSION_HANDOFF.md` and the master plan at `docs/plans/MASTER_PLAN.md`. The current status should be at the top of the handoff document. Let's continue from where we left off.
 
 ---
 

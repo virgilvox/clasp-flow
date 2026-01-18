@@ -39,6 +39,23 @@ contextBridge.exposeInMainWorld('electronAPI', {
   once: (channel: string, callback: (...args: unknown[]) => void) => {
     ipcRenderer.once(channel, (_event, ...args) => callback(...args))
   },
+
+  // Custom Nodes API
+  customNodes: {
+    getPath: () => ipcRenderer.invoke('customNodes:getPath'),
+    scanDirectory: () => ipcRenderer.invoke('customNodes:scanDirectory'),
+    readDefinition: (packageName: string) => ipcRenderer.invoke('customNodes:readDefinition', packageName),
+    readExecutor: (packageName: string) => ipcRenderer.invoke('customNodes:readExecutor', packageName),
+    watchDirectory: () => ipcRenderer.invoke('customNodes:watchDirectory'),
+    stopWatching: () => ipcRenderer.invoke('customNodes:stopWatching'),
+    onFileChange: (callback: (data: { eventType: string; packageName: string; filename: string }) => void) => {
+      const subscription = (_event: Electron.IpcRendererEvent, data: { eventType: string; packageName: string; filename: string }) => callback(data)
+      ipcRenderer.on('customNodes:fileChanged', subscription)
+      return () => {
+        ipcRenderer.removeListener('customNodes:fileChanged', subscription)
+      }
+    },
+  },
 })
 
 // Type definitions for renderer
@@ -62,6 +79,15 @@ declare global {
       showItemInFolder: (path: string) => Promise<void>
       on: (channel: string, callback: (...args: unknown[]) => void) => () => void
       once: (channel: string, callback: (...args: unknown[]) => void) => void
+      customNodes: {
+        getPath: () => Promise<string>
+        scanDirectory: () => Promise<{ success: boolean; packages: string[]; error?: string }>
+        readDefinition: (packageName: string) => Promise<{ success: boolean; definition?: unknown; error?: string }>
+        readExecutor: (packageName: string) => Promise<{ success: boolean; code?: string; error?: string }>
+        watchDirectory: () => Promise<{ success: boolean; error?: string }>
+        stopWatching: () => Promise<{ success: boolean }>
+        onFileChange: (callback: (data: { eventType: string; packageName: string; filename: string }) => void) => () => void
+      }
     }
   }
 }

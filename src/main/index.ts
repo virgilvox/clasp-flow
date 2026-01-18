@@ -1,8 +1,11 @@
 import { app, BrowserWindow, ipcMain, dialog, shell } from 'electron'
 import { join } from 'path'
+import { readdir, readFile, stat } from 'fs/promises'
+import { watch, type FSWatcher } from 'fs'
 import { electronApp, optimizer, is } from '@electron-toolkit/utils'
 
 let mainWindow: BrowserWindow | null = null
+let customNodesWatcher: FSWatcher | null = null
 
 function createWindow(): void {
   mainWindow = new BrowserWindow({
@@ -141,4 +144,120 @@ ipcMain.handle('shell:openPath', (_, path: string) => {
 
 ipcMain.handle('shell:showItemInFolder', (_, path: string) => {
   shell.showItemInFolder(path)
+})
+
+// Custom Nodes IPC Handlers
+
+// Get the path to custom-nodes folder
+ipcMain.handle('customNodes:getPath', () => {
+  // In development, use the project root; in production, use app resources
+  if (is.dev) {
+    return join(process.cwd(), 'custom-nodes')
+  }
+  return join(app.getPath('userData'), 'custom-nodes')
+})
+
+// Scan custom-nodes directory for node packages
+ipcMain.handle('customNodes:scanDirectory', async () => {
+  const customNodesPath = is.dev
+    ? join(process.cwd(), 'custom-nodes')
+    : join(app.getPath('userData'), 'custom-nodes')
+
+  try {
+    const entries = await readdir(customNodesPath, { withFileTypes: true })
+    const packages: string[] = []
+
+    for (const entry of entries) {
+      if (entry.isDirectory() && !entry.name.startsWith('.')) {
+        // Check if it has a definition.json
+        const defPath = join(customNodesPath, entry.name, 'definition.json')
+        try {
+          await stat(defPath)
+          packages.push(entry.name)
+        } catch {
+          // No definition.json, skip this folder
+        }
+      }
+    }
+
+    return { success: true, packages }
+  } catch (error) {
+    return { success: false, error: String(error), packages: [] }
+  }
+})
+
+// Read a node's definition.json
+ipcMain.handle('customNodes:readDefinition', async (_, packageName: string) => {
+  const customNodesPath = is.dev
+    ? join(process.cwd(), 'custom-nodes')
+    : join(app.getPath('userData'), 'custom-nodes')
+
+  const defPath = join(customNodesPath, packageName, 'definition.json')
+
+  try {
+    const content = await readFile(defPath, 'utf-8')
+    const definition = JSON.parse(content)
+    return { success: true, definition }
+  } catch (error) {
+    return { success: false, error: String(error) }
+  }
+})
+
+// Read a node's executor.js
+ipcMain.handle('customNodes:readExecutor', async (_, packageName: string) => {
+  const customNodesPath = is.dev
+    ? join(process.cwd(), 'custom-nodes')
+    : join(app.getPath('userData'), 'custom-nodes')
+
+  const execPath = join(customNodesPath, packageName, 'executor.js')
+
+  try {
+    const code = await readFile(execPath, 'utf-8')
+    return { success: true, code }
+  } catch (error) {
+    return { success: false, error: String(error) }
+  }
+})
+
+// Start watching custom-nodes directory for changes
+ipcMain.handle('customNodes:watchDirectory', () => {
+  const customNodesPath = is.dev
+    ? join(process.cwd(), 'custom-nodes')
+    : join(app.getPath('userData'), 'custom-nodes')
+
+  // Stop existing watcher if any
+  if (customNodesWatcher) {
+    customNodesWatcher.close()
+    customNodesWatcher = null
+  }
+
+  try {
+    customNodesWatcher = watch(customNodesPath, { recursive: true }, (eventType, filename) => {
+      if (filename) {
+        // Extract package name from the changed file path
+        const parts = filename.split(/[/\\]/)
+        const packageName = parts[0]
+        if (packageName && !packageName.startsWith('.')) {
+          mainWindow?.webContents.send('customNodes:fileChanged', {
+            eventType,
+            packageName,
+            filename,
+          })
+        }
+      }
+    })
+
+    return { success: true }
+  } catch (error) {
+    return { success: false, error: String(error) }
+  }
+})
+
+// Stop watching
+ipcMain.handle('customNodes:stopWatching', () => {
+  if (customNodesWatcher) {
+    customNodesWatcher.close()
+    customNodesWatcher = null
+  }
+  return { success: true }
 })

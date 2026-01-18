@@ -73,8 +73,8 @@ const uiStore = useUIStore()
       <section class="settings-section">
         <h2 class="section-title">About</h2>
         <p class="about-text">
-          CLASP Flow v0.1.0<br />
-          The Ultimate Creative Flow Programming Engine<br /><br />
+          LATCH v0.1.0<br />
+          Live Art Tool for Creative Humans<br /><br />
           Created by LumenCanvas - 2026
         </p>
       </section>

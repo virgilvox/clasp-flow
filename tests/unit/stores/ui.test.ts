@@ -11,7 +11,8 @@ describe('UI Store', () => {
     const store = useUIStore()
 
     expect(store.sidebarOpen).toBe(true)
-    expect(store.sidebarPanel).toBe('nodes')
+    expect(store.propertiesPanelOpen).toBe(true)
+    expect(store.shaderEditorOpen).toBe(false)
     expect(store.zoom).toBe(1)
     expect(store.selectedNodes).toEqual([])
     expect(store.theme).toBe('light')
