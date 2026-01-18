@@ -52,12 +52,6 @@
   <em>External connectivity: MIDI, WebSocket, HTTP, OSC</em>
 </p>
 
-<p align="center">
-  <img src="public/screenshots/mappings.png" alt="Parameter Mappings" width="800">
-  <br>
-  <em>Map and route parameters between nodes and external devices</em>
-</p>
-
 ---
 
 ## Downloads
@@ -119,6 +113,12 @@ To connect LATCH to hardware and protocols like **OSC**, **MIDI**, **DMX**, **Ar
 - Bridges external protocols to/from CLASP
 - Auto-discovery of MIDI devices, OSC endpoints, and DMX universes
 - Available for **macOS** (Apple Silicon & Intel), **Windows**, and **Linux**
+
+<p align="center">
+  <img src="public/screenshots/mappings.png" alt="CLASP Bridge" width="800">
+  <br>
+  <em>CLASP Bridge: Map and route parameters between devices and protocols</em>
+</p>
 
 Download CLASP Bridge at [clasp.to](https://clasp.to/#downloads) or from the Connection Manager inside LATCH.
 

@@ -49,8 +49,9 @@ export const textGenerationExecutor: NodeExecutorFn = (ctx: ExecutionContext) =>
     return outputs
   }
 
-  // ONLY run on explicit trigger (true or 1), NOT on text change
-  const hasTrigger = trigger === true || trigger === 1
+  // ONLY run on explicit trigger - accepts boolean, number, string, or any truthy value
+  // This allows string triggers, timestamps, JSON objects, etc.
+  const hasTrigger = trigger !== undefined && trigger !== null && trigger !== false && trigger !== 0 && trigger !== ''
 
   if (!hasTrigger) {
     outputs.set('text', getCached(`${ctx.nodeId}:lastOutput`, ''))
