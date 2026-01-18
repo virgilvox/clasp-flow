@@ -8,7 +8,9 @@
 
 **Project**: LATCH - Live Art Tool for Creative Humans
 **Organization**: LumenCanvas (2026)
-**Repository**: `/Users/obsidian/Projects/lumencanvas/clasp-flow`
+**Repository**: `lumencanvas/latch` (GitHub)
+**Local Path**: `/Users/obsidian/Projects/lumencanvas/latch`
+**Demo**: https://latch.design
 **Type**: Web + Electron application
 **Stack**: Vue 3, TypeScript, Vue Flow, Pinia, Vite, Electron Forge
 
@@ -18,8 +20,68 @@
 
 ### Phase: 9 Complete - 3D System + Polish + Full Feature Set
 ### Next Step: Phase 10 - Polish & Export
+### Latest Release: v0.1.2
 
-### Latest Session Accomplishments (Connection Manager, CI Fixes, Netlify):
+### Latest Session Accomplishments (Repo Migration, CI/CD, AI Fixes):
+
+**Repository Migration:**
+- Moved from `virgilvox/clasp-flow` to `lumencanvas/latch`
+- Updated all package.json, forge.config.ts, and registry references
+- Database renamed to LatchDB
+
+**Demo & CI/CD:**
+- Demo deployed at https://latch.design (GitHub Pages)
+- CI workflow deploys web build on every push to main
+- Release workflow creates GitHub releases on version tags
+- Separate macOS builds for Apple Silicon (arm64) and Intel (x64)
+- Uses `macos-15-intel` runner for Intel builds
+
+**Sample Flow:**
+- Sample flow loads automatically on first visit
+- Flows marked dirty after import to persist to IndexedDB
+- Prevents "flow disappears on refresh" issue
+
+**App Naming:**
+- App renamed from "Latch" to "LATCH"
+- Updated forge.config.ts, README download links, xattr instructions
+- Download artifacts: LATCH-mac-arm64.zip, LATCH-mac-x64.zip, LATCH-win.zip, LATCH-linux.zip, LATCH-linux.deb
+
+**Electron Preload Fix:**
+- Fixed preload script not found error (`index.mjs` → `index.js`)
+- electron.vite.config.ts now outputs CommonJS format for preload
+- Added ignore patterns to exclude source files from asar
+
+**Trigger Node Fixes:**
+- Trigger node can now connect to trigger-type inputs regardless of outputType setting
+- Connection validation special-cases Trigger node in `connections.ts`
+
+**AI Text Generation Fix:**
+- AI executor now uses trigger value as prompt when it's a string
+- Priority: 1) prompt input, 2) trigger value (if string), 3) control value
+- Accepts any truthy value as trigger (not just `true` or `1`)
+
+**UI Improvements:**
+- All node palette categories collapsed by default
+- GitHub icon button in header linking to repo
+
+**Files Modified:**
+- `package.json` - name: latch
+- `forge.config.ts` - name: LATCH, ignore patterns
+- `electron.vite.config.ts` - preload outputs CommonJS index.js
+- `src/main/index.ts` - appUserModelId
+- `src/renderer/services/database.ts` - LatchDB
+- `src/renderer/stores/flows.ts` - loadSampleFlowIfFirstVisit, mark dirty
+- `src/renderer/utils/connections.ts` - Trigger node special case
+- `src/renderer/engine/executors/ai.ts` - use trigger value as prompt
+- `src/renderer/components/layout/AppSidebar.vue` - all categories collapsed
+- `src/renderer/components/layout/AppHeader.vue` - GitHub icon
+- `.github/workflows/ci.yml` - deploy-web job, architecture matrix
+- `.github/workflows/release.yml` - LATCH naming, arm64/x64 builds
+- `README.md` - demo link, downloads, xattr for LATCH
+
+---
+
+### Previous Session Accomplishments (Connection Manager, CI Fixes, Netlify):
 
 **Connection Manager System:**
 - Created modular connection manager service with adapter pattern
@@ -519,7 +581,7 @@ Use GLTF Loader for external models:
 
 ```bash
 # Navigate to project
-cd /Users/obsidian/Projects/lumencanvas/clasp-flow
+cd /Users/obsidian/Projects/lumencanvas/latch
 
 # Start development server
 npm run dev
@@ -531,10 +593,19 @@ npm run test
 npm run typecheck
 
 # Build for web
-npm run build
+npm run build:web
+
+# Build Electron
+npm run build:electron
+
+# Package Electron app
+npm run package
+
+# Create release artifacts
+npm run make
 
 # Start Electron dev mode
-npm run electron:dev
+npm run dev:electron
 ```
 
 ---
@@ -597,6 +668,9 @@ npm run electron:dev
 | 2026-01-18 | Wire Colors & UX | Wire colors by data type, selection chase animation, import/export, webcam fix, equalizer Tone.js fix |
 | 2026-01-18 | Shader & Logo | 17 shader presets, uniform auto-detection, vertex shader support, new LATCH logo, README with screenshots |
 | 2026-01-18 | Connection Manager | MQTT/OSC/HTTP adapters, Electron build fix, Netlify config, CI passing |
+| 2026-01-18 | Repo Migration & CI/CD | Moved to lumencanvas/latch, demo at latch.design, sample flow on first visit, GitHub releases |
+| 2026-01-18 | LATCH Rename & Builds | Renamed to LATCH, separate arm64/x64 macOS builds, preload script fix |
+| 2026-01-18 | AI & Trigger Fixes | Trigger connects to trigger inputs, AI uses trigger value as prompt |
 
 ---
 
