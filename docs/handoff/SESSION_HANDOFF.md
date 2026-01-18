@@ -60,6 +60,8 @@
 - Created public/logo-dark.svg for README display
 - Added logo and screenshots to README.md
 - Screenshots: flow.png, control.png, local-models.png, connection-manager.png
+- Added CLASP Integration section explaining the protocol, nodes, and Bridge app
+- Updated Connectivity features and Node Categories to include CLASP
 
 **Files Created/Modified:**
 - `src/renderer/services/visual/ShaderPresets.ts` - NEW: Shader preset library

@@ -50,6 +50,45 @@
 
 ---
 
+## CLASP Integration
+
+LATCH has first-class integration with [CLASP](https://clasp.to) (Creative Low-latency Application Streaming Protocol) - a real-time communication protocol designed for creative applications.
+
+### What is CLASP?
+
+CLASP is an open protocol for connecting creative tools, hardware, and software in real-time. Think of it as a universal language for live visuals, audio, lighting, and interactive installations. It provides:
+
+- **Low-latency messaging** - Sub-millisecond parameter updates
+- **Hierarchical addressing** - Organized parameter namespaces (e.g., `/scene/light/intensity`)
+- **Pattern subscriptions** - Subscribe to wildcard patterns like `/audio/*`
+- **Atomic bundles** - Group multiple updates for synchronized execution
+- **Quality of Service** - Fire-and-forget, confirmed, or committed delivery
+
+### CLASP Nodes in LATCH
+
+| Node | Purpose |
+|------|---------|
+| **CLASP Connection** | Establish connection to a CLASP router |
+| **CLASP Subscribe** | Listen to parameter changes by pattern |
+| **CLASP Set** | Set a parameter value on the router |
+| **CLASP Get** | Get current value of a parameter |
+| **CLASP Emit** | Send an event/trigger |
+| **CLASP Stream** | Stream high-frequency data (audio, video frames) |
+| **CLASP Bundle** | Send multiple updates atomically |
+
+### CLASP Bridge Desktop App
+
+To connect LATCH to hardware and protocols like **OSC**, **MIDI**, **DMX**, **ArtNet**, and **sACN**, use the [CLASP Bridge](https://clasp.to/#downloads) desktop application:
+
+- Acts as a local CLASP router on your machine
+- Bridges external protocols to/from CLASP
+- Auto-discovery of MIDI devices, OSC endpoints, and DMX universes
+- Available for **macOS** (Apple Silicon & Intel), **Windows**, and **Linux**
+
+Download CLASP Bridge at [clasp.to](https://clasp.to/#downloads) or from the Connection Manager inside LATCH.
+
+---
+
 ## Features
 
 ### Visual Programming
@@ -100,9 +139,11 @@
 - Models run locally - no server required
 
 ### Connectivity
+- **CLASP protocol** - Full integration with [clasp.to](https://clasp.to) for real-time creative networking
 - HTTP/REST requests (GET/POST/PUT/DELETE/PATCH)
 - WebSocket connections (connect, disconnect, send, receive)
 - MIDI input/output (notes, velocity, CC messages)
+- OSC support via CLASP Bridge
 - JSON parse/stringify utilities
 
 ### Code Nodes
@@ -188,7 +229,7 @@ npx vue-tsc --noEmit
 | **Visual** | Shader, Webcam, Color, Texture Display, Blend, Main Output |
 | **3D** | Scene 3D, Camera 3D, Render 3D, Transform 3D, Box, Sphere, Plane, Cylinder, Torus, Material, Ambient Light, Directional Light, Point Light, Spot Light, GLTF Loader, Group 3D |
 | **AI** | Text Generation, Image Classification, Sentiment, Captioning, Embedding, Object Detection |
-| **Connectivity** | HTTP Request, WebSocket, MIDI Input, MIDI Output, JSON Parse, JSON Stringify |
+| **Connectivity** | CLASP Connection, CLASP Subscribe, CLASP Set, CLASP Get, CLASP Emit, CLASP Stream, CLASP Bundle, HTTP Request, WebSocket, MIDI Input, MIDI Output, JSON Parse, JSON Stringify |
 | **Code** | Function, Expression, Template, Counter, Toggle, Sample & Hold, Value Delay |
 | **Subflows** | Subflow Input, Subflow Output, Subflow Instance |
 
