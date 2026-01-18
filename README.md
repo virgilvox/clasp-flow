@@ -60,19 +60,20 @@ Download the latest desktop app for your platform:
 
 | Platform | Download |
 |----------|----------|
-| **macOS** (Universal) | [Latch-mac.zip](https://github.com/lumencanvas/latch/releases/latest/download/Latch-mac.zip) |
-| **Windows** | [Latch-win.zip](https://github.com/lumencanvas/latch/releases/latest/download/Latch-win.zip) |
-| **Linux** (AppImage) | [Latch-linux.AppImage](https://github.com/lumencanvas/latch/releases/latest/download/Latch-linux.AppImage) |
-| **Linux** (deb) | [Latch-linux.deb](https://github.com/lumencanvas/latch/releases/latest/download/Latch-linux.deb) |
+| **macOS** (Apple Silicon) | [LATCH-mac-arm64.zip](https://github.com/lumencanvas/latch/releases/latest/download/LATCH-mac-arm64.zip) |
+| **macOS** (Intel) | [LATCH-mac-x64.zip](https://github.com/lumencanvas/latch/releases/latest/download/LATCH-mac-x64.zip) |
+| **Windows** | [LATCH-win.zip](https://github.com/lumencanvas/latch/releases/latest/download/LATCH-win.zip) |
+| **Linux** (zip) | [LATCH-linux.zip](https://github.com/lumencanvas/latch/releases/latest/download/LATCH-linux.zip) |
+| **Linux** (deb) | [LATCH-linux.deb](https://github.com/lumencanvas/latch/releases/latest/download/LATCH-linux.deb) |
 
 Or [browse all releases](https://github.com/lumencanvas/latch/releases).
 
 ### macOS Note
 
-If you see **"Latch is damaged and can't be opened"**, run this in Terminal:
+If you see **"LATCH is damaged and can't be opened"**, run this in Terminal:
 
 ```bash
-xattr -cr /Applications/Latch.app
+xattr -cr /Applications/LATCH.app
 ```
 
 This removes the quarantine flag from unsigned apps. We're working on proper code signing.

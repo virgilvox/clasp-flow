@@ -12,18 +12,24 @@ permissions:
 
 jobs:
   build-electron:
-    name: Build Electron (${{ matrix.os }})
+    name: Build Electron (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-latest
-            platform: mac
+            name: mac-arm64
+            arch: arm64
+          - os: macos-13
+            name: mac-x64
+            arch: x64
           - os: windows-latest
-            platform: win
+            name: win
+            arch: x64
           - os: ubuntu-latest
-            platform: linux
+            name: linux
+            arch: x64
 
     steps:
       - name: Checkout
@@ -39,36 +45,44 @@ jobs:
         run: npm ci
 
       - name: Build & Make
-        run: npm run make
+        run: npm run make -- --arch=${{ matrix.arch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # macOS: Upload zip
-      - name: Upload macOS artifact
-        if: matrix.os == 'macos-latest'
+      # macOS arm64: Upload zip
+      - name: Upload macOS arm64 artifact
+        if: matrix.name == 'mac-arm64'
         uses: actions/upload-artifact@v4
         with:
-          name: latch-mac
-          path: out/make/zip/darwin/**/*.zip
+          name: latch-mac-arm64
+          path: out/make/zip/darwin/arm64/*.zip
+
+      # macOS x64: Upload zip
+      - name: Upload macOS x64 artifact
+        if: matrix.name == 'mac-x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: latch-mac-x64
+          path: out/make/zip/darwin/x64/*.zip
 
       # Windows: Upload zip
       - name: Upload Windows artifact
-        if: matrix.os == 'windows-latest'
+        if: matrix.name == 'win'
         uses: actions/upload-artifact@v4
         with:
           name: latch-win
           path: out/make/zip/win32/**/*.zip
 
-      # Linux: Upload deb and AppImage
+      # Linux: Upload deb and zip
       - name: Upload Linux deb
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.name == 'linux'
         uses: actions/upload-artifact@v4
         with:
           name: latch-linux-deb
           path: out/make/deb/x64/*.deb
 
       - name: Upload Linux zip
-        if: matrix.os == 'ubuntu-latest'
+        if: matrix.name == 'linux'
         uses: actions/upload-artifact@v4
         with:
           name: latch-linux-zip
@@ -93,13 +107,17 @@ jobs:
       - name: Prepare release files
         run: |
           mkdir -p release
-          # macOS
-          find artifacts/latch-mac -name "*.zip" -exec cp {} release/Latch-mac.zip \; 2>/dev/null || true
+          # macOS Apple Silicon (arm64)
+          find artifacts/latch-mac-arm64 -name "*.zip" -exec cp {} release/LATCH-mac-arm64.zip \; 2>/dev/null || true
+          # macOS Intel (x64)
+          find artifacts/latch-mac-x64 -name "*.zip" -exec cp {} release/LATCH-mac-x64.zip \; 2>/dev/null || true
+          # Universal macOS (copy arm64 as default mac.zip for backwards compat)
+          find artifacts/latch-mac-arm64 -name "*.zip" -exec cp {} release/LATCH-mac.zip \; 2>/dev/null || true
           # Windows
-          find artifacts/latch-win -name "*.zip" -exec cp {} release/Latch-win.zip \; 2>/dev/null || true
+          find artifacts/latch-win -name "*.zip" -exec cp {} release/LATCH-win.zip \; 2>/dev/null || true
           # Linux
-          find artifacts/latch-linux-deb -name "*.deb" -exec cp {} release/Latch-linux.deb \; 2>/dev/null || true
-          find artifacts/latch-linux-zip -name "*.zip" -exec cp {} release/Latch-linux.zip \; 2>/dev/null || true
+          find artifacts/latch-linux-deb -name "*.deb" -exec cp {} release/LATCH-linux.deb \; 2>/dev/null || true
+          find artifacts/latch-linux-zip -name "*.zip" -exec cp {} release/LATCH-linux.zip \; 2>/dev/null || true
           ls -la release/
 
       - name: Create Release
