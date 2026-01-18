@@ -885,6 +885,43 @@ export const useFlowsStore = defineStore('flows', {
     },
 
     /**
+     * Load sample flow from public folder for first-time users
+     * Only loads if this is the first visit (checks localStorage)
+     */
+    async loadSampleFlowIfFirstVisit(): Promise<boolean> {
+      const FIRST_VISIT_KEY = 'latch_has_visited'
+
+      // Check if user has visited before
+      if (localStorage.getItem(FIRST_VISIT_KEY)) {
+        return false
+      }
+
+      try {
+        // Fetch the sample flow from public folder
+        const response = await fetch('/sample-flow.json')
+        if (!response.ok) {
+          console.warn('[Flows] Sample flow not found, creating empty flow')
+          return false
+        }
+
+        const text = await response.text()
+        const result = this.importFlows(text, { replace: true })
+
+        if (result.success) {
+          console.log('[Flows] Loaded sample flow for first-time user')
+          // Mark as visited so we don't load it again
+          localStorage.setItem(FIRST_VISIT_KEY, 'true')
+          return true
+        }
+
+        return false
+      } catch (error) {
+        console.warn('[Flows] Failed to load sample flow:', error)
+        return false
+      }
+    },
+
+    /**
      * Trigger file picker for import
      */
     async promptImport(options: { replace?: boolean } = {}): Promise<{ success: boolean; message: string; count: number }> {

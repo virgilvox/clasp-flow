@@ -20,6 +20,7 @@ import {
   Code2,
   Brain,
   Plug,
+  Github,
 } from 'lucide-vue-next'
 import LatchLogo from '@/components/branding/LatchLogo.vue'
 import { aiInference } from '@/services/ai/AIInference'
@@ -128,6 +129,10 @@ function saveProject() {
   }
   // Also trigger export for persistent save
   flowsStore.exportAllFlows()
+}
+
+function openGitHub() {
+  window.open('https://github.com/lumencanvas/latch', '_blank')
 }
 </script>
 
@@ -283,6 +288,14 @@ function saveProject() {
         <Settings />
       </button>
 
+      <button
+        class="btn btn-icon btn-ghost github-btn"
+        title="View on GitHub"
+        @click="openGitHub"
+      >
+        <Github :size="16" />
+      </button>
+
       <span class="header-version">v0.1.0</span>
     </div>
   </header>
@@ -423,10 +436,19 @@ function saveProject() {
   color: #6366f1;
 }
 
+.github-btn {
+  color: var(--color-neutral-400);
+}
+
+.github-btn:hover {
+  color: var(--color-neutral-0);
+  background: var(--color-neutral-700);
+}
+
 .header-version {
   font-size: var(--font-size-xs);
   color: var(--color-neutral-500);
-  margin-left: var(--space-2);
+  margin-left: var(--space-1);
 }
 
 .view-switcher {

@@ -62,10 +62,21 @@ const edgeTypes = {
 // Initialize node registry (registers all built-in nodes)
 initializeNodeRegistry()
 
-// Create initial flow if none exists (must happen after nodes are registered)
-if (!flowsStore.activeFlow) {
-  flowsStore.createFlow('My First Flow')
-}
+// Track initialization state
+const isInitializing = ref(true)
+
+// Initialize flows on mount
+onMounted(async () => {
+  // Try to load sample flow for first-time users
+  if (!flowsStore.activeFlow) {
+    const loaded = await flowsStore.loadSampleFlowIfFirstVisit()
+    if (!loaded && !flowsStore.activeFlow) {
+      // Not first visit or failed to load, create empty flow
+      flowsStore.createFlow('My First Flow')
+    }
+  }
+  isInitializing.value = false
+})
 
 // Connection validation
 function isValidConnection(connection: Connection): boolean {
