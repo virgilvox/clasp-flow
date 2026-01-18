@@ -15,7 +15,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
+        include:
+          - os: macos-latest
+            artifact_name: Latch-mac.zip
+            artifact_pattern: "out/make/zip/darwin/**/*.zip"
+          - os: windows-latest
+            artifact_name: Latch-win.zip
+            artifact_pattern: "out/make/zip/win32/**/*.zip"
+          - os: ubuntu-latest
+            artifact_name: Latch-linux
+            artifact_pattern: "out/make"
 
     steps:
       - name: Checkout
@@ -35,10 +44,35 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      # macOS: Rename and upload zip
+      - name: Prepare macOS artifact
+        if: matrix.os == 'macos-latest'
+        run: |
+          mkdir -p release
+          cp out/make/zip/darwin/universal/*.zip release/Latch-mac.zip || cp out/make/zip/darwin/*/*.zip release/Latch-mac.zip
+
+      # Windows: Rename and upload zip
+      - name: Prepare Windows artifact
+        if: matrix.os == 'windows-latest'
+        shell: bash
+        run: |
+          mkdir -p release
+          cp out/make/zip/win32/*/*.zip release/Latch-win.zip
+
+      # Linux: Rename AppImage and deb
+      - name: Prepare Linux artifacts
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          mkdir -p release
+          cp out/make/deb/x64/*.deb release/Latch-linux.deb || true
+          cp out/make/*.AppImage release/Latch-linux.AppImage || true
+          # Also grab any zip if available
+          cp out/make/zip/linux/*/*.zip release/Latch-linux.zip || true
+
       - name: Upload to Release
         uses: softprops/action-gh-release@v1
         with:
-          files: out/make/**/*
+          files: release/*
           draft: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
