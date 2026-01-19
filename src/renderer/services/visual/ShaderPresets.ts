@@ -559,6 +559,49 @@ export function getPresetsByCategory(category: ShaderPreset['category']): Shader
 }
 
 /**
+ * Inject uniform declarations into GLSL code
+ * This prepends uniform declarations at the start of the code so that
+ * parseUniformsFromCode() can find them. Used when loading preset shaders
+ * whose code uses uniforms without declaring them.
+ */
+export function injectUniformDeclarations(code: string, uniforms: UniformDefinition[]): string {
+  if (!uniforms || uniforms.length === 0) return code
+
+  // Generate uniform declarations
+  const declarations: string[] = []
+  for (const u of uniforms) {
+    let glslType: string
+    switch (u.type) {
+      case 'float':
+        glslType = 'float'
+        break
+      case 'int':
+        glslType = 'int'
+        break
+      case 'vec2':
+        glslType = 'vec2'
+        break
+      case 'vec3':
+        glslType = 'vec3'
+        break
+      case 'vec4':
+        glslType = 'vec4'
+        break
+      case 'sampler2D':
+        glslType = 'sampler2D'
+        break
+      default:
+        continue
+    }
+    declarations.push(`uniform ${glslType} ${u.name};`)
+  }
+
+  // Prepend declarations to code
+  const declarationBlock = `// Auto-generated uniform declarations\n${declarations.join('\n')}\n\n`
+  return declarationBlock + code
+}
+
+/**
  * Parse uniform declarations from GLSL code
  * Robust parser that handles:
  * - Various GLSL syntax variations

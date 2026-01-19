@@ -1,0 +1,579 @@
+/**
+ * MediaPipe Service
+ *
+ * Centralized service for MediaPipe vision tasks including:
+ * - Hand landmark detection
+ * - Face landmark detection (with blendshapes)
+ * - Pose landmark detection
+ * - Object detection
+ *
+ * Uses @mediapipe/tasks-vision for all tasks.
+ */
+
+// MediaPipe types - using 'any' for runtime types to avoid InstanceType issues with private constructors
+// The actual types are checked at runtime when the module is imported
+type FilesetResolver = typeof import('@mediapipe/tasks-vision')['FilesetResolver']
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type HandLandmarker = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type FaceLandmarker = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type PoseLandmarker = any
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type ObjectDetector = any
+
+// ============================================================================
+// Result Types
+// ============================================================================
+
+export interface Point3D {
+  x: number
+  y: number
+  z: number
+}
+
+export interface HandResult {
+  landmarks: Point3D[][]
+  worldLandmarks: Point3D[][]
+  handedness: Array<{ categoryName: string; score: number }>
+}
+
+export interface FaceResult {
+  landmarks: Point3D[][]
+  blendshapes: Array<{ categoryName: string; score: number }>[]
+  transformationMatrixes: Float32Array[]
+}
+
+export interface PoseResult {
+  landmarks: Point3D[][]
+  worldLandmarks: Point3D[][]
+  segmentationMasks: ImageData[]
+}
+
+export interface Detection {
+  boundingBox: {
+    originX: number
+    originY: number
+    width: number
+    height: number
+  }
+  categories: Array<{
+    categoryName: string
+    score: number
+    index: number
+  }>
+}
+
+export interface ObjectDetectionResult {
+  detections: Detection[]
+}
+
+// ============================================================================
+// Gesture Recognition
+// ============================================================================
+
+export type GestureType = 'open' | 'closed' | 'pointing' | 'peace' | 'thumbs_up' | 'thumbs_down' | 'pinch' | 'unknown'
+
+export interface FingerTips {
+  thumb: Point3D | null
+  index: Point3D | null
+  middle: Point3D | null
+  ring: Point3D | null
+  pinky: Point3D | null
+}
+
+// Hand landmark indices
+const HAND_LANDMARKS = {
+  WRIST: 0,
+  THUMB_CMC: 1, THUMB_MCP: 2, THUMB_IP: 3, THUMB_TIP: 4,
+  INDEX_MCP: 5, INDEX_PIP: 6, INDEX_DIP: 7, INDEX_TIP: 8,
+  MIDDLE_MCP: 9, MIDDLE_PIP: 10, MIDDLE_DIP: 11, MIDDLE_TIP: 12,
+  RING_MCP: 13, RING_PIP: 14, RING_DIP: 15, RING_TIP: 16,
+  PINKY_MCP: 17, PINKY_PIP: 18, PINKY_DIP: 19, PINKY_TIP: 20,
+}
+
+/**
+ * Extract finger tip positions from hand landmarks
+ */
+export function extractFingerTips(landmarks: Point3D[]): FingerTips {
+  if (landmarks.length < 21) {
+    return { thumb: null, index: null, middle: null, ring: null, pinky: null }
+  }
+
+  return {
+    thumb: landmarks[HAND_LANDMARKS.THUMB_TIP],
+    index: landmarks[HAND_LANDMARKS.INDEX_TIP],
+    middle: landmarks[HAND_LANDMARKS.MIDDLE_TIP],
+    ring: landmarks[HAND_LANDMARKS.RING_TIP],
+    pinky: landmarks[HAND_LANDMARKS.PINKY_TIP],
+  }
+}
+
+/**
+ * Recognize hand gesture from landmarks
+ */
+export function recognizeGesture(landmarks: Point3D[]): GestureType {
+  if (landmarks.length < 21) return 'unknown'
+
+  // Get key points
+  const wrist = landmarks[HAND_LANDMARKS.WRIST]
+  const thumbTip = landmarks[HAND_LANDMARKS.THUMB_TIP]
+  const indexTip = landmarks[HAND_LANDMARKS.INDEX_TIP]
+  const middleTip = landmarks[HAND_LANDMARKS.MIDDLE_TIP]
+  const ringTip = landmarks[HAND_LANDMARKS.RING_TIP]
+  const pinkyTip = landmarks[HAND_LANDMARKS.PINKY_TIP]
+
+  const indexMcp = landmarks[HAND_LANDMARKS.INDEX_MCP]
+  const middleMcp = landmarks[HAND_LANDMARKS.MIDDLE_MCP]
+  const ringMcp = landmarks[HAND_LANDMARKS.RING_MCP]
+  const pinkyMcp = landmarks[HAND_LANDMARKS.PINKY_MCP]
+
+  // Helper to check if finger is extended
+  const isExtended = (tip: Point3D, mcp: Point3D): boolean => {
+    return tip.y < mcp.y - 0.05 // Finger tip is above MCP joint
+  }
+
+  const indexExtended = isExtended(indexTip, indexMcp)
+  const middleExtended = isExtended(middleTip, middleMcp)
+  const ringExtended = isExtended(ringTip, ringMcp)
+  const pinkyExtended = isExtended(pinkyTip, pinkyMcp)
+
+  // Calculate distance between thumb and index for pinch detection
+  const pinchDistance = Math.sqrt(
+    Math.pow(thumbTip.x - indexTip.x, 2) +
+    Math.pow(thumbTip.y - indexTip.y, 2) +
+    Math.pow(thumbTip.z - indexTip.z, 2)
+  )
+
+  // Pinch gesture
+  if (pinchDistance < 0.05) {
+    return 'pinch'
+  }
+
+  // Thumbs up/down
+  const thumbExtended = thumbTip.y < wrist.y - 0.1
+  const thumbDown = thumbTip.y > wrist.y + 0.1
+  const othersCurled = !indexExtended && !middleExtended && !ringExtended && !pinkyExtended
+
+  if (thumbExtended && othersCurled) {
+    return 'thumbs_up'
+  }
+  if (thumbDown && othersCurled) {
+    return 'thumbs_down'
+  }
+
+  // Peace sign
+  if (indexExtended && middleExtended && !ringExtended && !pinkyExtended) {
+    return 'peace'
+  }
+
+  // Pointing
+  if (indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
+    return 'pointing'
+  }
+
+  // Open hand
+  if (indexExtended && middleExtended && ringExtended && pinkyExtended) {
+    return 'open'
+  }
+
+  // Closed fist
+  if (!indexExtended && !middleExtended && !ringExtended && !pinkyExtended) {
+    return 'closed'
+  }
+
+  return 'unknown'
+}
+
+// ============================================================================
+// Face Mesh Helpers
+// ============================================================================
+
+export interface HeadRotation {
+  pitch: number  // Up/down (negative = looking up)
+  yaw: number    // Left/right (negative = looking left)
+  roll: number   // Tilt (negative = tilting left)
+}
+
+export interface FaceBox {
+  x: number
+  y: number
+  width: number
+  height: number
+}
+
+/**
+ * Extract head rotation from face transformation matrix
+ */
+export function extractHeadRotation(matrix: Float32Array): HeadRotation {
+  if (matrix.length < 16) {
+    return { pitch: 0, yaw: 0, roll: 0 }
+  }
+
+  // Extract rotation from 4x4 transformation matrix
+  const r02 = matrix[2]
+  const r10 = matrix[4], r11 = matrix[5], r12 = matrix[6]
+  const r22 = matrix[10]
+
+  // Calculate Euler angles
+  const pitch = Math.asin(-r12) * (180 / Math.PI)
+  const yaw = Math.atan2(r02, r22) * (180 / Math.PI)
+  const roll = Math.atan2(r10, r11) * (180 / Math.PI)
+
+  return { pitch, yaw, roll }
+}
+
+/**
+ * Calculate face bounding box from landmarks
+ */
+export function calculateFaceBox(landmarks: Point3D[]): FaceBox {
+  if (landmarks.length === 0) {
+    return { x: 0, y: 0, width: 0, height: 0 }
+  }
+
+  let minX = Infinity, minY = Infinity
+  let maxX = -Infinity, maxY = -Infinity
+
+  for (const point of landmarks) {
+    minX = Math.min(minX, point.x)
+    minY = Math.min(minY, point.y)
+    maxX = Math.max(maxX, point.x)
+    maxY = Math.max(maxY, point.y)
+  }
+
+  return {
+    x: minX,
+    y: minY,
+    width: maxX - minX,
+    height: maxY - minY,
+  }
+}
+
+/**
+ * Extract key blendshape values
+ */
+export function extractBlendshapeValues(
+  blendshapes: Array<{ categoryName: string; score: number }>
+): Record<string, number> {
+  const result: Record<string, number> = {}
+
+  for (const shape of blendshapes) {
+    result[shape.categoryName] = shape.score
+  }
+
+  return result
+}
+
+// ============================================================================
+// MediaPipe Service
+// ============================================================================
+
+class MediaPipeServiceImpl {
+  private filesetResolver: Awaited<ReturnType<FilesetResolver['forVisionTasks']>> | null = null
+  private handLandmarker: HandLandmarker | null = null
+  private faceLandmarker: FaceLandmarker | null = null
+  private poseLandmarker: PoseLandmarker | null = null
+  private objectDetector: ObjectDetector | null = null
+
+  private loading = new Set<string>()
+
+  // Track last timestamps to detect playback restarts
+  // MediaPipe requires monotonically increasing timestamps
+  private lastTimestamp: Map<string, number> = new Map()
+
+  // CDN URLs for MediaPipe WASM files
+  private readonly WASM_URL = 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm'
+  private readonly MODEL_BASE = 'https://storage.googleapis.com/mediapipe-models'
+
+  // =========================================================================
+  // Timestamp Management
+  // =========================================================================
+
+  /**
+   * Check if timestamp went backwards (playback restart) and reset landmarker if needed.
+   * MediaPipe requires monotonically increasing timestamps.
+   * Returns the timestamp to use (always monotonically increasing).
+   */
+  private checkTimestampReset(taskType: string, timestamp: number): number {
+    const lastTs = this.lastTimestamp.get(taskType) ?? 0
+
+    // If timestamp went backwards significantly, reset the landmarker
+    // We use a threshold to avoid resetting on minor jitter
+    if (timestamp < lastTs - 100) {
+      console.log(`[MediaPipe] Timestamp reset detected for ${taskType}: ${lastTs} -> ${timestamp}, resetting landmarker`)
+      this.dispose(taskType as 'hand' | 'face' | 'pose' | 'object')
+      this.lastTimestamp.set(taskType, timestamp)
+      return timestamp
+    }
+
+    // Ensure timestamp is always increasing (handle minor backwards jumps)
+    const safeTimestamp = Math.max(timestamp, lastTs + 1)
+    this.lastTimestamp.set(taskType, safeTimestamp)
+    return safeTimestamp
+  }
+
+  // =========================================================================
+  // Initialization
+  // =========================================================================
+
+  private async ensureFileset(): Promise<void> {
+    if (this.filesetResolver) return
+
+    const { FilesetResolver } = await import('@mediapipe/tasks-vision')
+    this.filesetResolver = await FilesetResolver.forVisionTasks(this.WASM_URL)
+  }
+
+  async loadHandLandmarker(): Promise<void> {
+    if (this.handLandmarker || this.loading.has('hand')) return
+    this.loading.add('hand')
+
+    try {
+      await this.ensureFileset()
+      const { HandLandmarker } = await import('@mediapipe/tasks-vision')
+
+      this.handLandmarker = await HandLandmarker.createFromOptions(this.filesetResolver!, {
+        baseOptions: {
+          modelAssetPath: `${this.MODEL_BASE}/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task`,
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numHands: 2,
+      })
+
+      console.log('[MediaPipe] Hand landmarker loaded')
+    } finally {
+      this.loading.delete('hand')
+    }
+  }
+
+  async loadFaceLandmarker(): Promise<void> {
+    if (this.faceLandmarker || this.loading.has('face')) return
+    this.loading.add('face')
+
+    try {
+      await this.ensureFileset()
+      const { FaceLandmarker } = await import('@mediapipe/tasks-vision')
+
+      this.faceLandmarker = await FaceLandmarker.createFromOptions(this.filesetResolver!, {
+        baseOptions: {
+          modelAssetPath: `${this.MODEL_BASE}/face_landmarker/face_landmarker/float16/latest/face_landmarker.task`,
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numFaces: 1,
+        outputFaceBlendshapes: true,
+        outputFacialTransformationMatrixes: true,
+      })
+
+      console.log('[MediaPipe] Face landmarker loaded')
+    } finally {
+      this.loading.delete('face')
+    }
+  }
+
+  async loadPoseLandmarker(): Promise<void> {
+    if (this.poseLandmarker || this.loading.has('pose')) return
+    this.loading.add('pose')
+
+    try {
+      await this.ensureFileset()
+      const { PoseLandmarker } = await import('@mediapipe/tasks-vision')
+
+      this.poseLandmarker = await PoseLandmarker.createFromOptions(this.filesetResolver!, {
+        baseOptions: {
+          modelAssetPath: `${this.MODEL_BASE}/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task`,
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        numPoses: 1,
+        outputSegmentationMasks: false, // Disable for performance
+      })
+
+      console.log('[MediaPipe] Pose landmarker loaded')
+    } finally {
+      this.loading.delete('pose')
+    }
+  }
+
+  async loadObjectDetector(): Promise<void> {
+    if (this.objectDetector || this.loading.has('object')) return
+    this.loading.add('object')
+
+    try {
+      await this.ensureFileset()
+      const { ObjectDetector } = await import('@mediapipe/tasks-vision')
+
+      this.objectDetector = await ObjectDetector.createFromOptions(this.filesetResolver!, {
+        baseOptions: {
+          modelAssetPath: `${this.MODEL_BASE}/object_detector/efficientdet_lite0/int8/latest/efficientdet_lite0.tflite`,
+          delegate: 'GPU',
+        },
+        runningMode: 'VIDEO',
+        maxResults: 10,
+        scoreThreshold: 0.5,
+      })
+
+      console.log('[MediaPipe] Object detector loaded')
+    } finally {
+      this.loading.delete('object')
+    }
+  }
+
+  // =========================================================================
+  // Detection Methods
+  // =========================================================================
+
+  async detectHands(video: HTMLVideoElement, timestamp: number): Promise<HandResult | null> {
+    // Check for timestamp reset (playback restart)
+    const safeTimestamp = this.checkTimestampReset('hand', timestamp)
+
+    if (!this.handLandmarker) {
+      await this.loadHandLandmarker()
+    }
+
+    if (!this.handLandmarker || video.readyState < 2) {
+      return null
+    }
+
+    try {
+      const result = this.handLandmarker.detectForVideo(video, safeTimestamp)
+
+      return {
+        landmarks: result.landmarks,
+        worldLandmarks: result.worldLandmarks,
+        handedness: result.handedness.flat(),
+      }
+    } catch (error) {
+      console.error('[MediaPipe] Hand detection error:', error)
+      return null
+    }
+  }
+
+  async detectFace(video: HTMLVideoElement, timestamp: number): Promise<FaceResult | null> {
+    // Check for timestamp reset (playback restart)
+    const safeTimestamp = this.checkTimestampReset('face', timestamp)
+
+    if (!this.faceLandmarker) {
+      await this.loadFaceLandmarker()
+    }
+
+    if (!this.faceLandmarker || video.readyState < 2) {
+      return null
+    }
+
+    try {
+      const result = this.faceLandmarker.detectForVideo(video, safeTimestamp)
+
+      return {
+        landmarks: result.faceLandmarks,
+        blendshapes: result.faceBlendshapes || [],
+        transformationMatrixes: result.facialTransformationMatrixes || [],
+      }
+    } catch (error) {
+      console.error('[MediaPipe] Face detection error:', error)
+      return null
+    }
+  }
+
+  async detectPose(video: HTMLVideoElement, timestamp: number): Promise<PoseResult | null> {
+    // Check for timestamp reset (playback restart)
+    const safeTimestamp = this.checkTimestampReset('pose', timestamp)
+
+    if (!this.poseLandmarker) {
+      await this.loadPoseLandmarker()
+    }
+
+    if (!this.poseLandmarker || video.readyState < 2) {
+      return null
+    }
+
+    try {
+      const result = this.poseLandmarker.detectForVideo(video, safeTimestamp)
+
+      return {
+        landmarks: result.landmarks,
+        worldLandmarks: result.worldLandmarks,
+        segmentationMasks: [], // Disabled for performance
+      }
+    } catch (error) {
+      console.error('[MediaPipe] Pose detection error:', error)
+      return null
+    }
+  }
+
+  async detectObjects(video: HTMLVideoElement, timestamp: number): Promise<ObjectDetectionResult | null> {
+    // Check for timestamp reset (playback restart)
+    const safeTimestamp = this.checkTimestampReset('object', timestamp)
+
+    if (!this.objectDetector) {
+      await this.loadObjectDetector()
+    }
+
+    if (!this.objectDetector || video.readyState < 2) {
+      return null
+    }
+
+    try {
+      const result = this.objectDetector.detectForVideo(video, safeTimestamp)
+
+      return {
+        detections: result.detections.map((d: { boundingBox?: Detection['boundingBox']; categories: Detection['categories'] }) => ({
+          boundingBox: d.boundingBox!,
+          categories: d.categories,
+        })),
+      }
+    } catch (error) {
+      console.error('[MediaPipe] Object detection error:', error)
+      return null
+    }
+  }
+
+  // =========================================================================
+  // Lifecycle
+  // =========================================================================
+
+  dispose(taskType?: 'hand' | 'face' | 'pose' | 'object'): void {
+    if (!taskType || taskType === 'hand') {
+      this.handLandmarker?.close()
+      this.handLandmarker = null
+      this.lastTimestamp.delete('hand')
+    }
+    if (!taskType || taskType === 'face') {
+      this.faceLandmarker?.close()
+      this.faceLandmarker = null
+      this.lastTimestamp.delete('face')
+    }
+    if (!taskType || taskType === 'pose') {
+      this.poseLandmarker?.close()
+      this.poseLandmarker = null
+      this.lastTimestamp.delete('pose')
+    }
+    if (!taskType || taskType === 'object') {
+      this.objectDetector?.close()
+      this.objectDetector = null
+      this.lastTimestamp.delete('object')
+    }
+
+    if (!taskType) {
+      this.filesetResolver = null
+      this.lastTimestamp.clear()
+    }
+  }
+
+  isLoaded(taskType: 'hand' | 'face' | 'pose' | 'object'): boolean {
+    switch (taskType) {
+      case 'hand': return this.handLandmarker !== null
+      case 'face': return this.faceLandmarker !== null
+      case 'pose': return this.poseLandmarker !== null
+      case 'object': return this.objectDetector !== null
+      default: return false
+    }
+  }
+
+  isLoading(taskType: 'hand' | 'face' | 'pose' | 'object'): boolean {
+    return this.loading.has(taskType)
+  }
+}
+
+// Singleton instance
+export const mediaPipeService = new MediaPipeServiceImpl()

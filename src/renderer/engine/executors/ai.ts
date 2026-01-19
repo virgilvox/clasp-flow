@@ -994,6 +994,468 @@ export const objectDetectionExecutor: NodeExecutorFn = (ctx: ExecutionContext) =
 }
 
 // ============================================================================
+// MediaPipe Hand Tracking Node
+// ============================================================================
+
+import {
+  mediaPipeService,
+  extractFingerTips,
+  recognizeGesture,
+  extractHeadRotation,
+  calculateFaceBox,
+  extractBlendshapeValues,
+} from '@/services/ai/MediaPipeService'
+
+export const mediapipeHandExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
+  const outputs = new Map<string, unknown>()
+  const videoInput = ctx.inputs.get('video') as HTMLVideoElement | null
+  const enabled = (ctx.controls.get('enabled') as boolean) ?? true
+  const handIndex = (ctx.controls.get('handIndex') as number) ?? 0
+
+  if (!enabled || !videoInput) {
+    outputs.set('landmarks', getCached(`${ctx.nodeId}:landmarks`, []))
+    outputs.set('worldLandmarks', getCached(`${ctx.nodeId}:worldLandmarks`, []))
+    outputs.set('handedness', getCached(`${ctx.nodeId}:handedness`, ''))
+    outputs.set('confidence', getCached(`${ctx.nodeId}:confidence`, 0))
+    outputs.set('gestureType', getCached(`${ctx.nodeId}:gestureType`, 'unknown'))
+    outputs.set('fingerTips', getCached(`${ctx.nodeId}:fingerTips`, null))
+    outputs.set('handCount', getCached(`${ctx.nodeId}:handCount`, 0))
+    outputs.set('detected', false)
+    outputs.set('loading', mediaPipeService.isLoading('hand'))
+    return outputs
+  }
+
+  // Check if loading
+  if (mediaPipeService.isLoading('hand')) {
+    outputs.set('landmarks', getCached(`${ctx.nodeId}:landmarks`, []))
+    outputs.set('worldLandmarks', getCached(`${ctx.nodeId}:worldLandmarks`, []))
+    outputs.set('handedness', '')
+    outputs.set('confidence', 0)
+    outputs.set('gestureType', 'unknown')
+    outputs.set('fingerTips', null)
+    outputs.set('handCount', 0)
+    outputs.set('detected', false)
+    outputs.set('loading', true)
+    return outputs
+  }
+
+  try {
+    const result = await mediaPipeService.detectHands(videoInput, ctx.totalTime * 1000)
+
+    if (!result || result.landmarks.length === 0) {
+      setCached(`${ctx.nodeId}:detected`, false)
+      setCached(`${ctx.nodeId}:handCount`, 0)
+      outputs.set('landmarks', [])
+      outputs.set('worldLandmarks', [])
+      outputs.set('handedness', '')
+      outputs.set('confidence', 0)
+      outputs.set('gestureType', 'unknown')
+      outputs.set('fingerTips', null)
+      outputs.set('handCount', 0)
+      outputs.set('detected', false)
+      outputs.set('loading', false)
+      return outputs
+    }
+
+    // Get the selected hand
+    const idx = Math.min(handIndex, result.landmarks.length - 1)
+    const landmarks = result.landmarks[idx] || []
+    const worldLandmarks = result.worldLandmarks[idx] || []
+    const handedness = result.handedness[idx]?.categoryName || ''
+    const confidence = result.handedness[idx]?.score || 0
+
+    // Extract gesture and finger tips
+    const gestureType = recognizeGesture(landmarks)
+    const fingerTips = extractFingerTips(landmarks)
+
+    setCached(`${ctx.nodeId}:landmarks`, landmarks)
+    setCached(`${ctx.nodeId}:worldLandmarks`, worldLandmarks)
+    setCached(`${ctx.nodeId}:handedness`, handedness)
+    setCached(`${ctx.nodeId}:confidence`, confidence)
+    setCached(`${ctx.nodeId}:gestureType`, gestureType)
+    setCached(`${ctx.nodeId}:fingerTips`, fingerTips)
+    setCached(`${ctx.nodeId}:handCount`, result.landmarks.length)
+    setCached(`${ctx.nodeId}:detected`, true)
+
+    outputs.set('landmarks', landmarks)
+    outputs.set('worldLandmarks', worldLandmarks)
+    outputs.set('handedness', handedness)
+    outputs.set('confidence', confidence)
+    outputs.set('gestureType', gestureType)
+    outputs.set('fingerTips', fingerTips)
+    outputs.set('handCount', result.landmarks.length)
+    outputs.set('detected', true)
+    outputs.set('loading', false)
+  } catch (error) {
+    console.error('[MediaPipe Hand] Detection error:', error)
+    outputs.set('landmarks', getCached(`${ctx.nodeId}:landmarks`, []))
+    outputs.set('worldLandmarks', getCached(`${ctx.nodeId}:worldLandmarks`, []))
+    outputs.set('handedness', '')
+    outputs.set('confidence', 0)
+    outputs.set('gestureType', 'unknown')
+    outputs.set('fingerTips', null)
+    outputs.set('handCount', 0)
+    outputs.set('detected', false)
+    outputs.set('loading', false)
+    outputs.set('_error', error instanceof Error ? error.message : 'Detection failed')
+  }
+
+  return outputs
+}
+
+// ============================================================================
+// MediaPipe Face Mesh Node
+// ============================================================================
+
+export const mediapipeFaceExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
+  const outputs = new Map<string, unknown>()
+  const videoInput = ctx.inputs.get('video') as HTMLVideoElement | null
+  const enabled = (ctx.controls.get('enabled') as boolean) ?? true
+
+  if (!enabled || !videoInput) {
+    outputs.set('landmarks', getCached(`${ctx.nodeId}:landmarks`, []))
+    outputs.set('blendshapes', getCached(`${ctx.nodeId}:blendshapes`, {}))
+    outputs.set('headRotation', getCached(`${ctx.nodeId}:headRotation`, null))
+    outputs.set('pitch', 0)
+    outputs.set('yaw', 0)
+    outputs.set('roll', 0)
+    outputs.set('faceBox', getCached(`${ctx.nodeId}:faceBox`, null))
+    outputs.set('mouthOpen', 0)
+    outputs.set('eyeBlinkLeft', 0)
+    outputs.set('eyeBlinkRight', 0)
+    outputs.set('browRaise', 0)
+    outputs.set('smile', 0)
+    outputs.set('detected', false)
+    outputs.set('loading', mediaPipeService.isLoading('face'))
+    return outputs
+  }
+
+  // Check if loading
+  if (mediaPipeService.isLoading('face')) {
+    outputs.set('landmarks', [])
+    outputs.set('blendshapes', {})
+    outputs.set('headRotation', null)
+    outputs.set('pitch', 0)
+    outputs.set('yaw', 0)
+    outputs.set('roll', 0)
+    outputs.set('faceBox', null)
+    outputs.set('mouthOpen', 0)
+    outputs.set('eyeBlinkLeft', 0)
+    outputs.set('eyeBlinkRight', 0)
+    outputs.set('browRaise', 0)
+    outputs.set('smile', 0)
+    outputs.set('detected', false)
+    outputs.set('loading', true)
+    return outputs
+  }
+
+  try {
+    const result = await mediaPipeService.detectFace(videoInput, ctx.totalTime * 1000)
+
+    if (!result || result.landmarks.length === 0) {
+      outputs.set('landmarks', [])
+      outputs.set('blendshapes', {})
+      outputs.set('headRotation', null)
+      outputs.set('pitch', 0)
+      outputs.set('yaw', 0)
+      outputs.set('roll', 0)
+      outputs.set('faceBox', null)
+      outputs.set('mouthOpen', 0)
+      outputs.set('eyeBlinkLeft', 0)
+      outputs.set('eyeBlinkRight', 0)
+      outputs.set('browRaise', 0)
+      outputs.set('smile', 0)
+      outputs.set('detected', false)
+      outputs.set('loading', false)
+      return outputs
+    }
+
+    const landmarks = result.landmarks[0] || []
+    const blendshapes = result.blendshapes[0] ? extractBlendshapeValues(result.blendshapes[0]) : {}
+    const headRotation = result.transformationMatrixes[0] ? extractHeadRotation(result.transformationMatrixes[0]) : { pitch: 0, yaw: 0, roll: 0 }
+    const faceBox = calculateFaceBox(landmarks)
+
+    // Extract specific blendshape values
+    const mouthOpen = blendshapes['jawOpen'] || blendshapes['mouthOpen'] || 0
+    const eyeBlinkLeft = blendshapes['eyeBlinkLeft'] || 0
+    const eyeBlinkRight = blendshapes['eyeBlinkRight'] || 0
+    const browRaise = ((blendshapes['browInnerUp'] || 0) + (blendshapes['browOuterUpLeft'] || 0) + (blendshapes['browOuterUpRight'] || 0)) / 3
+    const smile = ((blendshapes['mouthSmileLeft'] || 0) + (blendshapes['mouthSmileRight'] || 0)) / 2
+
+    setCached(`${ctx.nodeId}:landmarks`, landmarks)
+    setCached(`${ctx.nodeId}:blendshapes`, blendshapes)
+    setCached(`${ctx.nodeId}:headRotation`, headRotation)
+    setCached(`${ctx.nodeId}:faceBox`, faceBox)
+
+    outputs.set('landmarks', landmarks)
+    outputs.set('blendshapes', blendshapes)
+    outputs.set('headRotation', headRotation)
+    outputs.set('pitch', headRotation.pitch)
+    outputs.set('yaw', headRotation.yaw)
+    outputs.set('roll', headRotation.roll)
+    outputs.set('faceBox', faceBox)
+    outputs.set('mouthOpen', mouthOpen)
+    outputs.set('eyeBlinkLeft', eyeBlinkLeft)
+    outputs.set('eyeBlinkRight', eyeBlinkRight)
+    outputs.set('browRaise', browRaise)
+    outputs.set('smile', smile)
+    outputs.set('detected', true)
+    outputs.set('loading', false)
+  } catch (error) {
+    console.error('[MediaPipe Face] Detection error:', error)
+    outputs.set('landmarks', getCached(`${ctx.nodeId}:landmarks`, []))
+    outputs.set('blendshapes', {})
+    outputs.set('headRotation', null)
+    outputs.set('pitch', 0)
+    outputs.set('yaw', 0)
+    outputs.set('roll', 0)
+    outputs.set('faceBox', null)
+    outputs.set('mouthOpen', 0)
+    outputs.set('eyeBlinkLeft', 0)
+    outputs.set('eyeBlinkRight', 0)
+    outputs.set('browRaise', 0)
+    outputs.set('smile', 0)
+    outputs.set('detected', false)
+    outputs.set('loading', false)
+    outputs.set('_error', error instanceof Error ? error.message : 'Detection failed')
+  }
+
+  return outputs
+}
+
+// ============================================================================
+// MediaPipe Pose Estimation Node
+// ============================================================================
+
+// Pose landmark indices
+const POSE_LANDMARKS = {
+  NOSE: 0,
+  LEFT_SHOULDER: 11,
+  RIGHT_SHOULDER: 12,
+  LEFT_ELBOW: 13,
+  RIGHT_ELBOW: 14,
+  LEFT_WRIST: 15,
+  RIGHT_WRIST: 16,
+  LEFT_HIP: 23,
+  RIGHT_HIP: 24,
+}
+
+export const mediapipePoseExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
+  const outputs = new Map<string, unknown>()
+  const videoInput = ctx.inputs.get('video') as HTMLVideoElement | null
+  const enabled = (ctx.controls.get('enabled') as boolean) ?? true
+
+  if (!enabled || !videoInput) {
+    outputs.set('landmarks', getCached(`${ctx.nodeId}:landmarks`, []))
+    outputs.set('worldLandmarks', getCached(`${ctx.nodeId}:worldLandmarks`, []))
+    outputs.set('visibility', getCached(`${ctx.nodeId}:visibility`, {}))
+    outputs.set('nose', null)
+    outputs.set('leftShoulder', null)
+    outputs.set('rightShoulder', null)
+    outputs.set('leftElbow', null)
+    outputs.set('rightElbow', null)
+    outputs.set('leftWrist', null)
+    outputs.set('rightWrist', null)
+    outputs.set('leftHip', null)
+    outputs.set('rightHip', null)
+    outputs.set('detected', false)
+    outputs.set('loading', mediaPipeService.isLoading('pose'))
+    return outputs
+  }
+
+  // Check if loading
+  if (mediaPipeService.isLoading('pose')) {
+    outputs.set('landmarks', [])
+    outputs.set('worldLandmarks', [])
+    outputs.set('visibility', {})
+    outputs.set('nose', null)
+    outputs.set('leftShoulder', null)
+    outputs.set('rightShoulder', null)
+    outputs.set('leftElbow', null)
+    outputs.set('rightElbow', null)
+    outputs.set('leftWrist', null)
+    outputs.set('rightWrist', null)
+    outputs.set('leftHip', null)
+    outputs.set('rightHip', null)
+    outputs.set('detected', false)
+    outputs.set('loading', true)
+    return outputs
+  }
+
+  try {
+    const result = await mediaPipeService.detectPose(videoInput, ctx.totalTime * 1000)
+
+    if (!result || result.landmarks.length === 0) {
+      outputs.set('landmarks', [])
+      outputs.set('worldLandmarks', [])
+      outputs.set('visibility', {})
+      outputs.set('nose', null)
+      outputs.set('leftShoulder', null)
+      outputs.set('rightShoulder', null)
+      outputs.set('leftElbow', null)
+      outputs.set('rightElbow', null)
+      outputs.set('leftWrist', null)
+      outputs.set('rightWrist', null)
+      outputs.set('leftHip', null)
+      outputs.set('rightHip', null)
+      outputs.set('detected', false)
+      outputs.set('loading', false)
+      return outputs
+    }
+
+    const landmarks = result.landmarks[0] || []
+    const worldLandmarks = result.worldLandmarks[0] || []
+
+    // Build visibility map
+    const visibility: Record<string, number> = {}
+    landmarks.forEach((lm, i) => {
+      visibility[`landmark_${i}`] = (lm as { visibility?: number }).visibility ?? 1
+    })
+
+    // Extract key body points
+    const getPoint = (idx: number) => landmarks[idx] || null
+
+    setCached(`${ctx.nodeId}:landmarks`, landmarks)
+    setCached(`${ctx.nodeId}:worldLandmarks`, worldLandmarks)
+    setCached(`${ctx.nodeId}:visibility`, visibility)
+
+    outputs.set('landmarks', landmarks)
+    outputs.set('worldLandmarks', worldLandmarks)
+    outputs.set('visibility', visibility)
+    outputs.set('nose', getPoint(POSE_LANDMARKS.NOSE))
+    outputs.set('leftShoulder', getPoint(POSE_LANDMARKS.LEFT_SHOULDER))
+    outputs.set('rightShoulder', getPoint(POSE_LANDMARKS.RIGHT_SHOULDER))
+    outputs.set('leftElbow', getPoint(POSE_LANDMARKS.LEFT_ELBOW))
+    outputs.set('rightElbow', getPoint(POSE_LANDMARKS.RIGHT_ELBOW))
+    outputs.set('leftWrist', getPoint(POSE_LANDMARKS.LEFT_WRIST))
+    outputs.set('rightWrist', getPoint(POSE_LANDMARKS.RIGHT_WRIST))
+    outputs.set('leftHip', getPoint(POSE_LANDMARKS.LEFT_HIP))
+    outputs.set('rightHip', getPoint(POSE_LANDMARKS.RIGHT_HIP))
+    outputs.set('detected', true)
+    outputs.set('loading', false)
+  } catch (error) {
+    console.error('[MediaPipe Pose] Detection error:', error)
+    outputs.set('landmarks', getCached(`${ctx.nodeId}:landmarks`, []))
+    outputs.set('worldLandmarks', [])
+    outputs.set('visibility', {})
+    outputs.set('nose', null)
+    outputs.set('leftShoulder', null)
+    outputs.set('rightShoulder', null)
+    outputs.set('leftElbow', null)
+    outputs.set('rightElbow', null)
+    outputs.set('leftWrist', null)
+    outputs.set('rightWrist', null)
+    outputs.set('leftHip', null)
+    outputs.set('rightHip', null)
+    outputs.set('detected', false)
+    outputs.set('loading', false)
+    outputs.set('_error', error instanceof Error ? error.message : 'Detection failed')
+  }
+
+  return outputs
+}
+
+// ============================================================================
+// MediaPipe Object Detection Node
+// ============================================================================
+
+export const mediapipeObjectExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
+  const outputs = new Map<string, unknown>()
+  const videoInput = ctx.inputs.get('video') as HTMLVideoElement | null
+  const enabled = (ctx.controls.get('enabled') as boolean) ?? true
+  const minConfidence = (ctx.controls.get('minConfidence') as number) ?? 0.5
+  const maxResults = (ctx.controls.get('maxResults') as number) ?? 10
+  const labelFilter = (ctx.controls.get('labelFilter') as string) ?? ''
+
+  if (!enabled || !videoInput) {
+    outputs.set('detections', getCached(`${ctx.nodeId}:detections`, []))
+    outputs.set('count', getCached(`${ctx.nodeId}:count`, 0))
+    outputs.set('filtered', getCached(`${ctx.nodeId}:filtered`, []))
+    outputs.set('topLabel', '')
+    outputs.set('topConfidence', 0)
+    outputs.set('topBox', null)
+    outputs.set('detected', false)
+    outputs.set('loading', mediaPipeService.isLoading('object'))
+    return outputs
+  }
+
+  // Check if loading
+  if (mediaPipeService.isLoading('object')) {
+    outputs.set('detections', [])
+    outputs.set('count', 0)
+    outputs.set('filtered', [])
+    outputs.set('topLabel', '')
+    outputs.set('topConfidence', 0)
+    outputs.set('topBox', null)
+    outputs.set('detected', false)
+    outputs.set('loading', true)
+    return outputs
+  }
+
+  try {
+    const result = await mediaPipeService.detectObjects(videoInput, ctx.totalTime * 1000)
+
+    if (!result || result.detections.length === 0) {
+      outputs.set('detections', [])
+      outputs.set('count', 0)
+      outputs.set('filtered', [])
+      outputs.set('topLabel', '')
+      outputs.set('topConfidence', 0)
+      outputs.set('topBox', null)
+      outputs.set('detected', false)
+      outputs.set('loading', false)
+      return outputs
+    }
+
+    // Filter by confidence
+    let detections = result.detections.filter(d =>
+      d.categories.some(c => c.score >= minConfidence)
+    )
+
+    // Filter by label if specified
+    const filterLabels = labelFilter.split(',').map(l => l.trim().toLowerCase()).filter(Boolean)
+    if (filterLabels.length > 0) {
+      detections = detections.filter(d =>
+        d.categories.some(c => filterLabels.includes(c.categoryName.toLowerCase()))
+      )
+    }
+
+    // Limit results
+    detections = detections.slice(0, maxResults)
+
+    // Get top detection
+    const topDetection = detections[0]
+    const topCategory = topDetection?.categories[0]
+
+    setCached(`${ctx.nodeId}:detections`, detections)
+    setCached(`${ctx.nodeId}:count`, detections.length)
+    setCached(`${ctx.nodeId}:filtered`, detections)
+
+    outputs.set('detections', detections)
+    outputs.set('count', detections.length)
+    outputs.set('filtered', detections)
+    outputs.set('topLabel', topCategory?.categoryName || '')
+    outputs.set('topConfidence', topCategory?.score || 0)
+    outputs.set('topBox', topDetection?.boundingBox || null)
+    outputs.set('detected', detections.length > 0)
+    outputs.set('loading', false)
+  } catch (error) {
+    console.error('[MediaPipe Object] Detection error:', error)
+    outputs.set('detections', getCached(`${ctx.nodeId}:detections`, []))
+    outputs.set('count', 0)
+    outputs.set('filtered', [])
+    outputs.set('topLabel', '')
+    outputs.set('topConfidence', 0)
+    outputs.set('topBox', null)
+    outputs.set('detected', false)
+    outputs.set('loading', false)
+    outputs.set('_error', error instanceof Error ? error.message : 'Detection failed')
+  }
+
+  return outputs
+}
+
+// ============================================================================
 // Cleanup helpers
 // ============================================================================
 
@@ -1023,4 +1485,8 @@ export const aiExecutors: Record<string, NodeExecutorFn> = {
   'object-detection': objectDetectionExecutor,
   'speech-recognition': speechRecognitionExecutor,
   'text-transformation': textTransformationExecutor,
+  'mediapipe-hand': mediapipeHandExecutor,
+  'mediapipe-face': mediapipeFaceExecutor,
+  'mediapipe-pose': mediapipePoseExecutor,
+  'mediapipe-object': mediapipeObjectExecutor,
 }

@@ -188,14 +188,25 @@ export class ThreeShaderRenderer {
 
   /**
    * Generate GLSL uniform declarations from uniform definitions
+   * Skips uniforms that are already declared in the source code
    */
   private generateUniformDeclarations(
-    uniformDefs: Array<{ name: string; type: string; default?: unknown }>
+    uniformDefs: Array<{ name: string; type: string; default?: unknown }>,
+    existingSource?: string
   ): string {
     if (!uniformDefs || uniformDefs.length === 0) return ''
 
     const declarations: string[] = []
     for (const def of uniformDefs) {
+      // Skip if this uniform is already declared in the source code
+      if (existingSource) {
+        // Check for existing declaration pattern: uniform <type> <name>;
+        const alreadyDeclared = new RegExp(
+          `uniform\\s+(?:lowp|mediump|highp)?\\s*\\w+\\s+${def.name}\\s*;`
+        ).test(existingSource)
+        if (alreadyDeclared) continue
+      }
+
       // Map type to GLSL type
       let glslType = def.type
       if (def.type === 'int') glslType = 'int'
@@ -207,7 +218,7 @@ export class ThreeShaderRenderer {
 
       declarations.push(`uniform ${glslType} ${def.name};`)
     }
-    return declarations.join('\n') + '\n'
+    return declarations.length > 0 ? declarations.join('\n') + '\n' : ''
   }
 
   /**
@@ -221,10 +232,10 @@ export class ThreeShaderRenderer {
   ): CompiledShaderMaterial | { error: string } {
     try {
       let finalFragmentSource: string
-      let finalVertexSource = vertexSource || DEFAULT_VERTEX_SHADER
+      const finalVertexSource = vertexSource || DEFAULT_VERTEX_SHADER
 
-      // Generate uniform declarations from definitions
-      const userUniformDeclarations = this.generateUniformDeclarations(uniformDefs || [])
+      // Generate uniform declarations from definitions (skipping any already in the source)
+      const userUniformDeclarations = this.generateUniformDeclarations(uniformDefs || [], fragmentSource)
 
       if (isShadertoy) {
         // Wrap Shadertoy-style shaders with user uniform declarations

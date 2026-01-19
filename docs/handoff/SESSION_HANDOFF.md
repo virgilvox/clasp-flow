@@ -22,7 +22,89 @@
 ### Next Step: Phase 10 - Polish & Export
 ### Latest Release: v0.1.3
 
-### Latest Session Accomplishments (AI Auto-Load, Control Panel Fixes):
+### Latest Session Accomplishments (Shader Fix, BLE Enhancement, MediaPipe, Tests):
+
+**Critical Shader Preview Bug Fix:**
+- Root cause: Preset shader code used uniforms without `uniform` declarations - definitions were in preset metadata, not the code
+- Fix: Created `injectUniformDeclarations()` in `ShaderPresets.ts` that prepends uniform declarations to preset code
+- When a preset is selected, uniforms are now injected into the code before storing
+- This makes `parseUniformsFromCode()` find the uniforms correctly when the shader editor opens
+- Round-trip now works: preset → inject uniforms → store → parse → compile with uniforms
+
+**BLE Enhancement System:**
+- Created `BleAdapter.ts` - full BLE adapter with scanning, service discovery, characteristic operations
+- Created `BleProfileRegistry.ts` - registry of standard BLE profiles (Heart Rate, Battery, Environmental Sensing, Cycling, Running)
+- Created 3 new BLE nodes:
+  - `ble-scanner.ts` - Scan for nearby BLE devices
+  - `ble-device.ts` - Connect to and manage BLE device
+  - `ble-characteristic.ts` - Read/write/subscribe to BLE characteristics
+- Added executors for all BLE nodes in `connectivity.ts`
+- Supports multiple data formats: uint8, int16, float32, utf8, raw
+
+**MediaPipe Integration:**
+- Created `MediaPipeService.ts` - centralized service for vision tasks (hand, face, pose, object detection)
+- Created 4 new MediaPipe nodes:
+  - `mediapipe-hand.ts` - Hand landmark detection with gesture recognition
+  - `mediapipe-face.ts` - Face mesh with blendshapes and head rotation
+  - `mediapipe-pose.ts` - Body pose estimation
+  - `mediapipe-object.ts` - Object detection
+- Added helper functions: `extractFingerTips()`, `recognizeGesture()`, `extractHeadRotation()`, `calculateFaceBox()`, `extractBlendshapeValues()`
+- Added executors in `ai.ts` for all MediaPipe nodes
+- Added `@mediapipe/tasks-vision` dependency
+
+**Comprehensive Test Suite:**
+- Created `tests/unit/services/visual/ShaderPresets.test.ts` - 47 tests for shader system
+  - Tests uniform parsing (all GLSL types)
+  - Tests uniform injection
+  - Tests round-trip (inject → parse)
+  - Tests preset management
+- Created `tests/unit/services/ble/BleProfileRegistry.test.ts` - 37 tests for BLE profiles
+  - Tests service/characteristic lookup
+  - Tests data parsing (heart rate, battery, temperature, humidity, cycling, running)
+  - Tests device type detection
+- Created `tests/unit/services/ai/MediaPipeService.test.ts` - 24 tests for MediaPipe helpers
+  - Tests gesture recognition (7 gesture types)
+  - Tests face box calculation
+  - Tests head rotation extraction
+  - Tests blendshape extraction
+- Total: 668 tests passing (657 passed, 11 todo)
+
+**Shader UX Design Document:**
+- Created `docs/shader-ux-design.md` following Smart Node Design Philosophy
+- Analyzed current state and proposed improvements:
+  - Error State Visibility - show compilation errors inline
+  - Visual Preset Picker - thumbnail grid instead of dropdown
+  - Preset vs Custom Mode - clear distinction
+  - Quick Uniform Tweaking - enhanced slider controls
+
+**Files Created:**
+- `src/renderer/services/connections/adapters/BleAdapter.ts` - BLE adapter
+- `src/renderer/services/ble/BleProfileRegistry.ts` - BLE profile registry
+- `src/renderer/registry/connectivity/ble-scanner.ts` - BLE scanner node
+- `src/renderer/registry/connectivity/ble-device.ts` - BLE device node
+- `src/renderer/registry/connectivity/ble-characteristic.ts` - BLE characteristic node
+- `src/renderer/services/ai/MediaPipeService.ts` - MediaPipe service
+- `src/renderer/registry/ai/mediapipe-hand.ts` - Hand tracking node
+- `src/renderer/registry/ai/mediapipe-face.ts` - Face mesh node
+- `src/renderer/registry/ai/mediapipe-pose.ts` - Pose estimation node
+- `src/renderer/registry/ai/mediapipe-object.ts` - Object detection node
+- `tests/unit/services/visual/ShaderPresets.test.ts` - Shader tests
+- `tests/unit/services/ble/BleProfileRegistry.test.ts` - BLE tests
+- `tests/unit/services/ai/MediaPipeService.test.ts` - MediaPipe tests
+- `docs/shader-ux-design.md` - Shader UX design document
+
+**Files Modified:**
+- `src/renderer/services/visual/ShaderPresets.ts` - Added `injectUniformDeclarations()` function
+- `src/renderer/engine/executors/visual.ts` - Uses `injectUniformDeclarations()` when loading presets
+- `src/renderer/engine/executors/connectivity.ts` - Added BLE executors
+- `src/renderer/engine/executors/ai.ts` - Added MediaPipe executors
+- `src/renderer/registry/connectivity/index.ts` - Registered BLE nodes
+- `src/renderer/registry/ai/index.ts` - Registered MediaPipe nodes
+- `package.json` - Added `@mediapipe/tasks-vision` dependency
+
+---
+
+### Previous Session Accomplishments (AI Auto-Load, Control Panel Fixes):
 
 **AI Model Auto-Load on Startup:**
 - Added ability to configure AI models to load automatically when the app starts
@@ -1019,6 +1101,7 @@ npm run dev:electron
 | 2026-01-19 | Monitor & Debug | Resizable Monitor node with clear button, Debug panel tab in Properties Panel with runtime stats, errors, and performance metrics |
 | 2026-01-19 | Shader Dynamic Ports | Complete shader node overhaul - uniforms in GLSL code automatically become input ports, robust parser, dynamic port mutation API, engine hooks for port updates |
 | 2026-01-19 | AI Auto-Load & Fixes | AI model auto-load on startup feature, Control Panel oscilloscope audio mode fix, custom node UI for knob/envelope/EQ/wavetable nodes |
+| 2026-01-19 | Shader Fix, BLE, MediaPipe | Fixed shader preview (uniform injection), BLE adapter + 3 nodes, MediaPipe service + 4 nodes, 108 new tests (668 total), shader UX design doc |
 
 ---
 

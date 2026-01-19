@@ -20,6 +20,7 @@ import {
   parseUniformsFromCode,
   generateInputsFromUniforms,
   generateControlsFromUniforms,
+  injectUniformDeclarations,
   type UniformDefinition,
 } from '@/services/visual/ShaderPresets'
 
@@ -57,6 +58,8 @@ const videoPlayerState = new Map<
 >()
 // Track last preset to detect changes
 const lastPreset = new Map<string, string>()
+// Cache detected uniforms per-node to persist across frames
+const cachedUniforms = new Map<string, UniformDefinition[]>()
 
 /**
  * Dispose visual resources for a node
@@ -69,6 +72,7 @@ export function disposeVisualNode(nodeId: string): void {
   compiledShaderMaterials.delete(nodeId)
   compiledShaders.delete(nodeId)
   lastPreset.delete(nodeId)
+  cachedUniforms.delete(nodeId)
 
   // Clean up Three.js render target
   threeRenderer.disposeNode(nodeId)
@@ -132,6 +136,7 @@ export function disposeAllVisualNodes(): void {
   compiledShaderMaterials.clear()
   compiledShaders.clear()
   lastPreset.clear()
+  cachedUniforms.clear()
 
   // Clean up Three.js textures
   for (const texture of nodeTextures.values()) {
@@ -213,6 +218,13 @@ export function gcVisualState(validNodeIds: Set<string>): void {
     }
   }
 
+  // Clean cachedUniforms
+  for (const nodeId of cachedUniforms.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      cachedUniforms.delete(nodeId)
+    }
+  }
+
   // Clean imageLoaderState
   for (const nodeId of imageLoaderState.keys()) {
     if (!validNodeIds.has(nodeId)) {
@@ -290,23 +302,34 @@ export const shaderExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
 
   // Check if preset changed - load preset code and uniforms
   const prevPreset = lastPreset.get(ctx.nodeId)
-  if (preset !== 'custom' && !preset.startsWith('---') && preset !== prevPreset) {
-    const presetData = getPresetById(preset)
-    if (presetData) {
-      fragmentCode = presetData.fragmentCode
-      detectedUniforms = presetData.uniforms
+  if (preset !== 'custom' && !preset.startsWith('---')) {
+    if (preset !== prevPreset) {
+      // Preset changed - load and cache uniforms
+      const presetData = getPresetById(preset)
+      if (presetData) {
+        detectedUniforms = presetData.uniforms
+        cachedUniforms.set(ctx.nodeId, detectedUniforms)
 
-      // Signal that code and ports need updating
-      outputs.set('_preset_code', fragmentCode)
-      outputs.set('_preset_uniforms', presetData.uniforms)
+        // Inject uniform declarations into preset code so parseUniformsFromCode() can find them
+        // This ensures the stored code is self-contained and works in the shader editor
+        fragmentCode = injectUniformDeclarations(presetData.fragmentCode, detectedUniforms)
 
-      // Generate dynamic ports from preset uniforms
-      outputs.set('_dynamicInputs', generateInputsFromUniforms(detectedUniforms))
-      outputs.set('_dynamicControls', generateControlsFromUniforms(detectedUniforms))
+        // Signal that code and ports need updating
+        outputs.set('_preset_code', fragmentCode)
+        outputs.set('_preset_uniforms', presetData.uniforms)
+
+        // Generate dynamic ports from preset uniforms
+        outputs.set('_dynamicInputs', generateInputsFromUniforms(detectedUniforms))
+        outputs.set('_dynamicControls', generateControlsFromUniforms(detectedUniforms))
+      }
+      lastPreset.set(ctx.nodeId, preset)
+    } else {
+      // Same preset - use cached uniforms
+      detectedUniforms = cachedUniforms.get(ctx.nodeId) || []
     }
-    lastPreset.set(ctx.nodeId, preset)
   } else if (preset === 'custom') {
     lastPreset.set(ctx.nodeId, 'custom')
+    cachedUniforms.delete(ctx.nodeId)
   }
 
   // Skip separator options

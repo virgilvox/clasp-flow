@@ -6,6 +6,9 @@ export { mqttNode } from './mqtt'
 export { oscNode } from './osc'
 export { serialNode } from './serial'
 export { bleNode } from './ble'
+export { bleScannerNode } from './ble-scanner'
+export { bleDeviceNode } from './ble-device'
+export { bleCharacteristicNode } from './ble-characteristic'
 export { claspConnectionNode } from './clasp-connection'
 export { claspSubscribeNode } from './clasp-subscribe'
 export { claspSetNode } from './clasp-set'
@@ -22,6 +25,9 @@ import { mqttNode } from './mqtt'
 import { oscNode } from './osc'
 import { serialNode } from './serial'
 import { bleNode } from './ble'
+import { bleScannerNode } from './ble-scanner'
+import { bleDeviceNode } from './ble-device'
+import { bleCharacteristicNode } from './ble-characteristic'
 import { claspConnectionNode } from './clasp-connection'
 import { claspSubscribeNode } from './clasp-subscribe'
 import { claspSetNode } from './clasp-set'
@@ -40,6 +46,9 @@ export const connectivityNodes: NodeDefinition[] = [
   oscNode,
   serialNode,
   bleNode,
+  bleScannerNode,
+  bleDeviceNode,
+  bleCharacteristicNode,
   claspConnectionNode,
   claspSubscribeNode,
   claspSetNode,

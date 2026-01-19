@@ -8,6 +8,8 @@
  */
 
 import type { ExecutionContext, NodeExecutorFn } from '../ExecutionEngine'
+import { BleAdapter, type BleDataFormat, type BleServiceInfo } from '@/services/connections/adapters/BleAdapter'
+import { parseCharacteristicValue, getServiceName, getCharacteristicName } from '@/services/ble/BleProfileRegistry'
 
 // Cache for WebSocket connections and state
 const wsConnections = new Map<string, WebSocket>()
@@ -929,6 +931,32 @@ export const serialExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
 const bleDevices = new Map<string, { device: BluetoothDevice; server: BluetoothRemoteGATTServer | null }>()
 const bleState = new Map<string, unknown>()
 
+// Enhanced BLE state for new nodes
+const bleAdapters = new Map<string, BleAdapter>()
+const bleScannerState = new Map<string, {
+  device: BluetoothDevice | null
+  scanning: boolean
+  status: string
+  error: string | null
+}>()
+const bleDeviceState = new Map<string, {
+  adapter: BleAdapter | null
+  services: BleServiceInfo[]
+  connected: boolean
+  status: string
+  error: string | null
+}>()
+const bleCharacteristicState = new Map<string, {
+  subscribed: boolean
+  value: unknown
+  rawValue: Uint8Array | null
+  text: string
+  formatted: string
+  notified: boolean
+  properties: Record<string, boolean> | null
+  error: string | null
+}>()
+
 export const bleExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
   const serviceUUID = (ctx.controls.get('serviceUUID') as string) ?? ''
   const characteristicUUID = (ctx.controls.get('characteristicUUID') as string) ?? ''
@@ -1049,6 +1077,392 @@ export const bleExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
 }
 
 // ============================================================================
+// BLE Scanner Node (Enhanced)
+// ============================================================================
+
+export const bleScannerExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
+  const trigger = ctx.inputs.get('trigger')
+  const serviceFilter = (ctx.controls.get('serviceFilter') as string) ?? 'any'
+  const customServiceUUID = (ctx.controls.get('customServiceUUID') as string) ?? ''
+  const nameFilter = (ctx.controls.get('nameFilter') as string) ?? ''
+
+  const outputs = new Map<string, unknown>()
+
+  // Initialize state
+  let state = bleScannerState.get(ctx.nodeId)
+  if (!state) {
+    state = { device: null, scanning: false, status: 'idle', error: null }
+    bleScannerState.set(ctx.nodeId, state)
+  }
+
+  // Check if Web Bluetooth API is available
+  if (!('bluetooth' in navigator)) {
+    outputs.set('device', null)
+    outputs.set('deviceName', '')
+    outputs.set('deviceId', '')
+    outputs.set('scanning', false)
+    outputs.set('status', 'unsupported')
+    outputs.set('error', 'Web Bluetooth API not supported')
+    return outputs
+  }
+
+  // Handle scan trigger
+  const hasTrigger = trigger === true || trigger === 1 || (typeof trigger === 'number' && trigger > 0)
+
+  if (hasTrigger && !state.scanning) {
+    state.scanning = true
+    state.status = 'scanning'
+    state.error = null
+
+    try {
+      // Build filters
+      const filters: BluetoothLEScanFilter[] = []
+      const optionalServices: BluetoothServiceUUID[] = []
+
+      // Add service filter
+      if (serviceFilter !== 'any' && !serviceFilter.startsWith('---')) {
+        const uuid = serviceFilter === 'custom' ? customServiceUUID : serviceFilter
+        if (uuid) {
+          filters.push({ services: [uuid] })
+          optionalServices.push(uuid)
+        }
+      }
+
+      // Add name filter
+      if (nameFilter) {
+        if (filters.length > 0) {
+          filters[0] = { ...filters[0], namePrefix: nameFilter }
+        } else {
+          filters.push({ namePrefix: nameFilter })
+        }
+      }
+
+      // Request device
+      const device = await BleAdapter.scanDevices({
+        filters: filters.length > 0 ? filters : undefined,
+        optionalServices,
+        acceptAllDevices: filters.length === 0,
+      })
+
+      if (device) {
+        state.device = device
+        state.status = 'selected'
+      } else {
+        state.status = 'cancelled'
+      }
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : 'Scan failed'
+      state.status = 'error'
+    } finally {
+      state.scanning = false
+    }
+  }
+
+  outputs.set('device', state.device)
+  outputs.set('deviceName', state.device?.name || '')
+  outputs.set('deviceId', state.device?.id || '')
+  outputs.set('scanning', state.scanning)
+  outputs.set('status', state.status)
+  outputs.set('error', state.error)
+
+  return outputs
+}
+
+// ============================================================================
+// BLE Device Node (Enhanced)
+// ============================================================================
+
+export const bleDeviceExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
+  const deviceInput = ctx.inputs.get('device') as BluetoothDevice | null
+  const connectTrigger = ctx.inputs.get('connect')
+  const disconnectTrigger = ctx.inputs.get('disconnect')
+  const autoConnect = (ctx.controls.get('autoConnect') as boolean) ?? false
+  const autoReconnect = (ctx.controls.get('autoReconnect') as boolean) ?? true
+  const serviceUUID = (ctx.controls.get('serviceUUID') as string) ?? ''
+
+  const outputs = new Map<string, unknown>()
+
+  // Initialize state
+  let state = bleDeviceState.get(ctx.nodeId)
+  if (!state) {
+    state = { adapter: null, services: [], connected: false, status: 'idle', error: null }
+    bleDeviceState.set(ctx.nodeId, state)
+  }
+
+  // Check if we have a device
+  if (!deviceInput) {
+    outputs.set('services', [])
+    outputs.set('characteristics', [])
+    outputs.set('deviceName', '')
+    outputs.set('deviceId', '')
+    outputs.set('connected', false)
+    outputs.set('status', 'no device')
+    outputs.set('error', null)
+    return outputs
+  }
+
+  // Create or update adapter if device changed
+  const existingAdapter = bleAdapters.get(ctx.nodeId)
+  if (!existingAdapter || existingAdapter.getDeviceInfo()?.id !== deviceInput.id) {
+    // Dispose old adapter
+    if (existingAdapter) {
+      existingAdapter.dispose()
+    }
+
+    // Create new adapter
+    const adapter = new BleAdapter(ctx.nodeId, {
+      id: ctx.nodeId,
+      name: deviceInput.name || 'BLE Device',
+      protocol: 'ble',
+      serviceUUID: serviceUUID,
+      autoConnect: false,
+      autoReconnect: autoReconnect,
+      reconnectDelay: 1000,
+      maxReconnectAttempts: 5,
+    })
+
+    bleAdapters.set(ctx.nodeId, adapter)
+    state.adapter = adapter
+
+    // Set up status listener
+    adapter.onStatusChange((statusInfo) => {
+      const nodeState = bleDeviceState.get(ctx.nodeId)
+      if (nodeState) {
+        nodeState.connected = statusInfo.status === 'connected'
+        nodeState.status = statusInfo.status
+        nodeState.error = statusInfo.error || null
+      }
+    })
+  }
+
+  const adapter = state.adapter
+
+  // Handle connect trigger
+  const hasConnectTrigger = connectTrigger === true || connectTrigger === 1 || (typeof connectTrigger === 'number' && connectTrigger > 0)
+  const hasDisconnectTrigger = disconnectTrigger === true || disconnectTrigger === 1 || (typeof disconnectTrigger === 'number' && disconnectTrigger > 0)
+
+  if (adapter) {
+    if (hasDisconnectTrigger && state.connected) {
+      try {
+        await adapter.disconnect()
+        state.connected = false
+        state.status = 'disconnected'
+        state.services = []
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : 'Disconnect failed'
+      }
+    } else if ((hasConnectTrigger || (autoConnect && !state.connected)) && !state.connected) {
+      state.status = 'connecting'
+
+      try {
+        await adapter.connect()
+        state.connected = true
+        state.status = 'connected'
+
+        // Enumerate services
+        state.services = await adapter.getServices()
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : 'Connection failed'
+        state.status = 'error'
+      }
+    }
+  }
+
+  // Build characteristics list from services
+  const characteristics: Array<{ uuid: string; name: string; serviceUuid: string; serviceName: string; properties: Record<string, boolean> }> = []
+  for (const service of state.services) {
+    for (const char of service.characteristics) {
+      characteristics.push({
+        uuid: char.uuid,
+        name: getCharacteristicName(char.uuid),
+        serviceUuid: service.uuid,
+        serviceName: getServiceName(service.uuid),
+        properties: char.properties as unknown as Record<string, boolean>,
+      })
+    }
+  }
+
+  outputs.set('services', state.services)
+  outputs.set('characteristics', characteristics)
+  outputs.set('deviceName', deviceInput.name || '')
+  outputs.set('deviceId', deviceInput.id)
+  outputs.set('connected', state.connected)
+  outputs.set('status', state.status)
+  outputs.set('error', state.error)
+
+  return outputs
+}
+
+// ============================================================================
+// BLE Characteristic Node (Enhanced)
+// ============================================================================
+
+export const bleCharacteristicExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
+  const deviceInput = ctx.inputs.get('device') as BluetoothDevice | null
+  const readTrigger = ctx.inputs.get('read')
+  const writeData = ctx.inputs.get('write')
+  const writeTrigger = ctx.inputs.get('writeTrigger')
+  const serviceUUID = (ctx.controls.get('serviceUUID') as string) ?? ''
+  const characteristicUUID = (ctx.controls.get('characteristicUUID') as string) ?? ''
+  const dataFormat = (ctx.controls.get('dataFormat') as string) ?? 'auto'
+  const enableNotifications = (ctx.controls.get('enableNotifications') as boolean) ?? true
+  const continuous = (ctx.controls.get('continuous') as boolean) ?? false
+
+  const outputs = new Map<string, unknown>()
+
+  // Initialize state
+  let state = bleCharacteristicState.get(ctx.nodeId)
+  if (!state) {
+    state = {
+      subscribed: false,
+      value: null,
+      rawValue: null,
+      text: '',
+      formatted: '',
+      notified: false,
+      properties: null,
+      error: null,
+    }
+    bleCharacteristicState.set(ctx.nodeId, state)
+  }
+
+  // Reset notified flag each frame
+  state.notified = false
+
+  // Check prerequisites
+  if (!deviceInput || !serviceUUID || !characteristicUUID) {
+    outputs.set('value', state.value)
+    outputs.set('rawValue', state.rawValue)
+    outputs.set('text', state.text)
+    outputs.set('formatted', state.formatted)
+    outputs.set('notified', false)
+    outputs.set('properties', state.properties)
+    outputs.set('error', !deviceInput ? 'No device connected' : 'Service/Characteristic UUID required')
+    return outputs
+  }
+
+  // Get or create adapter for this device
+  const adapterKey = `char_${ctx.nodeId}`
+  let adapter = bleAdapters.get(adapterKey)
+
+  if (!adapter || adapter.getDeviceInfo()?.id !== deviceInput.id) {
+    // Dispose old adapter
+    if (adapter) {
+      adapter.dispose()
+    }
+
+    // Create adapter for this characteristic node
+    adapter = new BleAdapter(adapterKey, {
+      id: adapterKey,
+      name: `Characteristic ${characteristicUUID}`,
+      protocol: 'ble',
+      serviceUUID: serviceUUID,
+      characteristicUUIDs: [characteristicUUID],
+      autoConnect: false,
+      autoReconnect: true,
+      reconnectDelay: 1000,
+      maxReconnectAttempts: 5,
+    })
+
+    bleAdapters.set(adapterKey, adapter)
+
+    // Connect if device is already connected
+    if (deviceInput.gatt?.connected) {
+      try {
+        await adapter.connect()
+        await adapter.discoverServices()
+      } catch (error) {
+        state.error = error instanceof Error ? error.message : 'Connection failed'
+      }
+    }
+  }
+
+  // Ensure connected
+  if (!adapter.isConnected()) {
+    try {
+      await adapter.connect()
+      await adapter.discoverServices()
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : 'Connection failed'
+      outputs.set('value', state.value)
+      outputs.set('rawValue', state.rawValue)
+      outputs.set('text', state.text)
+      outputs.set('formatted', state.formatted)
+      outputs.set('notified', false)
+      outputs.set('properties', state.properties)
+      outputs.set('error', state.error)
+      return outputs
+    }
+  }
+
+  // Determine actual data format
+  const format: BleDataFormat = dataFormat === 'auto' ? 'raw' : dataFormat as BleDataFormat
+
+  // Subscribe to notifications if enabled and not yet subscribed
+  if (enableNotifications && !state.subscribed) {
+    try {
+      await adapter.subscribeToNotifications(characteristicUUID, (_value, raw) => {
+        const charState = bleCharacteristicState.get(ctx.nodeId)
+        if (charState) {
+          // Use profile parser if available
+          const parsed = parseCharacteristicValue(characteristicUUID, raw)
+
+          charState.value = parsed.value
+          charState.rawValue = new Uint8Array(raw.buffer)
+          charState.text = typeof parsed.value === 'string' ? parsed.value : JSON.stringify(parsed.value)
+          charState.formatted = parsed.formatted
+          charState.notified = true
+        }
+      }, format)
+      state.subscribed = true
+    } catch (error) {
+      // Notifications may not be supported
+      console.warn('[BLE Characteristic] Could not subscribe to notifications:', error)
+    }
+  }
+
+  // Handle read trigger
+  const hasReadTrigger = readTrigger === true || readTrigger === 1 || (typeof readTrigger === 'number' && readTrigger > 0) || continuous
+
+  if (hasReadTrigger) {
+    try {
+      const value = await adapter.readCharacteristic(characteristicUUID, format)
+
+      // Parse with profile
+      // Need to get raw DataView for parsing - we'll store last raw value
+      state.value = value
+      state.text = typeof value === 'string' ? value : JSON.stringify(value)
+      state.formatted = state.text
+      state.error = null
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : 'Read failed'
+    }
+  }
+
+  // Handle write trigger
+  const hasWriteTrigger = writeTrigger === true || writeTrigger === 1 || (typeof writeTrigger === 'number' && writeTrigger > 0)
+
+  if (hasWriteTrigger && writeData !== undefined) {
+    try {
+      await adapter.writeCharacteristic(characteristicUUID, writeData as ArrayBuffer | Uint8Array | number | string, format)
+      state.error = null
+    } catch (error) {
+      state.error = error instanceof Error ? error.message : 'Write failed'
+    }
+  }
+
+  outputs.set('value', state.value)
+  outputs.set('rawValue', state.rawValue)
+  outputs.set('text', state.text)
+  outputs.set('formatted', state.formatted)
+  outputs.set('notified', state.notified)
+  outputs.set('properties', state.properties)
+  outputs.set('error', state.error)
+
+  return outputs
+}
+
+// ============================================================================
 // Cleanup helpers
 // ============================================================================
 
@@ -1086,13 +1500,31 @@ export function disposeConnectivityNode(nodeId: string): void {
     serialPorts.delete(serialKey)
   }
 
-  // Disconnect BLE
+  // Disconnect BLE (legacy)
   const bleKey = `${nodeId}:ble`
   const ble = bleDevices.get(bleKey)
   if (ble) {
     ble.server?.disconnect()
     bleDevices.delete(bleKey)
   }
+
+  // Disconnect enhanced BLE adapters
+  const bleAdapter = bleAdapters.get(nodeId)
+  if (bleAdapter) {
+    bleAdapter.dispose()
+    bleAdapters.delete(nodeId)
+  }
+  const charAdapterKey = `char_${nodeId}`
+  const charAdapter = bleAdapters.get(charAdapterKey)
+  if (charAdapter) {
+    charAdapter.dispose()
+    bleAdapters.delete(charAdapterKey)
+  }
+
+  // Clear enhanced BLE state
+  bleScannerState.delete(nodeId)
+  bleDeviceState.delete(nodeId)
+  bleCharacteristicState.delete(nodeId)
 
   // Clear caches
   const keys = [
@@ -1135,9 +1567,13 @@ export function disposeAllConnectivityNodes(): void {
   })
   serialPorts.clear()
 
-  // Disconnect all BLE devices
+  // Disconnect all BLE devices (legacy)
   bleDevices.forEach(conn => conn.server?.disconnect())
   bleDevices.clear()
+
+  // Disconnect all enhanced BLE adapters
+  bleAdapters.forEach(adapter => adapter.dispose())
+  bleAdapters.clear()
 
   // Clear all caches
   httpCache.clear()
@@ -1149,6 +1585,11 @@ export function disposeAllConnectivityNodes(): void {
   oscState.clear()
   serialState.clear()
   bleState.clear()
+
+  // Clear enhanced BLE state
+  bleScannerState.clear()
+  bleDeviceState.clear()
+  bleCharacteristicState.clear()
 }
 
 // ============================================================================
@@ -1166,4 +1607,7 @@ export const connectivityExecutors: Record<string, NodeExecutorFn> = {
   'osc': oscExecutor,
   'serial': serialExecutor,
   'ble': bleExecutor,
+  'ble-scanner': bleScannerExecutor,
+  'ble-device': bleDeviceExecutor,
+  'ble-characteristic': bleCharacteristicExecutor,
 }

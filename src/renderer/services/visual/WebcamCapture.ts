@@ -72,12 +72,20 @@ class WebcamCaptureService {
     this._height = height
 
     try {
+      // Build constraints - use 'ideal' instead of 'exact' for deviceId to avoid OverconstrainedError
+      // when the requested device is not available
+      const videoConstraints: MediaTrackConstraints = {
+        width: { ideal: width },
+        height: { ideal: height },
+      }
+
+      // Only add deviceId constraint if a specific device is requested and not 'default'
+      if (deviceId && deviceId !== 'default') {
+        videoConstraints.deviceId = { ideal: deviceId }
+      }
+
       const constraints: MediaStreamConstraints = {
-        video: {
-          width: { ideal: width },
-          height: { ideal: height },
-          deviceId: deviceId ? { exact: deviceId } : undefined,
-        },
+        video: videoConstraints,
       }
 
       this._stream = await navigator.mediaDevices.getUserMedia(constraints)

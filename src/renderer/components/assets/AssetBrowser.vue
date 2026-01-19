@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, onMounted } from 'vue'
 import { Search, Upload, Image, Video, Music, Layers } from 'lucide-vue-next'
 import { useAssetsStore, type AssetFilter } from '@/stores/assets'
 import AssetCard from './AssetCard.vue'
@@ -64,7 +64,7 @@ function onSelectAsset(id: string) {
   assetsStore.selectAsset(id)
 }
 
-function onAssetDragStart(e: DragEvent, asset: Asset) {
+function onAssetDragStart(_e: DragEvent, _asset: Asset) {
   // Already handled in AssetCard
 }
 

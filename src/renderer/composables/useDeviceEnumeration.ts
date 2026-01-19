@@ -5,7 +5,7 @@
  * Used by node controls to populate device selection dropdowns.
  */
 
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { audioManager } from '@/services/audio/AudioManager'
 import { webcamCapture } from '@/services/visual/WebcamCapture'
 
@@ -22,8 +22,6 @@ const audioOutputDevices = ref<DeviceOption[]>([{ value: 'default', label: 'Defa
 const videoInputDevices = ref<DeviceOption[]>([{ value: 'default', label: 'Default Camera' }])
 
 let isInitialized = false
-let unsubscribeAudio: (() => void) | null = null
-let unsubscribeVideo: (() => void) | null = null
 
 async function refreshDevices() {
   try {
@@ -83,8 +81,8 @@ function initialize() {
     navigator.mediaDevices.addEventListener('devicechange', refreshDevices)
   }
 
-  // Also subscribe to service updates
-  unsubscribeAudio = audioManager.subscribe(() => {
+  // Also subscribe to service updates (subscriptions persist for app lifetime)
+  audioManager.subscribe(() => {
     const state = audioManager.getState()
     if (state.inputDevices.length > 0) {
       audioInputDevices.value = [
@@ -106,7 +104,7 @@ function initialize() {
     }
   })
 
-  unsubscribeVideo = webcamCapture.subscribe(() => {
+  webcamCapture.subscribe(() => {
     const state = webcamCapture.getState()
     if (state.devices.length > 0) {
       videoInputDevices.value = [

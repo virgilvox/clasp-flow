@@ -21,7 +21,8 @@ export interface AudioBufferServiceOptions {
 }
 
 // Type for accessing Tone.UserMedia's private _stream property
-interface UserMediaWithStream extends Tone.UserMedia {
+// Using a more flexible type to avoid private property errors
+interface UserMediaWithStream {
   _stream?: MediaStream
 }
 
@@ -86,19 +87,22 @@ class AudioBufferServiceImpl {
         // Fallback: Use MediaStreamDestination bridge for other Tone.js nodes
         console.log('[AudioBufferService] Using MediaStreamDestination bridge')
         const toneContext = Tone.getContext()
-        const nativeContext = toneContext.rawContext
+        const nativeContext = toneContext.rawContext as AudioContext
 
-        if (!nativeContext || typeof nativeContext.createMediaStreamDestination !== 'function') {
+        if (!nativeContext || typeof (nativeContext as AudioContext).createMediaStreamDestination !== 'function') {
           throw new Error('Cannot create MediaStream from audio context')
         }
 
-        this.toneStreamDest = nativeContext.createMediaStreamDestination()
+        this.toneStreamDest = (nativeContext as AudioContext).createMediaStreamDestination()
         this.toneSourceNode = toneNode
 
         // Connect Tone.js node to the destination
-        Tone.connect(toneNode, this.toneStreamDest)
-
-        captureStream = this.toneStreamDest.stream
+        if (this.toneStreamDest) {
+          Tone.connect(toneNode, this.toneStreamDest)
+          captureStream = this.toneStreamDest.stream
+        } else {
+          throw new Error('Failed to create MediaStream destination')
+        }
       }
     }
 
