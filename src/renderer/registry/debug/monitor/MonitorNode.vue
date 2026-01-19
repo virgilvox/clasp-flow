@@ -1,17 +1,28 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { Handle, Position } from '@vue-flow/core'
 import type { NodeProps } from '@vue-flow/core'
-import { Activity } from 'lucide-vue-next'
+import { Activity, Trash2 } from 'lucide-vue-next'
 import { categoryMeta, dataTypeMeta } from '@/stores/nodes'
 import { useRuntimeStore } from '@/stores/runtime'
+import { useFlowsStore } from '@/stores/flows'
 
 const props = defineProps<NodeProps>()
 const runtimeStore = useRuntimeStore()
+const flowsStore = useFlowsStore()
 
 const categoryColor = computed(() => {
   return categoryMeta['debug']?.color ?? 'var(--color-neutral-400)'
 })
+
+// Resizing state
+const isResizing = ref(false)
+const nodeWidth = computed(() => props.data?.width ?? 180)
+const nodeHeight = computed(() => props.data?.height ?? 120)
+
+// History of values for scrollback
+const valueHistory = ref<Array<{ value: unknown; timestamp: number }>>([])
+const maxHistory = 100
 
 // Get the monitored value from runtime
 const monitoredValue = computed(() => {
@@ -19,6 +30,28 @@ const monitoredValue = computed(() => {
   const display = metrics?.outputValues?.display
   const value = metrics?.outputValues?.value
   return display ?? value ?? null
+})
+
+// Track value changes
+let lastValue: unknown = undefined
+const checkValueChange = () => {
+  const currentValue = monitoredValue.value
+  if (currentValue !== lastValue && currentValue !== null && currentValue !== undefined) {
+    valueHistory.value.push({
+      value: currentValue,
+      timestamp: Date.now(),
+    })
+    if (valueHistory.value.length > maxHistory) {
+      valueHistory.value = valueHistory.value.slice(-maxHistory)
+    }
+    lastValue = currentValue
+  }
+}
+
+// Check on computed access
+computed(() => {
+  checkValueChange()
+  return monitoredValue.value
 })
 
 // Format value for display
@@ -31,9 +64,9 @@ const displayValue = computed(() => {
   }
   if (typeof val === 'boolean') return val ? 'true' : 'false'
   if (typeof val === 'string') return val
-  if (Array.isArray(val)) return JSON.stringify(val, null, 1)
+  if (Array.isArray(val)) return JSON.stringify(val, null, 2)
   if (val instanceof WebGLTexture) return '[Texture]'
-  if (typeof val === 'object') return JSON.stringify(val, null, 1)
+  if (typeof val === 'object') return JSON.stringify(val, null, 2)
   return String(val)
 })
 
@@ -53,12 +86,59 @@ const valueType = computed(() => {
 function getTypeColor(type: string): string {
   return dataTypeMeta[type as keyof typeof dataTypeMeta]?.color ?? 'var(--color-neutral-400)'
 }
+
+// Clear the display
+function clearMonitor() {
+  valueHistory.value = []
+  // Clear the output value in runtime store
+  const metrics = runtimeStore.nodeMetrics.get(props.id)
+  if (metrics) {
+    runtimeStore.updateNodeMetrics(props.id, {
+      outputValues: { ...metrics.outputValues, display: null, value: null },
+    })
+  }
+}
+
+// Resize handling
+function startResize(event: MouseEvent) {
+  event.preventDefault()
+  event.stopPropagation()
+  isResizing.value = true
+
+  const startX = event.clientX
+  const startY = event.clientY
+  const startWidth = nodeWidth.value
+  const startHeight = nodeHeight.value
+
+  const onMouseMove = (e: MouseEvent) => {
+    const deltaX = e.clientX - startX
+    const deltaY = e.clientY - startY
+    const newWidth = Math.max(140, startWidth + deltaX)
+    const newHeight = Math.max(80, startHeight + deltaY)
+
+    // Update node data through flows store
+    flowsStore.updateNodeData(props.id, {
+      width: newWidth,
+      height: newHeight,
+    })
+  }
+
+  const onMouseUp = () => {
+    isResizing.value = false
+    document.removeEventListener('mousemove', onMouseMove)
+    document.removeEventListener('mouseup', onMouseUp)
+  }
+
+  document.addEventListener('mousemove', onMouseMove)
+  document.addEventListener('mouseup', onMouseUp)
+}
 </script>
 
 <template>
   <div
     class="monitor-node"
-    :class="{ selected: props.selected }"
+    :class="{ selected: props.selected, resizing: isResizing }"
+    :style="{ width: `${nodeWidth}px` }"
   >
     <!-- Input Handle -->
     <div class="handle-left">
@@ -95,15 +175,30 @@ function getTypeColor(type: string): string {
           :style="{ color: categoryColor }"
         />
         <span class="node-title">Monitor</span>
+        <button
+          class="clear-btn"
+          title="Clear"
+          @click.stop="clearMonitor"
+          @mousedown.stop
+        >
+          <Trash2 :size="12" />
+        </button>
       </div>
 
       <!-- Value Display -->
       <div
         class="monitor-display"
         :class="valueType"
+        :style="{ height: `${nodeHeight - 36}px` }"
       >
         <pre class="monitor-value">{{ displayValue }}</pre>
       </div>
+
+      <!-- Resize Handle -->
+      <div
+        class="resize-handle"
+        @mousedown="startResize"
+      />
     </div>
   </div>
 </template>
@@ -111,8 +206,12 @@ function getTypeColor(type: string): string {
 <style scoped>
 .monitor-node {
   position: relative;
-  min-width: 120px;
+  min-width: 140px;
   font-family: var(--font-mono);
+}
+
+.monitor-node.resizing {
+  user-select: none;
 }
 
 .node-content {
@@ -122,6 +221,7 @@ function getTypeColor(type: string): string {
   box-shadow: 3px 3px 0 0 var(--color-neutral-300);
   transition: box-shadow var(--transition-fast), border-color var(--transition-fast);
   overflow: hidden;
+  position: relative;
 }
 
 .monitor-node.selected .node-content {
@@ -159,12 +259,31 @@ function getTypeColor(type: string): string {
   color: var(--color-neutral-800);
 }
 
+.clear-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  color: var(--color-neutral-500);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.clear-btn:hover {
+  background: var(--color-neutral-200);
+  color: var(--color-neutral-700);
+}
+
 /* Monitor Display */
 .monitor-display {
   padding: var(--space-2) var(--space-3);
   background: var(--color-neutral-900);
-  min-height: 40px;
-  max-height: 120px;
+  min-height: 44px;
   overflow: auto;
 }
 
@@ -203,6 +322,35 @@ function getTypeColor(type: string): string {
 
 .monitor-display.texture .monitor-value {
   color: #f472b6; /* pink */
+}
+
+/* Resize Handle */
+.resize-handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 12px;
+  height: 12px;
+  cursor: nwse-resize;
+  background: linear-gradient(
+    135deg,
+    transparent 50%,
+    var(--color-neutral-400) 50%,
+    var(--color-neutral-400) 60%,
+    transparent 60%,
+    transparent 70%,
+    var(--color-neutral-400) 70%,
+    var(--color-neutral-400) 80%,
+    transparent 80%
+  );
+  border-radius: 0 0 var(--radius-default) 0;
+  opacity: 0.5;
+  transition: opacity var(--transition-fast);
+}
+
+.resize-handle:hover,
+.monitor-node.resizing .resize-handle {
+  opacity: 1;
 }
 
 /* Handle positioning */

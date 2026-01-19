@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
-import { X, Code, ChevronRight, Crosshair, Check, Trash2, Pencil } from 'lucide-vue-next'
+import { X, Code, ChevronRight, Crosshair, Check, Trash2, Pencil, Settings, Bug } from 'lucide-vue-next'
 import { useUIStore } from '@/stores/ui'
 import { useFlowsStore } from '@/stores/flows'
 import { useNodesStore, categoryMeta, type NodeDefinition } from '@/stores/nodes'
@@ -8,12 +8,24 @@ import { useRuntimeStore } from '@/stores/runtime'
 import TexturePreview from '@/components/preview/TexturePreview.vue'
 import ConnectionSelect from '@/components/connections/ConnectionSelect.vue'
 import AssetPickerControl from '@/components/controls/AssetPickerControl.vue'
+import DebugPanel from '@/components/debug/DebugPanel.vue'
 import { useDeviceEnumeration, type DeviceType, type DeviceOption } from '@/composables/useDeviceEnumeration'
 
 const uiStore = useUIStore()
 const flowsStore = useFlowsStore()
 const nodesStore = useNodesStore()
 const runtimeStore = useRuntimeStore()
+
+// Panel tab state
+type PanelTab = 'properties' | 'debug'
+const activeTab = ref<PanelTab>('properties')
+
+// Switch to properties when a node is inspected
+watch(() => uiStore.inspectedNode, (nodeId) => {
+  if (nodeId) {
+    activeTab.value = 'properties'
+  }
+})
 
 // Device enumeration for audio/video selects
 const { audioInputDevices, audioOutputDevices, videoInputDevices } = useDeviceEnumeration()
@@ -247,9 +259,26 @@ watch(inspectedNode, () => {
       v-if="uiStore.propertiesPanelOpen"
       class="panel-content"
     >
-      <!-- Header -->
+      <!-- Header with tabs -->
       <div class="panel-header">
-        <span class="panel-title">Properties</span>
+        <div class="panel-tabs">
+          <button
+            class="panel-tab"
+            :class="{ active: activeTab === 'properties' }"
+            @click="activeTab = 'properties'"
+          >
+            <Settings :size="14" />
+            <span>Properties</span>
+          </button>
+          <button
+            class="panel-tab"
+            :class="{ active: activeTab === 'debug' }"
+            @click="activeTab = 'debug'"
+          >
+            <Bug :size="14" />
+            <span>Debug</span>
+          </button>
+        </div>
         <button
           class="close-btn"
           @click="uiStore.closePropertiesPanel"
@@ -258,19 +287,27 @@ watch(inspectedNode, () => {
         </button>
       </div>
 
-      <!-- No selection state -->
-      <div
-        v-if="!inspectedNode"
-        class="empty-state"
-      >
-        <p>Select a node to view properties</p>
-      </div>
+      <!-- Debug Panel Tab -->
+      <DebugPanel v-if="activeTab === 'debug'" />
 
-      <!-- Node properties -->
+      <!-- Properties Tab -->
       <div
         v-else
-        class="node-properties"
+        class="properties-tab"
       >
+        <!-- No selection state -->
+        <div
+          v-if="!inspectedNode"
+          class="empty-state"
+        >
+          <p>Select a node to view properties</p>
+        </div>
+
+        <!-- Node properties -->
+        <div
+          v-else
+          class="node-properties"
+        >
         <!-- Node info header -->
         <div class="node-info">
           <div class="node-info-top">
@@ -550,6 +587,7 @@ watch(inspectedNode, () => {
           </div>
         </div>
       </div>
+      </div>
     </div>
   </aside>
 </template>
@@ -577,9 +615,49 @@ watch(inspectedNode, () => {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   background: var(--color-neutral-50);
   border-bottom: 1px solid var(--color-neutral-200);
+  gap: var(--space-2);
+}
+
+.panel-tabs {
+  display: flex;
+  gap: var(--space-1);
+}
+
+.panel-tab {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-neutral-500);
+  background: transparent;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.panel-tab:hover {
+  color: var(--color-neutral-700);
+  background: var(--color-neutral-100);
+}
+
+.panel-tab.active {
+  color: var(--color-primary-600);
+  background: var(--color-primary-50);
+}
+
+.properties-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .panel-title {

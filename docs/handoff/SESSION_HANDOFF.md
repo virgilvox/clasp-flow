@@ -22,7 +22,39 @@
 ### Next Step: Phase 10 - Polish & Export
 ### Latest Release: v0.1.3
 
-### Latest Session Accomplishments (STT Pipeline Fix, Type Conversion System, Stability):
+### Latest Session Accomplishments (Monitor Node, Debug Panel, STT Fix):
+
+**Monitor Node Enhancements:**
+- Added resizable capability with drag handle in bottom-right corner
+- Stores width/height in node data via `flowsStore.updateNodeData()`
+- Added clear button in header to reset displayed value
+- Minimum size constraints (140px width, 80px height)
+
+**Debug Panel Tab:**
+- Added new Debug panel as a tab in the Properties Panel area
+- Tab bar with "Properties" and "Debug" tabs (Settings/Bug icons)
+- Created `DebugPanel.vue` component with collapsible sections:
+  - **Runtime Status**: FPS, target FPS, frame count, uptime, active nodes, connections
+  - **Errors**: Error list with timestamps, click-to-highlight node, clear button
+  - **Node Performance**: Sorted by execution time, shows errors per node, clear metrics button
+- Automatically switches to Properties tab when a node is inspected
+- Follows project design language with consistent styling
+
+**Vue Vnode Warning Fix:**
+- Fixed "Invalid vnode type when creating vnode: undefined" warnings in PropertiesPanel
+- Changed `<template v-else>` to `<div v-else>` wrapper (Vue 3 vnode issue)
+- Removed unused icon imports from DebugPanel.vue
+
+**Files Created:**
+- `src/renderer/components/debug/DebugPanel.vue` - Debug panel component
+
+**Files Modified:**
+- `src/renderer/registry/debug/monitor/MonitorNode.vue` - Resize handle, clear button, dimension storage
+- `src/renderer/components/layout/PropertiesPanel.vue` - Tab bar, debug panel integration
+
+---
+
+### Previous Session Accomplishments (STT Pipeline Fix, Type Conversion System, Stability):
 
 **Speech-to-Text Pipeline Fix:**
 - STT node was broken - Audio Input outputs Tone.js nodes but STT executor expected Float32Array
@@ -50,11 +82,12 @@
 - Added `isRouterReady` ref that defaults `isEditorView` to true before router resolves
 
 **AudioBufferService Fix:**
-- `createScriptProcessor is not a function` error
-- `InvalidAccessError` when connecting nodes from different contexts
-- For Tone.js nodes, ALWAYS use Tone's rawContext (cast to AudioContext) to avoid cross-context errors
-- For MediaStream, can use Tone's context or create new one
-- Added explicit check for createScriptProcessor availability with clear error message
+- `createScriptProcessor is not a function` error on Tone.js rawContext
+- Solution: Access UserMedia._stream directly for microphone input
+- For other Tone.js nodes: use MediaStreamDestination as a bridge
+- Create own fresh `new AudioContext()` which has createScriptProcessor available
+- MediaStream crosses contexts by design - this is the proper way to bridge audio contexts
+- Properly disconnects and cleans up Tone.js bridge on disconnect()
 
 **flows.ts Defensive Checks:**
 - Fixed 6 locations with unsafe non-null assertions: `nodeIdMap.get(edge.source)!`
@@ -885,6 +918,7 @@ npm run dev:electron
 | 2026-01-18 | AI & Trigger Fixes | Trigger connects to trigger inputs, AI uses trigger value as prompt |
 | 2026-01-18 | AI Web Workers & Audit | Web Worker for AI inference, fixed missing triggers on AI nodes, texture-to-data executor, audio-delay collision fix |
 | 2026-01-18 | STT & Type Safety | Fixed STT pipeline (Tone.js→AudioBufferService→16kHz), AI image type conversion, Electron startup fix, flows.ts null checks, device enumeration for audio/video selects |
+| 2026-01-19 | Monitor & Debug | Resizable Monitor node with clear button, Debug panel tab in Properties Panel with runtime stats, errors, and performance metrics |
 
 ---
 

@@ -20,12 +20,21 @@ export interface AudioBufferServiceOptions {
   vadSilenceDuration?: number // ms before speech end, default 500
 }
 
+// Type for accessing Tone.UserMedia's private _stream property
+interface UserMediaWithStream extends Tone.UserMedia {
+  _stream?: MediaStream
+}
+
 class AudioBufferServiceImpl {
   private mediaStreamSource: MediaStreamAudioSourceNode | null = null
   private analyser: AnalyserNode | null = null
   private scriptProcessor: ScriptProcessorNode | null = null
-  private silentGain: GainNode | null = null // Prevents audio from playing through speakers
+  private silentGain: GainNode | null = null
   private audioContext: AudioContext | null = null
+
+  // For Tone.js bridge (fallback)
+  private toneStreamDest: MediaStreamAudioDestinationNode | null = null
+  private toneSourceNode: Tone.ToneAudioNode | null = null
 
   private ringBuffer: Float32Array[] = []
   private maxBufferChunks: number = 0
@@ -58,26 +67,43 @@ class AudioBufferServiceImpl {
     this.vadThreshold = options.vadThreshold ?? 0.01
     this.vadSilenceDuration = options.vadSilenceDuration ?? 500
 
-    const isToneSource = !(source instanceof MediaStream)
+    let captureStream: MediaStream
 
-    // Get or create audio context
-    // For Tone.js nodes, we MUST use Tone's context to avoid InvalidAccessError
-    // when connecting nodes from different contexts
-    if (isToneSource) {
-      // For Tone.js nodes, always use Tone's context
-      const toneContext = Tone.getContext()
-      // Cast to AudioContext - Tone.js wraps it but it's still an AudioContext
-      // The rawContext property gives us the underlying native AudioContext
-      this.audioContext = toneContext.rawContext as AudioContext
+    if (source instanceof MediaStream) {
+      // Direct MediaStream input
+      captureStream = source
     } else {
-      // For MediaStream, we can use our own context or Tone's
-      const toneContext = Tone.getContext()
-      if (toneContext.rawContext instanceof AudioContext) {
-        this.audioContext = toneContext.rawContext
+      // Tone.js node - try to get MediaStream directly
+      const toneNode = source as Tone.ToneAudioNode
+
+      // Check if this is a UserMedia with direct stream access
+      // Tone.UserMedia stores the original MediaStream as _stream
+      const userMediaNode = toneNode as UserMediaWithStream
+      if (userMediaNode._stream && userMediaNode._stream instanceof MediaStream) {
+        console.log('[AudioBufferService] Using UserMedia._stream directly')
+        captureStream = userMediaNode._stream
       } else {
-        this.audioContext = new AudioContext()
+        // Fallback: Use MediaStreamDestination bridge for other Tone.js nodes
+        console.log('[AudioBufferService] Using MediaStreamDestination bridge')
+        const toneContext = Tone.getContext()
+        const nativeContext = toneContext.rawContext
+
+        if (!nativeContext || typeof nativeContext.createMediaStreamDestination !== 'function') {
+          throw new Error('Cannot create MediaStream from audio context')
+        }
+
+        this.toneStreamDest = nativeContext.createMediaStreamDestination()
+        this.toneSourceNode = toneNode
+
+        // Connect Tone.js node to the destination
+        Tone.connect(toneNode, this.toneStreamDest)
+
+        captureStream = this.toneStreamDest.stream
       }
     }
+
+    // Create our own AudioContext for capture
+    this.audioContext = new AudioContext()
     this.sourceSampleRate = this.audioContext.sampleRate
 
     // Calculate buffer chunks needed
@@ -92,12 +118,8 @@ class AudioBufferServiceImpl {
     this.analyser.smoothingTimeConstant = 0.3
 
     // Create script processor for capturing samples
-    // Note: ScriptProcessorNode is deprecated but still widely supported
-    // and necessary for real-time audio capture
     if (typeof this.audioContext.createScriptProcessor !== 'function') {
-      throw new Error(
-        'AudioContext.createScriptProcessor is not available. Audio capture not supported in this environment.'
-      )
+      throw new Error('AudioContext.createScriptProcessor is not available')
     }
     this.scriptProcessor = this.audioContext.createScriptProcessor(chunkSize, 1, 1)
 
@@ -117,28 +139,19 @@ class AudioBufferServiceImpl {
       this.updateVAD(inputData)
     }
 
-    // Create a silent gain node to prevent audio from playing through speakers
-    // ScriptProcessorNode requires connection to destination to process, but we don't want to hear it
+    // Silent gain to prevent playback
     this.silentGain = this.audioContext.createGain()
     this.silentGain.gain.value = 0
     this.silentGain.connect(this.audioContext.destination)
 
-    // Connect source
-    if (source instanceof MediaStream) {
-      this.mediaStreamSource = this.audioContext.createMediaStreamSource(source)
-      this.mediaStreamSource.connect(this.analyser)
-      this.mediaStreamSource.connect(this.scriptProcessor)
-    } else {
-      // Tone.js node - use Tone.connect for proper routing through Tone's graph
-      const toneNode = source as Tone.ToneAudioNode
-      Tone.connect(toneNode, this.analyser)
-      Tone.connect(toneNode, this.scriptProcessor)
-    }
-
-    // Connect script processor through silent gain (required for it to process)
+    // Connect capture stream
+    this.mediaStreamSource = this.audioContext.createMediaStreamSource(captureStream)
+    this.mediaStreamSource.connect(this.analyser)
+    this.mediaStreamSource.connect(this.scriptProcessor)
     this.scriptProcessor.connect(this.silentGain)
 
     this.isConnected = true
+    console.log('[AudioBufferService] Connected, sample rate:', this.sourceSampleRate)
   }
 
   /**
@@ -160,6 +173,17 @@ class AudioBufferServiceImpl {
    * Disconnect and cleanup
    */
   disconnect(): void {
+    // Disconnect Tone.js bridge if used
+    if (this.toneSourceNode && this.toneStreamDest) {
+      try {
+        Tone.disconnect(this.toneSourceNode, this.toneStreamDest)
+      } catch {
+        // May already be disconnected
+      }
+      this.toneSourceNode = null
+      this.toneStreamDest = null
+    }
+
     if (this.scriptProcessor) {
       this.scriptProcessor.disconnect()
       this.scriptProcessor = null
@@ -177,10 +201,12 @@ class AudioBufferServiceImpl {
 
     if (this.mediaStreamSource) {
       this.mediaStreamSource.disconnect()
-      // Stop all tracks in the media stream
-      const stream = this.mediaStreamSource.mediaStream
-      stream.getTracks().forEach((track) => track.stop())
       this.mediaStreamSource = null
+    }
+
+    if (this.audioContext && this.audioContext.state !== 'closed') {
+      this.audioContext.close().catch(() => {})
+      this.audioContext = null
     }
 
     this.ringBuffer = []
@@ -205,10 +231,7 @@ class AudioBufferServiceImpl {
     const samplesNeeded = Math.min(durationMs * samplesPerMs, this.ringBuffer.length * chunkSize)
     const chunksNeeded = Math.ceil(samplesNeeded / chunkSize)
 
-    // Get recent chunks
     const recentChunks = this.ringBuffer.slice(-chunksNeeded)
-
-    // Combine into single buffer
     const combinedLength = recentChunks.reduce((sum, chunk) => sum + chunk.length, 0)
     const combined = new Float32Array(combinedLength)
     let offset = 0
@@ -217,11 +240,9 @@ class AudioBufferServiceImpl {
       offset += chunk.length
     }
 
-    // Trim to exact duration needed
     const startSample = Math.max(0, combined.length - Math.floor(samplesNeeded))
     const trimmed = combined.slice(startSample)
 
-    // Resample to target sample rate (16kHz for Whisper)
     return this.resample(trimmed, this.sourceSampleRate, this.targetSampleRate)
   }
 
@@ -233,7 +254,6 @@ class AudioBufferServiceImpl {
       return new Float32Array(0)
     }
 
-    // Combine all chunks
     const combinedLength = this.ringBuffer.reduce((sum, chunk) => sum + chunk.length, 0)
     const combined = new Float32Array(combinedLength)
     let offset = 0
@@ -242,34 +262,21 @@ class AudioBufferServiceImpl {
       offset += chunk.length
     }
 
-    // Resample to target sample rate
     return this.resample(combined, this.sourceSampleRate, this.targetSampleRate)
   }
 
-  /**
-   * Clear the buffer
-   */
   clearBuffer(): void {
     this.ringBuffer = []
   }
 
-  /**
-   * Check if voice is currently active (VAD)
-   */
   isVoiceActive(): boolean {
     return this.vadState.speaking
   }
 
-  /**
-   * Get current VAD state
-   */
   getVadState(): VADState {
     return { ...this.vadState }
   }
 
-  /**
-   * Subscribe to VAD state changes
-   */
   onVadChange(callback: (state: VADState) => void): () => void {
     this.listeners.add(callback)
     return () => {
@@ -277,37 +284,24 @@ class AudioBufferServiceImpl {
     }
   }
 
-  /**
-   * Update VAD threshold
-   */
   setVadThreshold(threshold: number): void {
     this.vadThreshold = threshold
   }
 
-  /**
-   * Update VAD silence duration
-   */
   setVadSilenceDuration(durationMs: number): void {
     this.vadSilenceDuration = durationMs
   }
 
-  /**
-   * Check if connected
-   */
   get connected(): boolean {
     return this.isConnected
   }
 
-  /**
-   * Get current RMS level (for UI display)
-   */
   getCurrentLevel(): number {
     if (!this.analyser) return 0
 
     const dataArray = new Float32Array(this.analyser.fftSize)
     this.analyser.getFloatTimeDomainData(dataArray)
 
-    // Calculate RMS
     let sum = 0
     for (let i = 0; i < dataArray.length; i++) {
       sum += dataArray[i] * dataArray[i]
@@ -315,10 +309,7 @@ class AudioBufferServiceImpl {
     return Math.sqrt(sum / dataArray.length)
   }
 
-  // Private methods
-
   private updateVAD(samples: Float32Array): void {
-    // Calculate RMS
     let sum = 0
     for (let i = 0; i < samples.length; i++) {
       sum += samples[i] * samples[i]
@@ -329,22 +320,18 @@ class AudioBufferServiceImpl {
     const wasSpeak = this.vadState.speaking
 
     if (rms > this.vadThreshold) {
-      // Voice detected
       if (!this.vadState.speaking) {
         this.vadState.speaking = true
         this.vadState.speechStartTime = now
         this.vadState.silenceStartTime = null
       } else {
-        // Still speaking, reset silence timer
         this.vadState.silenceStartTime = null
       }
     } else {
-      // Silence detected
       if (this.vadState.speaking) {
         if (!this.vadState.silenceStartTime) {
           this.vadState.silenceStartTime = now
         } else if (now - this.vadState.silenceStartTime > this.vadSilenceDuration) {
-          // Silence duration exceeded, speech ended
           this.vadState.speaking = false
           this.vadState.speechStartTime = null
           this.vadState.silenceStartTime = null
@@ -352,7 +339,6 @@ class AudioBufferServiceImpl {
       }
     }
 
-    // Notify listeners if state changed
     if (wasSpeak !== this.vadState.speaking) {
       this.notifyListeners()
     }
@@ -369,10 +355,6 @@ class AudioBufferServiceImpl {
     }
   }
 
-  /**
-   * Resample audio from source to target sample rate
-   * Using linear interpolation for simplicity
-   */
   private resample(
     input: Float32Array,
     sourceSampleRate: number,
@@ -391,8 +373,6 @@ class AudioBufferServiceImpl {
       const srcIndexFloor = Math.floor(srcIndex)
       const srcIndexCeil = Math.min(srcIndexFloor + 1, input.length - 1)
       const fraction = srcIndex - srcIndexFloor
-
-      // Linear interpolation
       output[i] = input[srcIndexFloor] * (1 - fraction) + input[srcIndexCeil] * fraction
     }
 
@@ -400,8 +380,5 @@ class AudioBufferServiceImpl {
   }
 }
 
-// Export singleton instance
 export const audioBufferService = new AudioBufferServiceImpl()
-
-// Export class for testing
 export { AudioBufferServiceImpl }
