@@ -50,7 +50,7 @@ export function usePersistence() {
    */
   function toFlowState(persisted: PersistedFlow): FlowState {
     // Special node types that have their own Vue components
-    const specialNodeTypes = ['main-output', 'trigger', 'xy-pad', 'monitor', 'oscilloscope', 'graph', 'equalizer', 'textbox']
+    const specialNodeTypes = ['main-output', 'trigger', 'xy-pad', 'monitor', 'oscilloscope', 'graph', 'equalizer', 'textbox', 'knob', 'envelope-visual', 'parametric-eq', 'wavetable', 'step-sequencer']
 
     // Migrate nodes - ensure special nodes have correct Vue Flow type
     const migratedNodes = persisted.nodes.map(node => {

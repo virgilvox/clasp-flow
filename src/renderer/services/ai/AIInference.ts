@@ -35,6 +35,8 @@ export interface AIState {
   useWebGPU: boolean
   defaultDType: DType
   useBrowserCache: boolean
+  autoLoadModels: string[] // List of "task:modelId" keys to auto-load
+  selectedModels: Record<string, string> // Task ID -> selected model ID
 }
 
 // Model option with size info
@@ -199,6 +201,9 @@ class AIInferenceService {
   private _pendingRequests = new Map<string, PendingRequest>()
   private _requestIdCounter = 0
   private _loadedModels = new Set<string>()
+  private _autoLoadModels: string[] = []
+  private _selectedModels: Record<string, string> = {}
+  private _settingsLoaded = false
 
   constructor() {
     this.initWorker()
@@ -369,6 +374,8 @@ class AIInferenceService {
       useWebGPU: this._useWebGPU,
       defaultDType: this._defaultDType,
       useBrowserCache: this._useBrowserCache,
+      autoLoadModels: [...this._autoLoadModels],
+      selectedModels: { ...this._selectedModels },
     }
   }
 
@@ -454,6 +461,144 @@ class AIInferenceService {
       this._worker.postMessage({ type: 'setCache', enabled: use })
     }
     this.notifyListeners()
+  }
+
+  // Get auto-load models
+  getAutoLoadModels(): string[] {
+    return [...this._autoLoadModels]
+  }
+
+  // Set auto-load models
+  setAutoLoadModels(models: string[]): void {
+    this._autoLoadModels = [...models]
+    this.notifyListeners()
+  }
+
+  // Add a model to auto-load list
+  addAutoLoadModel(task: string, modelId?: string): void {
+    const model = modelId || this.getDefaultModel(task)
+    const key = `${task}:${model}`
+    if (!this._autoLoadModels.includes(key)) {
+      this._autoLoadModels.push(key)
+      this.notifyListeners()
+    }
+  }
+
+  // Remove a model from auto-load list
+  removeAutoLoadModel(task: string, modelId?: string): void {
+    const model = modelId || this.getDefaultModel(task)
+    const key = `${task}:${model}`
+    this._autoLoadModels = this._autoLoadModels.filter(k => k !== key)
+    this.notifyListeners()
+  }
+
+  // Check if a model is set to auto-load
+  isAutoLoadEnabled(task: string, modelId?: string): boolean {
+    const model = modelId || this.getDefaultModel(task)
+    const key = `${task}:${model}`
+    return this._autoLoadModels.includes(key)
+  }
+
+  // Get selected model for a task
+  getSelectedModel(task: string): string {
+    return this._selectedModels[task] || this.getDefaultModel(task)
+  }
+
+  // Set selected model for a task
+  setSelectedModel(task: string, modelId: string): void {
+    this._selectedModels[task] = modelId
+    this.notifyListeners()
+  }
+
+  // Load settings from storage (call this on app init)
+  async loadSettingsFromStorage(): Promise<void> {
+    if (this._settingsLoaded) return
+
+    try {
+      // Dynamic import to avoid circular dependency
+      const { settingsStorage } = await import('../database')
+      const settings = await settingsStorage.get()
+
+      if (settings) {
+        if (settings.aiAutoLoadModels) {
+          this._autoLoadModels = settings.aiAutoLoadModels
+        }
+        if (settings.aiSelectedModels) {
+          this._selectedModels = settings.aiSelectedModels
+        }
+        if (settings.aiUseWebGPU !== undefined) {
+          this._useWebGPU = settings.aiUseWebGPU && this._webgpuAvailable
+        }
+        if (settings.aiUseBrowserCache !== undefined) {
+          this._useBrowserCache = settings.aiUseBrowserCache
+          if (this._worker) {
+            this._worker.postMessage({ type: 'setCache', enabled: this._useBrowserCache })
+          }
+        }
+      }
+
+      this._settingsLoaded = true
+      this.notifyListeners()
+      console.log('[AIInference] Settings loaded from storage')
+    } catch (error) {
+      console.error('[AIInference] Failed to load settings:', error)
+    }
+  }
+
+  // Save settings to storage
+  async saveSettingsToStorage(): Promise<void> {
+    try {
+      // Dynamic import to avoid circular dependency
+      const { settingsStorage } = await import('../database')
+      const existing = await settingsStorage.get()
+      const defaults = settingsStorage.getDefaults()
+
+      await settingsStorage.save({
+        ...defaults,
+        ...existing,
+        aiAutoLoadModels: this._autoLoadModels,
+        aiSelectedModels: this._selectedModels,
+        aiUseWebGPU: this._useWebGPU,
+        aiUseBrowserCache: this._useBrowserCache,
+      })
+
+      console.log('[AIInference] Settings saved to storage')
+    } catch (error) {
+      console.error('[AIInference] Failed to save settings:', error)
+    }
+  }
+
+  // Auto-load models from the auto-load list
+  async autoLoadModels(onProgress?: (task: string, progress: number) => void): Promise<void> {
+    if (this._autoLoadModels.length === 0) {
+      console.log('[AIInference] No models configured for auto-load')
+      return
+    }
+
+    console.log(`[AIInference] Auto-loading ${this._autoLoadModels.length} model(s)...`)
+
+    for (const key of this._autoLoadModels) {
+      const [task, modelId] = key.split(':')
+      if (!task || !modelId) continue
+
+      // Skip if already loaded
+      if (this._loadedModels.has(key)) {
+        console.log(`[AIInference] Model already loaded: ${key}`)
+        continue
+      }
+
+      try {
+        console.log(`[AIInference] Auto-loading: ${key}`)
+        await this.loadModel(task, modelId, (progress) => {
+          onProgress?.(task, progress)
+        })
+      } catch (error) {
+        console.error(`[AIInference] Failed to auto-load ${key}:`, error)
+        // Continue with other models even if one fails
+      }
+    }
+
+    console.log('[AIInference] Auto-load complete')
   }
 
   // Clear cached models from IndexedDB

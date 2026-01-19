@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted, onUnmounted, watch, computed } from 'vue'
+import * as THREE from 'three'
 import { useRuntimeStore } from '@/stores/runtime'
+import { getThreeShaderRenderer } from '@/services/visual/ThreeShaderRenderer'
 import { getShaderRenderer } from '@/services/visual/ShaderRenderer'
 
 const props = withDefaults(defineProps<{
@@ -35,7 +37,7 @@ const videoOutput = computed(() => {
   return metrics.outputValues['video'] as HTMLVideoElement | null
 })
 
-// Update preview from WebGL texture or video
+// Update preview from texture (THREE.Texture, WebGLTexture, canvas, or video)
 function updatePreview() {
   if (!canvas.value || !ctx.value) return
 
@@ -72,13 +74,18 @@ function updatePreview() {
     return
   }
 
-  // Priority 3: WebGL texture - render to temp canvas then copy
-  // Note: For now we use the shared renderer canvas, which may show
-  // the last rendered content. This is a limitation until we implement
-  // per-node framebuffer rendering.
+  // Priority 3: THREE.Texture - use ThreeShaderRenderer to render to canvas
+  if (texture instanceof THREE.Texture) {
+    const threeRenderer = getThreeShaderRenderer()
+    // Render the texture to our canvas using the Three.js renderer
+    threeRenderer.renderToCanvas(texture, canvas.value)
+    return
+  }
+
+  // Priority 4: Raw WebGLTexture (legacy) - use old renderer canvas
   if (texture instanceof WebGLTexture) {
-    const renderer = getShaderRenderer()
-    const sourceCanvas = renderer.getCanvas()
+    const legacyRenderer = getShaderRenderer()
+    const sourceCanvas = legacyRenderer.getCanvas()
     ctx.value.drawImage(sourceCanvas, 0, 0, props.width, props.height)
   }
 }

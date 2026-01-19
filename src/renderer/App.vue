@@ -13,6 +13,7 @@ import ConnectionManagerModal from './components/connections/ConnectionManagerMo
 import LoadingScreen from './components/branding/LoadingScreen.vue'
 import { usePersistence } from './composables/usePersistence'
 import { useExecutionEngine } from './composables/useExecutionEngine'
+import { aiInference } from './services/ai/AIInference'
 
 const route = useRoute()
 const router = useRouter()
@@ -59,6 +60,16 @@ onMounted(async () => {
   } finally {
     isInitialized.value = true
   }
+
+  // Load AI settings and auto-load any configured models
+  // This runs in the background and doesn't block app initialization
+  aiInference.loadSettingsFromStorage().then(() => {
+    aiInference.autoLoadModels((task, progress) => {
+      console.log(`[AI Auto-load] ${task}: ${Math.round(progress)}%`)
+    }).catch(error => {
+      console.error('[AI Auto-load] Failed:', error)
+    })
+  })
 })
 </script>
 

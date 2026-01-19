@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
-import { X, Download, Trash2, Loader, CheckCircle2, AlertCircle, Brain, Cpu, Zap, HardDrive } from 'lucide-vue-next'
+import { X, Download, Trash2, Loader, CheckCircle2, AlertCircle, Brain, Cpu, Zap, HardDrive, Play } from 'lucide-vue-next'
 import { useUIStore } from '@/stores/ui'
 import { aiInference, AI_MODELS, type ModelLoadState } from '@/services/ai/AIInference'
 
@@ -9,6 +9,7 @@ const uiStore = useUIStore()
 // Reactive state
 const modelStates = ref<Map<string, { state: ModelLoadState; progress: number; error?: string }>>(new Map())
 const selectedModels = ref<Map<string, string>>(new Map())
+const autoLoadModels = ref<Set<string>>(new Set())
 const webgpuAvailable = ref(false)
 const useWebGPU = ref(false)
 const useBrowserCache = ref(true)
@@ -17,10 +18,20 @@ const clearingCache = ref(false)
 // Initialize selected models with defaults
 let aiUnsubscribe: (() => void) | null = null
 
-onMounted(() => {
+onMounted(async () => {
+  // Load settings from storage first
+  await aiInference.loadSettingsFromStorage()
+
+  // Initialize with stored or default values
+  const state = aiInference.getState()
   AI_MODELS.forEach(model => {
-    selectedModels.value.set(model.id, model.defaultModel)
+    const storedModel = state.selectedModels[model.id]
+    selectedModels.value.set(model.id, storedModel || model.defaultModel)
   })
+
+  // Load auto-load settings
+  autoLoadModels.value = new Set(state.autoLoadModels)
+
   updateState()
 
   // Subscribe to AI service state changes
@@ -55,6 +66,7 @@ function updateState() {
   webgpuAvailable.value = state.webgpuAvailable
   useWebGPU.value = state.useWebGPU
   useBrowserCache.value = state.useBrowserCache
+  autoLoadModels.value = new Set(state.autoLoadModels)
 }
 
 function getTaskModelKey(taskId: string): string {
@@ -130,14 +142,41 @@ async function unloadModel(taskId: string) {
 
 function selectModel(taskId: string, modelId: string) {
   selectedModels.value.set(taskId, modelId)
+  aiInference.setSelectedModel(taskId, modelId)
+  saveSettings()
+}
+
+function isAutoLoadEnabled(taskId: string): boolean {
+  const key = getTaskModelKey(taskId)
+  return autoLoadModels.value.has(key)
+}
+
+function toggleAutoLoad(taskId: string) {
+  const modelId = selectedModels.value.get(taskId)
+  const task = AI_MODELS.find(m => m.id === taskId)
+  if (!task || !modelId) return
+
+  if (isAutoLoadEnabled(taskId)) {
+    aiInference.removeAutoLoadModel(task.task, modelId)
+  } else {
+    aiInference.addAutoLoadModel(task.task, modelId)
+  }
+  saveSettings()
 }
 
 function toggleWebGPU() {
   aiInference.setUseWebGPU(!useWebGPU.value)
+  saveSettings()
 }
 
 function toggleBrowserCache() {
   aiInference.setUseBrowserCache(!useBrowserCache.value)
+  saveSettings()
+}
+
+// Save settings to persistent storage
+async function saveSettings() {
+  await aiInference.saveSettingsToStorage()
 }
 
 async function clearCache() {
@@ -337,6 +376,21 @@ function getCategoryColor(category: string): string {
                     </option>
                   </select>
                   <span class="selected-size">{{ getSelectedModelSize(task.id) }}</span>
+                </div>
+
+                <!-- Auto-load toggle -->
+                <div class="auto-load-toggle">
+                  <label class="toggle-label small">
+                    <input
+                      type="checkbox"
+                      :checked="isAutoLoadEnabled(task.id)"
+                      :disabled="isModelLoading(task.id)"
+                      @change="toggleAutoLoad(task.id)"
+                    >
+                    <span class="toggle-switch small" />
+                    <Play :size="12" />
+                    <span>Load on startup</span>
+                  </label>
                 </div>
 
                 <!-- WebGPU indicator -->
@@ -602,6 +656,42 @@ function getCategoryColor(category: string): string {
 
 .toggle-label input:checked + .toggle-switch::after {
   transform: translateX(16px);
+}
+
+/* Small toggle variant */
+.toggle-label.small {
+  font-size: 11px;
+}
+
+.toggle-switch.small {
+  width: 28px;
+  height: 16px;
+  border-radius: 8px;
+}
+
+.toggle-switch.small::after {
+  width: 12px;
+  height: 12px;
+}
+
+.toggle-label input:checked + .toggle-switch.small::after {
+  transform: translateX(12px);
+}
+
+.auto-load-toggle {
+  margin-bottom: var(--space-2);
+}
+
+.auto-load-toggle .toggle-label {
+  color: var(--color-neutral-500);
+}
+
+.auto-load-toggle .toggle-label:has(input:checked) {
+  color: #22C55E;
+}
+
+.auto-load-toggle .toggle-label input:checked + .toggle-switch {
+  background: #22C55E;
 }
 
 .webgpu-unavailable {

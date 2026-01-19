@@ -761,6 +761,34 @@ export function gcAudioState(validNodeIds: Set<string>): void {
       pitchState.delete(nodeId)
     }
   }
+
+  // Clean parametricEqState
+  for (const nodeId of parametricEqState.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      const state = parametricEqState.get(nodeId)
+      if (state) {
+        try {
+          state.band1.dispose()
+          state.band2.dispose()
+          state.band3.dispose()
+        } catch { /* ignore */ }
+      }
+      parametricEqState.delete(nodeId)
+    }
+  }
+
+  // Clean wavetableState
+  for (const nodeId of wavetableState.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      const state = wavetableState.get(nodeId)
+      if (state) {
+        try {
+          state.oscillator.dispose()
+        } catch { /* ignore */ }
+      }
+      wavetableState.delete(nodeId)
+    }
+  }
 }
 
 // ============================================================================
@@ -1036,6 +1064,212 @@ export const pitchDetectExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
 }
 
 // ============================================================================
+// Envelope Visual Node (same as envelope but with visual control type)
+// ============================================================================
+
+export const envelopeVisualExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  // Uses the same logic as envelopeExecutor
+  return envelopeExecutor(ctx)
+}
+
+// ============================================================================
+// Parametric EQ Node
+// ============================================================================
+
+// State for parametric EQ connections
+const parametricEqState = new Map<
+  string,
+  {
+    band1: Tone.Filter
+    band2: Tone.Filter
+    band3: Tone.Filter
+    prevInput: Tone.ToneAudioNode | null
+  }
+>()
+
+export const parametricEqExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const audio = ctx.inputs.get('audio') as Tone.ToneAudioNode | null
+
+  // Get band parameters
+  const freq1 = (ctx.controls.get('freq1') as number) ?? 200
+  const gain1 = (ctx.controls.get('gain1') as number) ?? 0
+  const q1 = (ctx.controls.get('q1') as number) ?? 1
+
+  const freq2 = (ctx.controls.get('freq2') as number) ?? 1000
+  const gain2 = (ctx.controls.get('gain2') as number) ?? 0
+  const q2 = (ctx.controls.get('q2') as number) ?? 1
+
+  const freq3 = (ctx.controls.get('freq3') as number) ?? 5000
+  const gain3 = (ctx.controls.get('gain3') as number) ?? 0
+  const q3 = (ctx.controls.get('q3') as number) ?? 1
+
+  const outputs = new Map<string, unknown>()
+
+  if (!audio) {
+    outputs.set('audio', null)
+    return outputs
+  }
+
+  // Initialize or get state
+  let state = parametricEqState.get(ctx.nodeId)
+  if (!state) {
+    state = {
+      band1: new Tone.Filter({ type: 'peaking', frequency: freq1, Q: q1, gain: gain1 }),
+      band2: new Tone.Filter({ type: 'peaking', frequency: freq2, Q: q2, gain: gain2 }),
+      band3: new Tone.Filter({ type: 'peaking', frequency: freq3, Q: q3, gain: gain3 }),
+      prevInput: null,
+    }
+    // Chain filters together
+    state.band1.connect(state.band2)
+    state.band2.connect(state.band3)
+    parametricEqState.set(ctx.nodeId, state)
+  }
+
+  // Update filter parameters
+  state.band1.frequency.value = freq1
+  state.band1.Q.value = q1
+  state.band1.gain.value = gain1
+
+  state.band2.frequency.value = freq2
+  state.band2.Q.value = q2
+  state.band2.gain.value = gain2
+
+  state.band3.frequency.value = freq3
+  state.band3.Q.value = q3
+  state.band3.gain.value = gain3
+
+  // Connect input to first filter
+  if (state.prevInput !== audio) {
+    if (state.prevInput) {
+      try {
+        state.prevInput.disconnect(state.band1)
+      } catch { /* ignore */ }
+    }
+    audio.connect(state.band1)
+    state.prevInput = audio
+  }
+
+  outputs.set('audio', state.band3)
+  return outputs
+}
+
+export function disposeParametricEq(nodeId: string): void {
+  const state = parametricEqState.get(nodeId)
+  if (state) {
+    state.band1.dispose()
+    state.band2.dispose()
+    state.band3.dispose()
+    parametricEqState.delete(nodeId)
+  }
+}
+
+// ============================================================================
+// Wavetable Node
+// ============================================================================
+
+// State for wavetable oscillators
+const wavetableState = new Map<
+  string,
+  {
+    oscillator: Tone.Oscillator
+    periodicWave: PeriodicWave | null
+    lastPreset: string
+    lastWaveform: number[] | null
+  }
+>()
+
+export const wavetableExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const frequencyInput = ctx.inputs.get('frequency') as number | undefined
+  const frequency = frequencyInput ?? (ctx.controls.get('frequency') as number) ?? 440
+  const volume = (ctx.controls.get('volume') as number) ?? 0.5
+  const preset = (ctx.controls.get('preset') as string) ?? 'sine'
+  const waveform = (ctx.controls.get('waveform') as number[]) ?? null
+
+  // Initialize or get state
+  let state = wavetableState.get(ctx.nodeId)
+  if (!state) {
+    const oscillator = new Tone.Oscillator({
+      frequency,
+      type: preset as OscillatorType,
+      volume: Tone.gainToDb(volume),
+    })
+    oscillator.start()
+
+    state = {
+      oscillator,
+      periodicWave: null,
+      lastPreset: preset,
+      lastWaveform: null,
+    }
+    wavetableState.set(ctx.nodeId, state)
+  }
+
+  // Update frequency and volume
+  state.oscillator.frequency.value = frequency
+  state.oscillator.volume.value = Tone.gainToDb(volume)
+
+  // Handle preset change or custom waveform
+  if (preset !== 'custom') {
+    if (state.lastPreset !== preset) {
+      state.oscillator.type = preset as OscillatorType
+      state.lastPreset = preset
+      state.lastWaveform = null
+    }
+  } else if (waveform && waveform.length > 0) {
+    // Custom waveform - convert samples to periodic wave
+    const waveformChanged = !state.lastWaveform ||
+      state.lastWaveform.length !== waveform.length ||
+      state.lastWaveform.some((v, i) => Math.abs(v - waveform[i]) > 0.001)
+
+    if (waveformChanged) {
+      // Convert time-domain samples to frequency-domain via simple DFT
+      const n = waveform.length
+      const real = new Float32Array(n / 2 + 1)
+      const imag = new Float32Array(n / 2 + 1)
+
+      // Simple DFT for harmonics
+      for (let k = 0; k <= n / 2; k++) {
+        let sumReal = 0
+        let sumImag = 0
+        for (let t = 0; t < n; t++) {
+          const angle = (2 * Math.PI * k * t) / n
+          sumReal += waveform[t] * Math.cos(angle)
+          sumImag -= waveform[t] * Math.sin(angle)
+        }
+        real[k] = sumReal / n
+        imag[k] = sumImag / n
+      }
+
+      // Create periodic wave
+      const audioContext = Tone.getContext().rawContext as AudioContext
+      const periodicWave = audioContext.createPeriodicWave(real, imag)
+      state.periodicWave = periodicWave
+
+      // Apply to oscillator
+      const rawOsc = (state.oscillator as unknown as { _oscillator?: OscillatorNode })._oscillator
+      if (rawOsc) {
+        rawOsc.setPeriodicWave(periodicWave)
+      }
+
+      state.lastWaveform = [...waveform]
+      state.lastPreset = 'custom'
+    }
+  }
+
+  const outputs = new Map<string, unknown>()
+  outputs.set('audio', state.oscillator)
+  return outputs
+}
+
+export function disposeWavetable(nodeId: string): void {
+  const state = wavetableState.get(nodeId)
+  if (state) {
+    state.oscillator.dispose()
+    wavetableState.delete(nodeId)
+  }
+}
+
+// ============================================================================
 // Registry
 // ============================================================================
 
@@ -1053,4 +1287,7 @@ export const audioExecutors: Record<string, NodeExecutorFn> = {
   reverb: reverbExecutor,
   'svf-filter': svfFilterExecutor,
   'pitch-detect': pitchDetectExecutor,
+  'envelope-visual': envelopeVisualExecutor,
+  'parametric-eq': parametricEqExecutor,
+  wavetable: wavetableExecutor,
 }

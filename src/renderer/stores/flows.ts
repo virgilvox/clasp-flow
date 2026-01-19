@@ -170,7 +170,7 @@ export const useFlowsStore = defineStore('flows', {
 
       // Determine Vue Flow node type
       // Special nodes get their own type, others use 'custom' (BaseNode)
-      const specialNodeTypes = ['main-output', 'trigger', 'xy-pad', 'monitor', 'oscilloscope', 'graph', 'equalizer', 'textbox']
+      const specialNodeTypes = ['main-output', 'trigger', 'xy-pad', 'monitor', 'oscilloscope', 'graph', 'equalizer', 'textbox', 'knob', 'envelope-visual', 'parametric-eq', 'wavetable', 'step-sequencer']
       const vueFlowType = specialNodeTypes.includes(nodeType) ? nodeType : 'custom'
 
       const node: Node = {
@@ -236,6 +236,63 @@ export const useFlowsStore = defineStore('flows', {
         this.activeFlow.updatedAt = new Date()
         this.activeFlow.dirty = true
       }
+    },
+
+    /**
+     * Update dynamic input ports for a node (used by shader nodes)
+     * These ports are stored in node.data._dynamicInputs and merged with
+     * static definition ports by BaseNode.vue
+     */
+    updateNodeDynamicInputs(
+      nodeId: string,
+      dynamicInputs: Array<{ id: string; type: string; label: string; default?: unknown }>
+    ) {
+      if (!this.activeFlow) return
+
+      const node = this.activeFlow.nodes.find((n) => n.id === nodeId)
+      if (node) {
+        node.data = {
+          ...node.data,
+          _dynamicInputs: dynamicInputs,
+        }
+        this.activeFlow.updatedAt = new Date()
+        this.activeFlow.dirty = true
+      }
+    },
+
+    /**
+     * Update dynamic controls for a node (used by shader nodes)
+     * These controls are stored in node.data._dynamicControls
+     */
+    updateNodeDynamicControls(
+      nodeId: string,
+      dynamicControls: Array<{
+        id: string
+        type: string
+        label: string
+        default: unknown
+        props?: Record<string, unknown>
+      }>
+    ) {
+      if (!this.activeFlow) return
+
+      const node = this.activeFlow.nodes.find((n) => n.id === nodeId)
+      if (node) {
+        node.data = {
+          ...node.data,
+          _dynamicControls: dynamicControls,
+        }
+        this.activeFlow.updatedAt = new Date()
+        this.activeFlow.dirty = true
+      }
+    },
+
+    /**
+     * Get a node by ID from the active flow
+     */
+    getNode(nodeId: string): Node | null {
+      if (!this.activeFlow) return null
+      return this.activeFlow.nodes.find((n) => n.id === nodeId) ?? null
     },
 
     // Edge operations

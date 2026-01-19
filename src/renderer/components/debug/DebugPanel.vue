@@ -197,12 +197,18 @@ const warnCount = computed(() => {
     <!-- Compact Status Bar -->
     <div class="status-bar">
       <div class="status-item">
-        <Activity :size="12" :style="{ color: statusColor }" />
+        <Activity
+          :size="12"
+          :style="{ color: statusColor }"
+        />
         <span class="status-label">{{ statusLabel }}</span>
       </div>
       <div class="status-item">
         <span class="stat-label">FPS</span>
-        <span class="stat-value" :class="{ warning: runtimeStore.fps < 30 }">{{ runtimeStore.fps }}</span>
+        <span
+          class="stat-value"
+          :class="{ warning: runtimeStore.fps < 30 }"
+        >{{ runtimeStore.fps }}</span>
       </div>
       <div class="status-item">
         <span class="stat-label">Nodes</span>
@@ -264,7 +270,10 @@ const warnCount = computed(() => {
       class="section"
     >
       <div class="section-header">
-        <AlertCircle :size="12" class="error-icon" />
+        <AlertCircle
+          :size="12"
+          class="error-icon"
+        />
         <span class="section-title">Runtime Errors</span>
         <button
           class="clear-btn"

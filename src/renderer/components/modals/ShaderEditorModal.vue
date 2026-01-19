@@ -1,10 +1,19 @@
 <script setup lang="ts">
 import { ref, computed, watch, onMounted, onUnmounted } from 'vue'
-import { X, Play, Pause, Save, RotateCcw, Info } from 'lucide-vue-next'
+import { X, Play, Pause, Save, RotateCcw, Info, Zap } from 'lucide-vue-next'
 import { useUIStore } from '@/stores/ui'
 import { useFlowsStore } from '@/stores/flows'
 import { useNodesStore } from '@/stores/nodes'
-import { getShaderRenderer, type CompiledShader } from '@/services/visual/ShaderRenderer'
+import {
+  getThreeShaderRenderer,
+  type CompiledShaderMaterial,
+} from '@/services/visual/ThreeShaderRenderer'
+import {
+  parseUniformsFromCode,
+  generateInputsFromUniforms,
+  generateControlsFromUniforms,
+  type UniformDefinition,
+} from '@/services/visual/ShaderPresets'
 import MonacoEditor from '@/components/editors/MonacoEditor.vue'
 
 const uiStore = useUIStore()
@@ -17,6 +26,7 @@ const originalCode = ref('')
 const isPlaying = ref(true)
 const error = ref<string | null>(null)
 const showHelp = ref(false)
+const detectedUniforms = ref<UniformDefinition[]>([])
 
 // Preview canvas
 const previewCanvas = ref<HTMLCanvasElement | null>(null)
@@ -37,7 +47,7 @@ const nodeDefinition = computed(() => {
 
 // Animation and rendering
 let animationFrame: number | null = null
-let compiledShader: CompiledShader | null = null
+let compiledShaderMaterial: CompiledShaderMaterial | null = null
 let startTime = 0
 
 // Initialize code when node changes
@@ -60,28 +70,40 @@ function getDefaultShaderCode(): string {
 }
 
 function compileShader() {
-  const renderer = getShaderRenderer()
+  const renderer = getThreeShaderRenderer()
   const result = renderer.compileShader(code.value, undefined, true)
 
   if ('error' in result) {
     error.value = result.error
-    compiledShader = null
+    compiledShaderMaterial = null
+    detectedUniforms.value = []
   } else {
     error.value = null
-    compiledShader = result
+    compiledShaderMaterial = result
+    // Parse uniforms from the code for display and port generation
+    detectedUniforms.value = parseUniformsFromCode(code.value)
   }
 }
 
 function renderPreview() {
-  if (!previewCanvas.value || !previewCtx.value || !compiledShader) return
+  if (!previewCanvas.value || !previewCtx.value || !compiledShaderMaterial) return
 
-  const renderer = getShaderRenderer()
+  const renderer = getThreeShaderRenderer()
   const currentTime = (performance.now() - startTime) / 1000
 
   renderer.setTime(currentTime)
-  renderer.render(compiledShader, [])
 
-  // Copy to preview canvas
+  // Render using the Three.js renderer with proper uniforms
+  // Pass default values for detected uniforms
+  const uniformValues = detectedUniforms.value.map(u => ({
+    name: u.name,
+    type: u.type as 'float' | 'int' | 'vec2' | 'vec3' | 'vec4' | 'sampler2D',
+    value: u.default as number | number[] | null,
+  }))
+
+  renderer.renderToScreen(compiledShaderMaterial, uniformValues, 400, 300)
+
+  // Copy from renderer canvas to preview canvas
   const sourceCanvas = renderer.getCanvas()
   previewCtx.value.drawImage(sourceCanvas, 0, 0, 400, 300)
 }
@@ -123,8 +145,16 @@ function resetTime() {
 
 function save() {
   if (editingNode.value) {
+    // Parse uniforms and generate dynamic ports
+    const uniforms = parseUniformsFromCode(code.value)
+    const dynamicInputs = generateInputsFromUniforms(uniforms)
+    const dynamicControls = generateControlsFromUniforms(uniforms)
+
+    // Update node with code and dynamic ports
     flowsStore.updateNodeData(editingNode.value.id, {
       code: code.value,
+      _dynamicInputs: dynamicInputs,
+      _dynamicControls: dynamicControls,
     })
     originalCode.value = code.value
   }
@@ -159,9 +189,22 @@ const uniformsHelp = [
   { name: 'iResolution', type: 'vec2', desc: 'Viewport resolution' },
   { name: 'iMouse', type: 'vec4', desc: 'Mouse position (xy: current, zw: click)' },
   { name: 'iFrame', type: 'int', desc: 'Frame count since start' },
-  { name: 'iChannel0-3', type: 'sampler2D', desc: 'Input textures' },
+  { name: 'iChannel0-3', type: 'sampler2D', desc: 'Input textures (static)' },
   { name: 'fragCoord', type: 'vec2', desc: 'Pixel coordinate (defined macro)' },
 ]
+
+// Map uniform type to user-friendly display
+function getUniformTypeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    float: 'number',
+    int: 'number',
+    vec2: 'vec2',
+    vec3: 'vec3/color',
+    vec4: 'vec4/color',
+    sampler2D: 'texture',
+  }
+  return labels[type] ?? type
+}
 </script>
 
 <template>
@@ -292,6 +335,34 @@ const uniformsHelp = [
                   height="300"
                   class="preview-canvas"
                 />
+              </div>
+
+              <!-- Detected Uniforms Panel -->
+              <div class="detected-uniforms">
+                <div class="uniforms-header">
+                  <Zap :size="14" />
+                  <span>Dynamic Inputs ({{ detectedUniforms.length }})</span>
+                </div>
+                <div
+                  v-if="detectedUniforms.length > 0"
+                  class="uniforms-grid"
+                >
+                  <div
+                    v-for="u in detectedUniforms"
+                    :key="u.name"
+                    class="uniform-chip"
+                    :title="`${u.name}: ${u.type}`"
+                  >
+                    <span class="chip-name">{{ u.label }}</span>
+                    <span class="chip-type">{{ getUniformTypeLabel(u.type) }}</span>
+                  </div>
+                </div>
+                <div
+                  v-else
+                  class="uniforms-empty"
+                >
+                  Add <code>uniform float u_myParam;</code> to create input ports
+                </div>
               </div>
             </div>
           </div>
@@ -598,6 +669,71 @@ const uniformsHelp = [
   max-width: 100%;
   max-height: 100%;
   border: 1px solid var(--color-neutral-700);
+}
+
+/* Detected Uniforms Panel */
+.detected-uniforms {
+  padding: var(--space-3);
+  background: var(--color-neutral-50);
+  border-top: 1px solid var(--color-neutral-200);
+}
+
+.uniforms-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: var(--letter-spacing-wide);
+  color: var(--color-neutral-600);
+  margin-bottom: var(--space-2);
+}
+
+.uniforms-header svg {
+  color: var(--color-primary-500);
+}
+
+.uniforms-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1);
+}
+
+.uniform-chip {
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  padding: 2px var(--space-2);
+  background: var(--color-neutral-0);
+  border: 1px solid var(--color-neutral-200);
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+.chip-name {
+  font-weight: var(--font-weight-medium);
+  color: var(--color-neutral-700);
+}
+
+.chip-type {
+  color: var(--color-primary-500);
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.uniforms-empty {
+  font-size: var(--font-size-xs);
+  color: var(--color-neutral-500);
+  font-style: italic;
+}
+
+.uniforms-empty code {
+  background: var(--color-neutral-100);
+  padding: 1px 4px;
+  border-radius: 2px;
+  font-family: var(--font-mono);
+  font-style: normal;
 }
 
 /* Footer */

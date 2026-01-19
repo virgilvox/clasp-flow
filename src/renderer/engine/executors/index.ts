@@ -92,6 +92,15 @@ export const sliderExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
   return new Map([['value', value]])
 }
 
+export const knobExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const rawValue = (ctx.controls.get('value') as number) ?? 0.5
+  const min = (ctx.controls.get('min') as number) ?? 0
+  const max = (ctx.controls.get('max') as number) ?? 1
+  // Map 0-1 knob value to min-max range
+  const value = min + rawValue * (max - min)
+  return new Map([['value', value]])
+}
+
 export const xyPadExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
   // Get normalized values (0-1)
   const normX = (ctx.controls.get('normalizedX') as number) ?? 0.5
@@ -1065,6 +1074,7 @@ export const builtinExecutors: Record<string, NodeExecutorFn> = {
   trigger: triggerExecutor,
   textbox: textboxExecutor,
   slider: sliderExecutor,
+  knob: knobExecutor,
   'xy-pad': xyPadExecutor,
   time: timeExecutor,
   lfo: lfoExecutor,

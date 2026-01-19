@@ -285,10 +285,18 @@ function getTypeColor(type: string): string {
             @change="mode = ($event.target as HTMLSelectElement).value"
             @mousedown.stop
           >
-            <option value="Forward">→</option>
-            <option value="Backward">←</option>
-            <option value="Ping-Pong">↔</option>
-            <option value="Random">?</option>
+            <option value="Forward">
+              →
+            </option>
+            <option value="Backward">
+              ←
+            </option>
+            <option value="Ping-Pong">
+              ↔
+            </option>
+            <option value="Random">
+              ?
+            </option>
           </select>
         </div>
 

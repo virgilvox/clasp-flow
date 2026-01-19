@@ -1,24 +1,40 @@
 /**
  * Visual Node Executors
  *
- * These executors handle visual/shader nodes using WebGL2
+ * These executors handle visual/shader nodes using Three.js-based rendering
+ * for proper per-node framebuffer management and texture display.
  */
 
+import * as THREE from 'three'
 import type { ExecutionContext, NodeExecutorFn } from '../ExecutionEngine'
 import {
+  getThreeShaderRenderer,
+  type CompiledShaderMaterial,
+  type ThreeShaderUniform,
+} from '@/services/visual/ThreeShaderRenderer'
+// Keep old renderer for backward compatibility with non-shader visual nodes
+import {
   getShaderRenderer,
-  type CompiledShader,
   type ShaderUniform,
 } from '@/services/visual/ShaderRenderer'
 import { webcamCapture } from '@/services/visual/WebcamCapture'
-import { getPresetById, parseUniformsFromCode } from '@/services/visual/ShaderPresets'
+import {
+  getPresetById,
+  parseUniformsFromCode,
+  generateInputsFromUniforms,
+  generateControlsFromUniforms,
+  type UniformDefinition,
+} from '@/services/visual/ShaderPresets'
 
 // Re-export for use by other executors (e.g., AI texture conversion)
-export { getShaderRenderer }
+export { getShaderRenderer, getThreeShaderRenderer }
 
-// Store for compiled shaders and textures
-const compiledShaders = new Map<string, CompiledShader>()
-const nodeTextures = new Map<string, WebGLTexture>()
+// Store for compiled shaders (now uses Three.js ShaderMaterial)
+const compiledShaderMaterials = new Map<string, CompiledShaderMaterial>()
+// Legacy compiled shaders for non-shader nodes
+const compiledShaders = new Map<string, import('@/services/visual/ShaderRenderer').CompiledShader>()
+// Node textures - now THREE.Texture instead of raw WebGLTexture
+const nodeTextures = new Map<string, THREE.Texture>()
 
 // Image loader state per node
 const imageLoaderState = new Map<
@@ -50,18 +66,24 @@ const lastPreset = new Map<string, string>()
  */
 export function disposeVisualNode(nodeId: string): void {
   const renderer = getShaderRenderer()
+  const threeRenderer = getThreeShaderRenderer()
 
+  // Clean up Three.js shader materials
+  compiledShaderMaterials.delete(nodeId)
   compiledShaders.delete(nodeId)
   lastPreset.delete(nodeId)
 
-  // Clean up node texture from GPU
+  // Clean up Three.js render target
+  threeRenderer.disposeNode(nodeId)
+
+  // Clean up node texture
   const nodeTexture = nodeTextures.get(nodeId)
   if (nodeTexture) {
-    renderer.deleteTexture(nodeTexture)
+    nodeTexture.dispose()
     nodeTextures.delete(nodeId)
   }
 
-  // Clean up image loader state - delete texture from GPU
+  // Clean up image loader state
   const imgState = imageLoaderState.get(nodeId)
   if (imgState) {
     if (imgState.texture) {
@@ -75,7 +97,7 @@ export function disposeVisualNode(nodeId: string): void {
     imageLoaderState.delete(nodeId)
   }
 
-  // Clean up video player state - delete texture from GPU
+  // Clean up video player state
   const vidState = videoPlayerState.get(nodeId)
   if (vidState) {
     if (vidState.texture) {
@@ -84,7 +106,7 @@ export function disposeVisualNode(nodeId: string): void {
     if (vidState.video) {
       vidState.video.pause()
       vidState.video.src = ''
-      vidState.video.load() // Force cleanup
+      vidState.video.load()
     }
     videoPlayerState.delete(nodeId)
   }
@@ -93,13 +115,12 @@ export function disposeVisualNode(nodeId: string): void {
   const canvasKey = `canvas_${nodeId}`
   const canvasTexture = canvasTextureCache.get(canvasKey)
   if (canvasTexture) {
-    renderer.deleteTexture(canvasTexture)
+    canvasTexture.dispose()
     canvasTextureCache.delete(canvasKey)
   }
 
-  // Clean up framebuffer for this node
+  // Clean up framebuffers (legacy renderer)
   renderer.deleteFramebuffer(nodeId)
-  // Also clean up blur's intermediate framebuffer
   renderer.deleteFramebuffer(`${nodeId}_h`)
 }
 
@@ -107,9 +128,19 @@ export function disposeVisualNode(nodeId: string): void {
  * Dispose all visual resources
  */
 export function disposeAllVisualNodes(): void {
+  // Clean up Three.js materials
+  for (const material of compiledShaderMaterials.values()) {
+    material.material.dispose()
+  }
+  compiledShaderMaterials.clear()
   compiledShaders.clear()
-  nodeTextures.clear()
   lastPreset.clear()
+
+  // Clean up Three.js textures
+  for (const texture of nodeTextures.values()) {
+    texture.dispose()
+  }
+  nodeTextures.clear()
 
   // Clean up all image loader states
   for (const [, state] of imageLoaderState) {
@@ -126,7 +157,7 @@ export function disposeAllVisualNodes(): void {
     if (state.video) {
       state.video.pause()
       state.video.src = ''
-      state.video.load() // Force cleanup
+      state.video.load()
     }
   }
   videoPlayerState.clear()
@@ -135,6 +166,9 @@ export function disposeAllVisualNodes(): void {
   textureDataCache.clear()
 
   // Clean up canvas texture cache
+  for (const texture of canvasTextureCache.values()) {
+    texture.dispose()
+  }
   canvasTextureCache.clear()
 }
 
@@ -144,26 +178,35 @@ export function disposeAllVisualNodes(): void {
  */
 export function gcVisualState(validNodeIds: Set<string>): void {
   const renderer = getShaderRenderer()
+  const threeRenderer = getThreeShaderRenderer()
 
-  // Clean compiledShaders (may have node IDs as keys or as prefixes)
-  for (const key of compiledShaders.keys()) {
-    // Skip built-in shaders
+  // Clean compiledShaderMaterials
+  for (const key of compiledShaderMaterials.keys()) {
     if (key.startsWith('_')) continue
-    // Extract nodeId from key (format: "nodeId_hash" or just "nodeId")
+    const baseId = key.includes('_') ? key.split('_')[0] : key
+    if (baseId && !validNodeIds.has(baseId)) {
+      const material = compiledShaderMaterials.get(key)
+      if (material) material.material.dispose()
+      compiledShaderMaterials.delete(key)
+    }
+  }
+
+  // Clean legacy compiledShaders
+  for (const key of compiledShaders.keys()) {
+    if (key.startsWith('_')) continue
     const baseId = key.includes('_') ? key.split('_')[0] : key
     if (baseId && !validNodeIds.has(baseId)) {
       compiledShaders.delete(key)
     }
   }
 
-  // Clean nodeTextures - DELETE FROM GPU before removing from Map
+  // Clean nodeTextures - dispose Three.js textures
   for (const nodeId of nodeTextures.keys()) {
     if (!validNodeIds.has(nodeId)) {
       const texture = nodeTextures.get(nodeId)
-      if (texture) {
-        renderer.deleteTexture(texture)
-      }
+      if (texture) texture.dispose()
       nodeTextures.delete(nodeId)
+      threeRenderer.disposeNode(nodeId)
     }
   }
 
@@ -174,14 +217,12 @@ export function gcVisualState(validNodeIds: Set<string>): void {
     }
   }
 
-  // Clean imageLoaderState - DELETE TEXTURE FROM GPU
+  // Clean imageLoaderState
   for (const nodeId of imageLoaderState.keys()) {
     if (!validNodeIds.has(nodeId)) {
       const state = imageLoaderState.get(nodeId)
       if (state) {
-        if (state.texture) {
-          renderer.deleteTexture(state.texture)
-        }
+        if (state.texture) renderer.deleteTexture(state.texture)
         if (state.image) {
           state.image.src = ''
           state.image.onload = null
@@ -192,14 +233,12 @@ export function gcVisualState(validNodeIds: Set<string>): void {
     }
   }
 
-  // Clean videoPlayerState - DELETE TEXTURE FROM GPU
+  // Clean videoPlayerState
   for (const nodeId of videoPlayerState.keys()) {
     if (!validNodeIds.has(nodeId)) {
       const state = videoPlayerState.get(nodeId)
       if (state) {
-        if (state.texture) {
-          renderer.deleteTexture(state.texture)
-        }
+        if (state.texture) renderer.deleteTexture(state.texture)
         if (state.video) {
           state.video.pause()
           state.video.src = ''
@@ -217,44 +256,57 @@ export function gcVisualState(validNodeIds: Set<string>): void {
     }
   }
 
-  // Clean canvasTextureCache - DELETE TEXTURE FROM GPU
+  // Clean canvasTextureCache - dispose Three.js textures
   for (const key of canvasTextureCache.keys()) {
     const nodeId = key.replace('canvas_', '')
     if (!validNodeIds.has(nodeId)) {
       const texture = canvasTextureCache.get(key)
-      if (texture) {
-        renderer.deleteTexture(texture)
-      }
+      if (texture) texture.dispose()
       canvasTextureCache.delete(key)
     }
   }
-
-  // Note: Framebuffer cleanup for specific nodes is handled by disposeVisualNode()
-  // which calls renderer.deleteFramebuffer(). The GC here handles Maps, not framebuffers.
 }
 
 // ============================================================================
-// Shader Node
+// Shader Node (using Three.js ShaderMaterial)
 // ============================================================================
 
+/**
+ * Shader Executor v4.0 - Three.js Based Rendering
+ *
+ * Uses Three.js ShaderMaterial for proper per-node framebuffer management.
+ * This fixes:
+ * 1. Per-node render targets (no more shared canvas issues)
+ * 2. Proper texture output (THREE.Texture not raw WebGLTexture)
+ * 3. Clean uniform management via ShaderMaterial
+ */
 export const shaderExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
   const preset = (ctx.controls.get('preset') as string) ?? 'custom'
   let fragmentCode = (ctx.controls.get('code') as string) ?? ''
   const vertexCode = (ctx.controls.get('vertexCode') as string) ?? ''
   const isShadertoy = (ctx.controls.get('shadertoy') as boolean) ?? true
 
-  const renderer = getShaderRenderer()
+  const renderer = getThreeShaderRenderer()
   const outputs = new Map<string, unknown>()
 
-  // Check if preset changed - load preset code
+  // Detected uniforms for dynamic port generation
+  let detectedUniforms: UniformDefinition[] = []
+
+  // Check if preset changed - load preset code and uniforms
   const prevPreset = lastPreset.get(ctx.nodeId)
   if (preset !== 'custom' && !preset.startsWith('---') && preset !== prevPreset) {
     const presetData = getPresetById(preset)
     if (presetData) {
       fragmentCode = presetData.fragmentCode
-      // Store in node data so UI updates
+      detectedUniforms = presetData.uniforms
+
+      // Signal that code and ports need updating
       outputs.set('_preset_code', fragmentCode)
       outputs.set('_preset_uniforms', presetData.uniforms)
+
+      // Generate dynamic ports from preset uniforms
+      outputs.set('_dynamicInputs', generateInputsFromUniforms(detectedUniforms))
+      outputs.set('_dynamicControls', generateControlsFromUniforms(detectedUniforms))
     }
     lastPreset.set(ctx.nodeId, preset)
   } else if (preset === 'custom') {
@@ -274,12 +326,17 @@ export const shaderExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
     return outputs
   }
 
-  // Get or compile shader
-  const customVertex = vertexCode.trim() ? vertexCode : undefined
-  const cacheKey = `${ctx.nodeId}_${fragmentCode}_${customVertex ?? ''}_${isShadertoy}`
+  // Parse uniforms from code if not already done (from preset)
+  if (detectedUniforms.length === 0) {
+    detectedUniforms = parseUniformsFromCode(fragmentCode)
+  }
 
-  let shader = compiledShaders.get(cacheKey)
-  if (!shader) {
+  // Get or compile shader using Three.js
+  const customVertex = vertexCode.trim() ? vertexCode : undefined
+  const cacheKey = `${ctx.nodeId}_${fragmentCode.substring(0, 100)}_${customVertex?.substring(0, 50) ?? ''}_${isShadertoy}`
+
+  let shaderMaterial = compiledShaderMaterials.get(cacheKey)
+  if (!shaderMaterial) {
     const result = renderer.compileShader(fragmentCode, customVertex, isShadertoy)
 
     if ('error' in result) {
@@ -288,86 +345,164 @@ export const shaderExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
       return outputs
     }
 
-    shader = result
-    compiledShaders.set(cacheKey, shader)
-    compiledShaders.set(ctx.nodeId, shader)
+    shaderMaterial = result
+    compiledShaderMaterials.set(cacheKey, shaderMaterial)
+    compiledShaderMaterials.set(ctx.nodeId, shaderMaterial)
   }
 
   // Set time for animation
   renderer.setTime(ctx.totalTime)
 
-  // Build uniforms array from inputs and controls
-  const uniforms: ShaderUniform[] = []
+  // Build uniforms array from detected uniforms
+  const uniforms: ThreeShaderUniform[] = []
 
-  // Standard param uniforms (from both inputs and controls)
-  for (let i = 1; i <= 4; i++) {
-    const inputVal = ctx.inputs.get(`u_param${i}`) as number | undefined
-    const controlVal = ctx.controls.get(`u_param${i}`) as number | undefined
-    const value = inputVal ?? controlVal ?? 0.5
-    uniforms.push({ name: `u_param${i}`, type: 'float', value })
-  }
-
-  // Auto-detect uniforms from code and set values
-  const detectedUniforms = parseUniformsFromCode(fragmentCode)
+  // Process all detected uniforms
   for (const def of detectedUniforms) {
-    // Check if we already have this uniform
-    if (uniforms.some(u => u.name === def.name)) continue
-
-    // Get value from input or control
+    // Get value from input port first, then control, then default
     const inputVal = ctx.inputs.get(def.name)
     const controlVal = ctx.controls.get(def.name)
     const value = inputVal ?? controlVal ?? def.default
 
-    // Handle vec types from array inputs
-    if (Array.isArray(value)) {
-      switch (def.type) {
-        case 'vec2':
-          uniforms.push({ name: def.name, type: 'vec2', value: value.slice(0, 2) as number[] })
-          break
-        case 'vec3':
-          uniforms.push({ name: def.name, type: 'vec3', value: value.slice(0, 3) as number[] })
-          break
-        case 'vec4':
-          uniforms.push({ name: def.name, type: 'vec4', value: value.slice(0, 4) as number[] })
-          break
-      }
-    } else if (def.type === 'float' || def.type === 'int') {
-      uniforms.push({ name: def.name, type: 'float', value: Number(value) || 0 })
+    // Handle different uniform types
+    switch (def.type) {
+      case 'float':
+        uniforms.push({
+          name: def.name,
+          type: 'float',
+          value: Number(value) || 0,
+        })
+        break
+
+      case 'int':
+        uniforms.push({
+          name: def.name,
+          type: 'int',
+          value: Math.round(Number(value)) || 0,
+        })
+        break
+
+      case 'vec2':
+        if (Array.isArray(value)) {
+          uniforms.push({
+            name: def.name,
+            type: 'vec2',
+            value: [Number(value[0]) || 0, Number(value[1]) || 0],
+          })
+        } else {
+          uniforms.push({
+            name: def.name,
+            type: 'vec2',
+            value: def.default as number[],
+          })
+        }
+        break
+
+      case 'vec3':
+        if (Array.isArray(value)) {
+          uniforms.push({
+            name: def.name,
+            type: 'vec3',
+            value: [
+              Number(value[0]) || 0,
+              Number(value[1]) || 0,
+              Number(value[2]) || 0,
+            ],
+          })
+        } else if (typeof value === 'string' && value.startsWith('#')) {
+          // Convert hex color to vec3
+          const hex = value.slice(1)
+          const r = parseInt(hex.substring(0, 2), 16) / 255
+          const g = parseInt(hex.substring(2, 4), 16) / 255
+          const b = parseInt(hex.substring(4, 6), 16) / 255
+          uniforms.push({
+            name: def.name,
+            type: 'vec3',
+            value: [r, g, b],
+          })
+        } else {
+          uniforms.push({
+            name: def.name,
+            type: 'vec3',
+            value: def.default as number[],
+          })
+        }
+        break
+
+      case 'vec4':
+        if (Array.isArray(value)) {
+          uniforms.push({
+            name: def.name,
+            type: 'vec4',
+            value: [
+              Number(value[0]) || 0,
+              Number(value[1]) || 0,
+              Number(value[2]) || 0,
+              Number(value[3]) ?? 1,
+            ],
+          })
+        } else {
+          uniforms.push({
+            name: def.name,
+            type: 'vec4',
+            value: def.default as number[],
+          })
+        }
+        break
+
+      case 'sampler2D':
+        // Texture uniform - accepts both THREE.Texture and raw WebGLTexture
+        if (value instanceof THREE.Texture) {
+          uniforms.push({
+            name: def.name,
+            type: 'sampler2D',
+            value: value,
+          })
+        } else if (value instanceof WebGLTexture) {
+          // Convert WebGLTexture to THREE.Texture for compatibility
+          const threeTexture = renderer.createTextureFromWebGL(value, 512, 512)
+          if (threeTexture) {
+            uniforms.push({
+              name: def.name,
+              type: 'sampler2D',
+              value: threeTexture,
+            })
+          }
+        }
+        break
     }
   }
 
-  // Color uniform (common for many shaders)
-  const colorInput = ctx.inputs.get('u_color')
-  if (colorInput && Array.isArray(colorInput)) {
-    uniforms.push({ name: 'u_color', type: 'vec3', value: colorInput.slice(0, 3) as number[] })
-    uniforms.push({ name: 'u_color1', type: 'vec3', value: colorInput.slice(0, 3) as number[] })
-  }
-
-  // Vec2 uniform
-  const vec2Input = ctx.inputs.get('u_vec2')
-  if (vec2Input && Array.isArray(vec2Input)) {
-    uniforms.push({ name: 'u_vec2', type: 'vec2', value: vec2Input.slice(0, 2) as number[] })
-  }
-
-  // Add texture inputs (iChannel0-3 for Shadertoy compatibility)
+  // Add static texture inputs (iChannel0-3 for Shadertoy compatibility)
   for (let i = 0; i < 4; i++) {
-    const texture = ctx.inputs.get(`texture${i}`) as WebGLTexture | undefined
-    if (texture) {
-      uniforms.push({ name: `iChannel${i}`, type: 'sampler2D', value: texture })
-      uniforms.push({ name: `u_texture${i}`, type: 'sampler2D', value: texture })
+    const textureInput = ctx.inputs.get(`iChannel${i}`)
+    if (textureInput) {
+      // Only add if not already in uniforms from detected uniforms
+      if (!uniforms.some(u => u.name === `iChannel${i}`)) {
+        if (textureInput instanceof THREE.Texture) {
+          uniforms.push({ name: `iChannel${i}`, type: 'sampler2D', value: textureInput })
+        } else if (textureInput instanceof WebGLTexture) {
+          const threeTexture = renderer.createTextureFromWebGL(textureInput, 512, 512)
+          if (threeTexture) {
+            uniforms.push({ name: `iChannel${i}`, type: 'sampler2D', value: threeTexture })
+          }
+        }
+      }
     }
   }
 
-  // Render to framebuffer
+  // Render to per-node render target
   try {
-    renderer.render(shader, uniforms, ctx.nodeId)
-    outputs.set('texture', renderer.getFramebufferTexture(ctx.nodeId))
+    const texture = renderer.render(shaderMaterial, uniforms, ctx.nodeId)
+    outputs.set('texture', texture)
     outputs.set('_error', null)
   } catch (error) {
     const msg = error instanceof Error ? error.message : 'Render failed'
     outputs.set('texture', null)
     outputs.set('_error', msg)
   }
+
+  // Output detected uniforms for debugging/UI
+  outputs.set('_detectedUniforms', detectedUniforms)
 
   return outputs
 }
@@ -408,16 +543,16 @@ export const webcamExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
     return outputs
   }
 
-  // Get or create texture for this node
-  const renderer = getShaderRenderer()
+  // Get or create THREE.Texture for this node
+  const threeRenderer = getThreeShaderRenderer()
   let texture = nodeTextures.get(ctx.nodeId)
 
   if (!texture) {
-    texture = renderer.createTexture(video)
+    texture = threeRenderer.createTexture(video)
     nodeTextures.set(ctx.nodeId, texture)
   } else {
     // Update texture with current frame
-    renderer.updateTexture(texture, video)
+    threeRenderer.updateTexture(texture, video)
   }
 
   const outputs = new Map<string, unknown>()
@@ -610,10 +745,11 @@ export const blendExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
 // ============================================================================
 
 // Cache for canvas-to-texture conversions (one per node that outputs canvas)
-const canvasTextureCache = new Map<string, WebGLTexture>()
+// Now uses THREE.Texture instead of raw WebGLTexture
+const canvasTextureCache = new Map<string, THREE.Texture>()
 
 export const mainOutputExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
-  const textureInput = ctx.inputs.get('texture') as WebGLTexture | HTMLCanvasElement | null
+  const textureInput = ctx.inputs.get('texture') as THREE.Texture | WebGLTexture | HTMLCanvasElement | null
 
   if (!textureInput) {
     const outputs = new Map<string, unknown>()
@@ -621,49 +757,61 @@ export const mainOutputExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
     return outputs
   }
 
-  const renderer = getShaderRenderer()
+  const legacyRenderer = getShaderRenderer()
+  const threeRenderer = getThreeShaderRenderer()
 
-  // Convert canvas to texture if needed (for 3D rendering)
-  let texture: WebGLTexture
-  if (textureInput instanceof HTMLCanvasElement) {
-    // Get or create cached texture for this canvas
+  // Handle different input types
+  let outputTexture: THREE.Texture | WebGLTexture
+
+  if (textureInput instanceof THREE.Texture) {
+    // Three.js texture - pass through directly
+    outputTexture = textureInput
+  } else if (textureInput instanceof HTMLCanvasElement) {
+    // Canvas element - convert to Three.js texture
     const cacheKey = `canvas_${ctx.nodeId}`
     let cachedTexture = canvasTextureCache.get(cacheKey)
 
     if (!cachedTexture) {
-      cachedTexture = renderer.createTexture(textureInput)
+      cachedTexture = threeRenderer.createTexture(textureInput)
       canvasTextureCache.set(cacheKey, cachedTexture)
     } else {
       // Update the existing texture with new canvas content
-      renderer.updateTexture(cachedTexture, textureInput)
+      threeRenderer.updateTexture(cachedTexture, textureInput)
     }
-    texture = cachedTexture
+    outputTexture = cachedTexture
   } else {
-    texture = textureInput
+    // Raw WebGLTexture - keep for backward compatibility
+    outputTexture = textureInput
   }
 
-  // Get or compile display shader
-  let shader = compiledShaders.get('_display_shader')
-  if (!shader) {
-    const result = renderer.compileShader(DISPLAY_FRAGMENT)
-    if ('error' in result) {
-      const outputs = new Map<string, unknown>()
-      outputs.set('_input_texture', null)
-      outputs.set('_error', result.error)
-      return outputs
+  // For display purposes, render the texture using legacy renderer if it's WebGLTexture
+  // or use Three.js canvas for THREE.Texture
+  if (outputTexture instanceof THREE.Texture) {
+    // Render to Three.js canvas for preview
+    threeRenderer.renderToCanvas(outputTexture, threeRenderer.getCanvas())
+  } else {
+    // Legacy WebGL texture - use old renderer
+    let shader = compiledShaders.get('_display_shader')
+    if (!shader) {
+      const result = legacyRenderer.compileShader(DISPLAY_FRAGMENT)
+      if ('error' in result) {
+        const outputs = new Map<string, unknown>()
+        outputs.set('_input_texture', null)
+        outputs.set('_error', result.error)
+        return outputs
+      }
+      shader = result
+      compiledShaders.set('_display_shader', shader)
     }
-    shader = result
-    compiledShaders.set('_display_shader', shader)
-  }
 
-  // Render to screen (null framebuffer) for preview
-  renderer.render(shader, [
-    { name: 'u_texture', type: 'sampler2D', value: texture },
-  ])
+    legacyRenderer.render(shader, [
+      { name: 'u_texture', type: 'sampler2D', value: outputTexture },
+    ])
+  }
 
   const outputs = new Map<string, unknown>()
   // Store the input texture so the node component can display it
-  outputs.set('_input_texture', texture)
+  outputs.set('_input_texture', outputTexture)
   return outputs
 }
 

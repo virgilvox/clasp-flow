@@ -23,6 +23,11 @@ export interface AppSettings {
   gridSize: number
   sidebarWidth: number
   lastOpenedFlowId: string | null
+  // AI Model settings
+  aiAutoLoadModels?: string[] // List of "task:modelId" keys to auto-load on startup
+  aiSelectedModels?: Record<string, string> // Task ID -> selected model ID
+  aiUseWebGPU?: boolean
+  aiUseBrowserCache?: boolean
 }
 
 /**
@@ -149,6 +154,10 @@ export const settingsStorage = {
       gridSize: 20,
       sidebarWidth: 280,
       lastOpenedFlowId: null,
+      aiAutoLoadModels: [],
+      aiSelectedModels: {},
+      aiUseWebGPU: false,
+      aiUseBrowserCache: true,
     }
   },
 }

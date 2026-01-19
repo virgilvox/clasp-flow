@@ -1,26 +1,36 @@
 import type { NodeDefinition } from '../types'
 
+/**
+ * Shader Node v3.0 - Dynamic Uniforms
+ *
+ * This shader node uses dynamic port generation based on the uniforms
+ * declared in the GLSL code. When shader code changes, the node's
+ * input ports are automatically updated to match the uniforms.
+ *
+ * Static ports:
+ * - Texture inputs (iChannel0-3) for Shadertoy compatibility
+ * - Texture output
+ *
+ * Dynamic ports (stored in node.data._dynamicInputs):
+ * - All user-defined uniforms (u_*, or any non-builtin uniform)
+ * - Generated automatically when code is saved
+ */
 export const shaderNode: NodeDefinition = {
   id: 'shader',
   name: 'Shader',
-  version: '2.0.0',
+  version: '3.0.0',
   category: 'visual',
-  description: 'Custom GLSL shader with presets and Shadertoy support',
+  description: 'Custom GLSL shader with dynamic uniform inputs. Uniforms in your code automatically become input ports.',
   icon: 'code',
   platforms: ['web', 'electron'],
   inputs: [
-    // Texture inputs for effects
-    { id: 'texture0', type: 'texture', label: 'Texture 0' },
-    { id: 'texture1', type: 'texture', label: 'Texture 1' },
-    { id: 'texture2', type: 'texture', label: 'Texture 2' },
-    { id: 'texture3', type: 'texture', label: 'Texture 3' },
-    // Dynamic uniform inputs (auto-detected from code)
-    { id: 'u_param1', type: 'number', label: 'Param 1' },
-    { id: 'u_param2', type: 'number', label: 'Param 2' },
-    { id: 'u_param3', type: 'number', label: 'Param 3' },
-    { id: 'u_param4', type: 'number', label: 'Param 4' },
-    { id: 'u_color', type: 'data', label: 'Color' },
-    { id: 'u_vec2', type: 'data', label: 'Vec2' },
+    // Static texture inputs for Shadertoy compatibility (iChannel0-3)
+    { id: 'iChannel0', type: 'texture', label: 'Channel 0' },
+    { id: 'iChannel1', type: 'texture', label: 'Channel 1' },
+    { id: 'iChannel2', type: 'texture', label: 'Channel 2' },
+    { id: 'iChannel3', type: 'texture', label: 'Channel 3' },
+    // Note: Additional inputs are dynamically generated from shader uniforms
+    // and stored in node.data._dynamicInputs
   ],
   outputs: [{ id: 'texture', type: 'texture', label: 'Texture' }],
   controls: [
@@ -60,7 +70,12 @@ export const shaderNode: NodeDefinition = {
       id: 'code',
       type: 'code',
       label: 'Fragment Shader',
-      default: `void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+      default: `// Declare uniforms to create input ports:
+// uniform float u_brightness;  -> creates a number input
+// uniform vec3 u_color;        -> creates a color/data input
+// uniform sampler2D u_image;   -> creates a texture input
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
   vec2 uv = fragCoord / iResolution.xy;
   vec3 col = 0.5 + 0.5 * cos(iTime + uv.xyx + vec3(0, 2, 4));
   fragColor = vec4(col, 1.0);
@@ -73,9 +88,7 @@ export const shaderNode: NodeDefinition = {
       default: '',
     },
     { id: 'shadertoy', type: 'toggle', label: 'Shadertoy Mode', default: true },
-    { id: 'u_param1', type: 'slider', label: 'Param 1', default: 0.5, props: { min: 0, max: 1, step: 0.01 } },
-    { id: 'u_param2', type: 'slider', label: 'Param 2', default: 0.5, props: { min: 0, max: 1, step: 0.01 } },
-    { id: 'u_param3', type: 'slider', label: 'Param 3', default: 0.5, props: { min: 0, max: 1, step: 0.01 } },
-    { id: 'u_param4', type: 'slider', label: 'Param 4', default: 0.5, props: { min: 0, max: 1, step: 0.01 } },
+    // Note: Additional controls for uniforms are dynamically generated
+    // and stored in node.data._dynamicControls
   ],
 }

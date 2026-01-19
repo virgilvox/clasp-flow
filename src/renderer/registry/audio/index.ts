@@ -11,6 +11,11 @@ export { reverbNode } from './reverb'
 export { svfFilterNode } from './svf-filter'
 export { pitchDetectNode } from './pitch-detect'
 
+// Custom UI audio nodes
+export { envelopeVisualNode, EnvelopeVisualNode } from './envelope-visual'
+export { parametricEqNode, ParametricEqNode } from './parametric-eq'
+export { wavetableNode, WavetableNode } from './wavetable'
+
 import { oscillatorNode } from './oscillator'
 import { audioOutputNode } from './audio-output'
 import { audioAnalyzerNode } from './audio-analyzer'
@@ -23,6 +28,9 @@ import { envelopeNode } from './envelope'
 import { reverbNode } from './reverb'
 import { svfFilterNode } from './svf-filter'
 import { pitchDetectNode } from './pitch-detect'
+import { envelopeVisualNode } from './envelope-visual'
+import { parametricEqNode } from './parametric-eq'
+import { wavetableNode } from './wavetable'
 import type { NodeDefinition } from '../types'
 
 export const audioNodes: NodeDefinition[] = [
@@ -38,4 +46,7 @@ export const audioNodes: NodeDefinition[] = [
   reverbNode,
   svfFilterNode,
   pitchDetectNode,
+  envelopeVisualNode,
+  parametricEqNode,
+  wavetableNode,
 ]

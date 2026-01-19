@@ -22,7 +22,103 @@
 ### Next Step: Phase 10 - Polish & Export
 ### Latest Release: v0.1.3
 
-### Latest Session Accomplishments (Monitor Node, Debug Panel, STT Fix):
+### Latest Session Accomplishments (AI Auto-Load, Control Panel Fixes):
+
+**AI Model Auto-Load on Startup:**
+- Added ability to configure AI models to load automatically when the app starts
+- New "Load on startup" toggle per model in AI Model Manager
+- Settings persisted to IndexedDB alongside other app settings
+- Auto-load runs in background after app initialization (non-blocking)
+- Persists selected models per task, WebGPU preference, and cache settings
+
+**Files Modified for AI Auto-Load:**
+- `src/renderer/services/database.ts` - Added AI settings to AppSettings interface:
+  - `aiAutoLoadModels: string[]` - models to auto-load
+  - `aiSelectedModels: Record<string, string>` - persisted model selections
+  - `aiUseWebGPU: boolean`, `aiUseBrowserCache: boolean`
+- `src/renderer/services/ai/AIInference.ts` - Added auto-load methods:
+  - `loadSettingsFromStorage()` / `saveSettingsToStorage()`
+  - `addAutoLoadModel()` / `removeAutoLoadModel()` / `isAutoLoadEnabled()`
+  - `autoLoadModels()` - loads all configured models
+- `src/renderer/components/modals/AIModelManagerModal.vue` - Added UI toggle
+- `src/renderer/App.vue` - Calls auto-load on app initialization
+
+**Control Panel Oscilloscope Fix:**
+- Fixed oscilloscope in Control Panel view not matching Flow Editor
+- Issue: Control Panel only handled signal mode, ignored audio mode
+- Now checks `_mode` from node metrics (audio vs signal)
+- Audio mode: draws waveform from `_input_waveform` data, shows "AUDIO" label
+- Signal mode: accumulates history and shows numeric value
+- Updated grid styling to match flow editor (8 vertical divisions, green-tinted grid)
+
+---
+
+### Previous Session Accomplishments (Shader Node Dynamic Ports Overhaul):
+
+**Complete Shader Node Rewrite - Dynamic Uniform-to-Port System:**
+
+The shader node was completely broken - uniforms declared in GLSL code had no way to receive values because ports were static. This has been fixed with a dynamic port generation system.
+
+**New Architecture:**
+- Uniforms declared in shader code automatically become input ports
+- Ports update when code is saved in the shader editor
+- Presets automatically update ports when selected
+- Values flow from input ports → shader uniforms seamlessly
+
+**Files Created/Modified:**
+- `src/renderer/services/visual/ShaderPresets.ts` - Robust GLSL parser
+  - Handles precision qualifiers, comments, all GLSL types
+  - Smart defaults based on uniform names (colors get white, scale gets 1.0, etc.)
+  - `parseUniformsFromCode()`, `generateInputsFromUniforms()`, `generateControlsFromUniforms()`
+  - `uniformTypeToDataType()` maps GLSL types to node port types
+
+- `src/renderer/stores/flows.ts` - Dynamic port mutation API
+  - `updateNodeDynamicInputs()` - Store dynamic inputs in node.data._dynamicInputs
+  - `updateNodeDynamicControls()` - Store dynamic controls in node.data._dynamicControls
+  - `getNode()` - Helper to get node by ID
+
+- `src/renderer/registry/visual/shader.ts` - Minimal static definition
+  - Only static ports: iChannel0-3 (texture inputs) + texture output
+  - All other inputs are dynamic based on shader code
+
+- `src/renderer/engine/executors/visual.ts` - Dynamic uniform handling
+  - Reads values from dynamic inputs
+  - Handles type conversions (hex colors → vec3, arrays → vec types)
+  - Signals port updates when presets change via special outputs
+
+- `src/renderer/engine/ExecutionEngine.ts` - Special output handler
+  - `handleSpecialOutputs()` watches for `_dynamicInputs`, `_dynamicControls`, `_preset_code`
+  - Automatically updates node data when executor signals changes
+
+- `src/renderer/components/nodes/BaseNode.vue` - Dynamic port rendering
+  - Merges static definition ports with dynamic ports from node.data
+  - Inputs: `definition.inputs + node.data._dynamicInputs`
+  - Controls: `definition.controls + node.data._dynamicControls`
+
+- `src/renderer/components/modals/ShaderEditorModal.vue` - Live uniform detection
+  - Shows detected uniforms in real-time as you type
+  - "Dynamic Inputs" panel shows what ports will be created
+  - On save: parses code, generates ports, updates node
+
+**How It Works Now:**
+```glsl
+// Write this in your shader:
+uniform float u_brightness;    // → Creates number input port
+uniform vec3 u_tint;           // → Creates color/data input port
+uniform sampler2D u_overlay;   // → Creates texture input port
+```
+The node automatically gets input handles for these uniforms that can be connected to other nodes!
+
+**Key Design Decisions:**
+1. Dynamic ports stored in `node.data` (not modifying shared NodeDefinition)
+2. BaseNode merges static + dynamic ports in computed properties
+3. Executor signals via special `_` prefixed outputs (not direct store access)
+4. Engine handles `_dynamicInputs` outputs and updates node data
+5. Preset changes trigger automatic port regeneration
+
+---
+
+### Previous Session Accomplishments (Monitor Node, Debug Panel, STT Fix):
 
 **Monitor Node Enhancements:**
 - Added resizable capability with drag handle in bottom-right corner
@@ -556,16 +652,18 @@
 
 | File | Changes |
 |------|---------|
-| `src/renderer/services/ai/ai.worker.ts` | NEW - Web Worker for Transformers.js inference |
-| `src/renderer/services/ai/AIInference.ts` | Rewritten for worker communication |
-| `src/renderer/engine/executors/ai.ts` | Simplified for worker, added hasTriggerValue helper |
-| `src/renderer/engine/executors/visual.ts` | Added texture-to-data executor |
-| `src/renderer/engine/executors/audio.ts` | Renamed delay to audio-delay |
-| `src/renderer/registry/ai/sentiment-analysis.ts` | Added trigger input |
-| `src/renderer/registry/ai/feature-extraction.ts` | Added trigger input |
-| `src/renderer/registry/ai/image-classification.ts` | Added trigger input |
-| `src/renderer/registry/ai/object-detection.ts` | Added trigger input |
-| `src/renderer/registry/audio/audio-delay.ts` | Renamed id to audio-delay |
+| `src/renderer/services/database.ts` | Added AI settings to AppSettings (aiAutoLoadModels, aiSelectedModels, etc.) |
+| `src/renderer/services/ai/AIInference.ts` | Added auto-load methods, settings persistence |
+| `src/renderer/components/modals/AIModelManagerModal.vue` | Added "Load on startup" toggle per model |
+| `src/renderer/App.vue` | Added AI auto-load initialization on app start |
+| `src/renderer/views/ControlPanelView.vue` | Fixed oscilloscope to handle audio mode |
+| `src/renderer/registry/inputs/_knob/` | NEW - Custom KnobNode component for flow editor |
+| `src/renderer/registry/audio/_envelope-visual/` | NEW - Custom EnvelopeVisualNode component |
+| `src/renderer/registry/audio/_parametric-eq/` | NEW - Custom ParametricEqNode component |
+| `src/renderer/registry/audio/_wavetable/` | NEW - Custom WavetableNode component |
+| `src/renderer/registry/components.ts` | Registered new custom node types |
+| `src/renderer/composables/usePersistence.ts` | Added new node types to specialNodeTypes |
+| `src/renderer/stores/flows.ts` | Added new node types to specialNodeTypes |
 
 ---
 
@@ -919,6 +1017,8 @@ npm run dev:electron
 | 2026-01-18 | AI Web Workers & Audit | Web Worker for AI inference, fixed missing triggers on AI nodes, texture-to-data executor, audio-delay collision fix |
 | 2026-01-18 | STT & Type Safety | Fixed STT pipeline (Tone.js→AudioBufferService→16kHz), AI image type conversion, Electron startup fix, flows.ts null checks, device enumeration for audio/video selects |
 | 2026-01-19 | Monitor & Debug | Resizable Monitor node with clear button, Debug panel tab in Properties Panel with runtime stats, errors, and performance metrics |
+| 2026-01-19 | Shader Dynamic Ports | Complete shader node overhaul - uniforms in GLSL code automatically become input ports, robust parser, dynamic port mutation API, engine hooks for port updates |
+| 2026-01-19 | AI Auto-Load & Fixes | AI model auto-load on startup feature, Control Panel oscilloscope audio mode fix, custom node UI for knob/envelope/EQ/wavetable nodes |
 
 ---
 

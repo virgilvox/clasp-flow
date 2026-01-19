@@ -199,144 +199,144 @@ function openAIModelManager() {
           >
         </div>
 
-      <!-- Category Filter Dropdown -->
-      <div class="filter-wrapper">
-        <label class="filter-label">Filter by category</label>
-        <div
-          class="custom-select"
-          @click="toggleDropdown"
-        >
-          <div class="select-display">
-            <span
-              v-if="nodesStore.categoryFilter"
-              class="select-color"
-              :style="{ background: categoryMeta[nodesStore.categoryFilter]?.color }"
-            />
-            <span class="select-text">
-              {{ nodesStore.categoryFilter ? categoryMeta[nodesStore.categoryFilter]?.label : 'All Categories' }}
-              ({{ nodesStore.categoryFilter ? (categoryCounts[nodesStore.categoryFilter] ?? 0) : nodesStore.definitions.size }})
-            </span>
-            <ChevronDown
-              :size="14"
-              class="select-arrow"
-            />
-          </div>
+        <!-- Category Filter Dropdown -->
+        <div class="filter-wrapper">
+          <label class="filter-label">Filter by category</label>
           <div
-            v-if="dropdownOpen"
-            class="select-options"
+            class="custom-select"
+            @click="toggleDropdown"
           >
-            <div
-              class="select-option"
-              :class="{ active: !nodesStore.categoryFilter }"
-              @click.stop="selectCategory(null)"
-            >
-              <span class="option-color all-color" />
-              <span>All Categories ({{ nodesStore.definitions.size }})</span>
-            </div>
-            <div
-              v-for="[id, meta] in categories"
-              :key="id"
-              class="select-option"
-              :class="{ active: nodesStore.categoryFilter === id }"
-              @click.stop="selectCategory(id)"
-            >
+            <div class="select-display">
               <span
-                class="option-color"
-                :style="{ background: meta.color }"
+                v-if="nodesStore.categoryFilter"
+                class="select-color"
+                :style="{ background: categoryMeta[nodesStore.categoryFilter]?.color }"
               />
-              <span>{{ meta.label }} ({{ categoryCounts[id] ?? 0 }})</span>
+              <span class="select-text">
+                {{ nodesStore.categoryFilter ? categoryMeta[nodesStore.categoryFilter]?.label : 'All Categories' }}
+                ({{ nodesStore.categoryFilter ? (categoryCounts[nodesStore.categoryFilter] ?? 0) : nodesStore.definitions.size }})
+              </span>
+              <ChevronDown
+                :size="14"
+                class="select-arrow"
+              />
             </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Node List with Collapsible Sections -->
-      <div class="node-list">
-        <template v-if="visibleCategories.length > 0">
-          <div
-            v-for="[categoryId, meta] in visibleCategories"
-            :key="categoryId"
-            class="category-section"
-          >
-            <!-- Category Header -->
             <div
-              class="category-header-row"
-              :class="{ 'is-ai': categoryId === 'ai' }"
-            >
-              <button
-                class="category-header"
-                :style="{ '--category-color': meta.color }"
-                @click="toggleCategory(categoryId)"
-              >
-                <span class="category-expand">
-                  <ChevronRight
-                    v-if="isCategoryCollapsed(categoryId)"
-                    :size="14"
-                  />
-                  <ChevronDown
-                    v-else
-                    :size="14"
-                  />
-                </span>
-                <span
-                  v-if="categoryId === 'ai'"
-                  class="category-icon ai-icon"
-                >
-                  <Brain :size="12" />
-                </span>
-                <span
-                  v-else
-                  class="category-color"
-                  :style="{ background: meta.color }"
-                />
-                <span class="category-name">{{ meta.label }}</span>
-                <span class="category-count">{{ nodesByCategory.get(categoryId)?.length ?? 0 }}</span>
-              </button>
-
-              <!-- AI Load Models Button -->
-              <button
-                v-if="categoryId === 'ai' && !hasLoadedModels"
-                class="ai-load-btn"
-                title="Load Local AI Models"
-                @click.stop="openAIModelManager"
-              >
-                <Download :size="12" />
-                <span>Load Models</span>
-              </button>
-            </div>
-
-            <!-- Category Nodes -->
-            <div
-              v-if="!isCategoryCollapsed(categoryId)"
-              class="category-nodes"
+              v-if="dropdownOpen"
+              class="select-options"
             >
               <div
-                v-for="node in nodesByCategory.get(categoryId)"
-                :key="node.id"
-                class="node-item"
-                draggable="true"
-                @dragstart="(e) => onDragStart(e, node.id)"
+                class="select-option"
+                :class="{ active: !nodesStore.categoryFilter }"
+                @click.stop="selectCategory(null)"
+              >
+                <span class="option-color all-color" />
+                <span>All Categories ({{ nodesStore.definitions.size }})</span>
+              </div>
+              <div
+                v-for="[id, meta] in categories"
+                :key="id"
+                class="select-option"
+                :class="{ active: nodesStore.categoryFilter === id }"
+                @click.stop="selectCategory(id)"
               >
                 <span
-                  class="node-item-color"
+                  class="option-color"
                   :style="{ background: meta.color }"
                 />
-                <div class="node-item-info">
-                  <span class="node-item-name">{{ node.name }}</span>
-                  <span class="node-item-desc">{{ node.description }}</span>
-                </div>
+                <span>{{ meta.label }} ({{ categoryCounts[id] ?? 0 }})</span>
               </div>
             </div>
           </div>
-        </template>
-
-        <div
-          v-else
-          class="no-results"
-        >
-          No nodes found
         </div>
-      </div>
+
+        <!-- Node List with Collapsible Sections -->
+        <div class="node-list">
+          <template v-if="visibleCategories.length > 0">
+            <div
+              v-for="[categoryId, meta] in visibleCategories"
+              :key="categoryId"
+              class="category-section"
+            >
+              <!-- Category Header -->
+              <div
+                class="category-header-row"
+                :class="{ 'is-ai': categoryId === 'ai' }"
+              >
+                <button
+                  class="category-header"
+                  :style="{ '--category-color': meta.color }"
+                  @click="toggleCategory(categoryId)"
+                >
+                  <span class="category-expand">
+                    <ChevronRight
+                      v-if="isCategoryCollapsed(categoryId)"
+                      :size="14"
+                    />
+                    <ChevronDown
+                      v-else
+                      :size="14"
+                    />
+                  </span>
+                  <span
+                    v-if="categoryId === 'ai'"
+                    class="category-icon ai-icon"
+                  >
+                    <Brain :size="12" />
+                  </span>
+                  <span
+                    v-else
+                    class="category-color"
+                    :style="{ background: meta.color }"
+                  />
+                  <span class="category-name">{{ meta.label }}</span>
+                  <span class="category-count">{{ nodesByCategory.get(categoryId)?.length ?? 0 }}</span>
+                </button>
+
+                <!-- AI Load Models Button -->
+                <button
+                  v-if="categoryId === 'ai' && !hasLoadedModels"
+                  class="ai-load-btn"
+                  title="Load Local AI Models"
+                  @click.stop="openAIModelManager"
+                >
+                  <Download :size="12" />
+                  <span>Load Models</span>
+                </button>
+              </div>
+
+              <!-- Category Nodes -->
+              <div
+                v-if="!isCategoryCollapsed(categoryId)"
+                class="category-nodes"
+              >
+                <div
+                  v-for="node in nodesByCategory.get(categoryId)"
+                  :key="node.id"
+                  class="node-item"
+                  draggable="true"
+                  @dragstart="(e) => onDragStart(e, node.id)"
+                >
+                  <span
+                    class="node-item-color"
+                    :style="{ background: meta.color }"
+                  />
+                  <div class="node-item-info">
+                    <span class="node-item-name">{{ node.name }}</span>
+                    <span class="node-item-desc">{{ node.description }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <div
+            v-else
+            class="no-results"
+          >
+            No nodes found
+          </div>
+        </div>
       </template>
     </div>
 

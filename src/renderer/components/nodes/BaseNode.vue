@@ -118,9 +118,39 @@ const categoryColor = computed(() => {
   return categoryMeta[definition.value.category]?.color ?? 'var(--color-neutral-400)'
 })
 
-const inputs = computed(() => definition.value?.inputs ?? [])
+// Merge static definition inputs with dynamic inputs from node data
+// Dynamic inputs are stored in node.data._dynamicInputs (used by shader nodes)
+const inputs = computed(() => {
+  const staticInputs = definition.value?.inputs ?? []
+  const dynamicInputs = (props.data?._dynamicInputs as Array<{ id: string; type: string; label: string }>) ?? []
+
+  // Merge: static first, then dynamic (avoiding duplicates)
+  const staticIds = new Set(staticInputs.map(i => i.id))
+  const mergedDynamic = dynamicInputs.filter(d => !staticIds.has(d.id))
+
+  return [...staticInputs, ...mergedDynamic]
+})
+
 const outputs = computed(() => definition.value?.outputs ?? [])
-const controls = computed(() => definition.value?.controls ?? [])
+
+// Merge static definition controls with dynamic controls from node data
+// Dynamic controls are stored in node.data._dynamicControls (used by shader nodes)
+const controls = computed(() => {
+  const staticControls = definition.value?.controls ?? []
+  const dynamicControls = (props.data?._dynamicControls as Array<{
+    id: string
+    type: string
+    label: string
+    default: unknown
+    props?: Record<string, unknown>
+  }>) ?? []
+
+  // Merge: static first, then dynamic (avoiding duplicates)
+  const staticIds = new Set(staticControls.map(c => c.id))
+  const mergedDynamic = dynamicControls.filter(d => !staticIds.has(d.id))
+
+  return [...staticControls, ...mergedDynamic]
+})
 
 // Check if this is a visual node with texture output
 const hasTextureOutput = computed(() => {

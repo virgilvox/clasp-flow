@@ -17,6 +17,7 @@ export interface ControlLayout {
   y: number // Grid row (0-based)
   w: number // Width in grid units
   h: number // Height in grid units
+  manuallyPlaced?: boolean // True if user has dragged this control
 }
 
 // Helper to load from localStorage
@@ -503,23 +504,56 @@ export const useUIStore = defineStore('ui', {
     // =========================================================================
 
     /**
+     * Check if a position collides with any existing layout
+     */
+    checkCollision(x: number, y: number, w: number, h: number, excludeNodeId?: string): boolean {
+      for (const layout of this.controlPanelLayout) {
+        if (layout.nodeId === excludeNodeId) continue
+        // Check rectangle overlap
+        if (
+          x < layout.x + layout.w &&
+          x + w > layout.x &&
+          y < layout.y + layout.h &&
+          y + h > layout.y
+        ) {
+          return true
+        }
+      }
+      return false
+    },
+
+    /**
+     * Find first valid position for a control using bin packing
+     */
+    findFirstValidPosition(w: number, h: number, gridCols: number = 12): { x: number; y: number } {
+      // Scan grid left-to-right, top-to-bottom
+      for (let y = 0; y < 100; y++) {
+        for (let x = 0; x <= gridCols - w; x++) {
+          if (!this.checkCollision(x, y, w, h)) {
+            return { x, y }
+          }
+        }
+      }
+      // Fallback: place at end
+      const maxY = this.controlPanelLayout.length > 0
+        ? Math.max(...this.controlPanelLayout.map(l => l.y + l.h))
+        : 0
+      return { x: 0, y: maxY }
+    },
+
+    /**
      * Get layout for a node, or create default if not exists
+     * Uses smart bin-packing to find first available position
      */
     getControlLayout(nodeId: string): ControlLayout {
       let layout = this.controlPanelLayout.find(l => l.nodeId === nodeId)
       if (!layout) {
-        // Auto-place new controls
-        const existingLayouts = this.controlPanelLayout
-        const x = 0
-        let y = 0
+        // Auto-place new controls using bin packing
+        const defaultW = 4
+        const defaultH = 3
+        const { x, y } = this.findFirstValidPosition(defaultW, defaultH)
 
-        // Find first available position
-        if (existingLayouts.length > 0) {
-          const maxY = Math.max(...existingLayouts.map(l => l.y + l.h))
-          y = maxY
-        }
-
-        layout = { nodeId, x, y, w: 4, h: 3 }
+        layout = { nodeId, x, y, w: defaultW, h: defaultH, manuallyPlaced: false }
         this.controlPanelLayout.push(layout)
         saveToStorage(STORAGE_KEY_CONTROL_LAYOUT, this.controlPanelLayout)
       }
@@ -528,11 +562,16 @@ export const useUIStore = defineStore('ui', {
 
     /**
      * Update layout for a control node
+     * Automatically marks as manually placed when position is updated
      */
-    updateControlLayout(nodeId: string, updates: Partial<Omit<ControlLayout, 'nodeId'>>) {
+    updateControlLayout(nodeId: string, updates: Partial<Omit<ControlLayout, 'nodeId'>>, markManual: boolean = true) {
       const layout = this.controlPanelLayout.find(l => l.nodeId === nodeId)
       if (layout) {
         Object.assign(layout, updates)
+        // Mark as manually placed when user drags
+        if (markManual && (updates.x !== undefined || updates.y !== undefined)) {
+          layout.manuallyPlaced = true
+        }
       } else {
         this.controlPanelLayout.push({
           nodeId,
@@ -540,6 +579,7 @@ export const useUIStore = defineStore('ui', {
           y: updates.y ?? 0,
           w: updates.w ?? 4,
           h: updates.h ?? 3,
+          manuallyPlaced: markManual && (updates.x !== undefined || updates.y !== undefined),
         })
       }
       saveToStorage(STORAGE_KEY_CONTROL_LAYOUT, this.controlPanelLayout)

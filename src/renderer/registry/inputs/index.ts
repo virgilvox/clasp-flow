@@ -7,6 +7,7 @@ export { audioInputNode } from './audio-input'
 export { triggerNode, TriggerNode } from './trigger'
 export { xyPadNode, XYPadNode } from './xy-pad'
 export { textboxNode, TextboxNode } from './textbox'
+export { knobNode, KnobNode } from './knob'
 
 import { constantNode } from './constant'
 import { sliderNode } from './slider'
@@ -14,11 +15,13 @@ import { audioInputNode } from './audio-input'
 import { triggerNode } from './trigger'
 import { xyPadNode } from './xy-pad'
 import { textboxNode } from './textbox'
+import { knobNode } from './knob'
 import type { NodeDefinition } from '../types'
 
 export const inputNodes: NodeDefinition[] = [
   constantNode,
   sliderNode,
+  knobNode,
   audioInputNode,
   triggerNode,
   xyPadNode,

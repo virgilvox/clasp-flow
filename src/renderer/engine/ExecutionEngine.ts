@@ -1,5 +1,6 @@
 import type { Node, Edge } from '@vue-flow/core'
 import { useRuntimeStore } from '@/stores/runtime'
+import { useFlowsStore } from '@/stores/flows'
 import type { NodeDefinition } from '@/stores/nodes'
 import { disposeAllAudioNodes, gcAudioState } from './executors/audio'
 import { disposeAllVisualNodes, gcVisualState } from './executors/visual'
@@ -235,6 +236,10 @@ export class ExecutionEngine {
       const outputs = await executor(context)
       this.nodeOutputs.set(node.id, outputs)
 
+      // Handle special executor outputs for dynamic port updates
+      // These allow executors to signal node data changes (e.g., shader preset selection)
+      this.handleSpecialOutputs(node.id, outputs)
+
       // Update runtime metrics
       this.runtimeStore.updateNodeMetrics(node.id, {
         lastExecutionTime: performance.now() - startTime,
@@ -261,6 +266,39 @@ export class ExecutionEngine {
         error: err,
         duration: performance.now() - startTime,
       }
+    }
+  }
+
+  /**
+   * Handle special executor outputs that trigger node data updates
+   * These are outputs prefixed with _ that signal the engine to update the node
+   */
+  private handleSpecialOutputs(nodeId: string, outputs: Map<string, unknown>): void {
+    const flowsStore = useFlowsStore()
+    const updates: Record<string, unknown> = {}
+    let hasUpdates = false
+
+    // Check for dynamic inputs update (shader nodes)
+    if (outputs.has('_dynamicInputs')) {
+      updates._dynamicInputs = outputs.get('_dynamicInputs')
+      hasUpdates = true
+    }
+
+    // Check for dynamic controls update (shader nodes)
+    if (outputs.has('_dynamicControls')) {
+      updates._dynamicControls = outputs.get('_dynamicControls')
+      hasUpdates = true
+    }
+
+    // Check for preset code update (shader nodes)
+    if (outputs.has('_preset_code')) {
+      updates.code = outputs.get('_preset_code')
+      hasUpdates = true
+    }
+
+    // Apply updates if any
+    if (hasUpdates) {
+      flowsStore.updateNodeData(nodeId, updates)
     }
   }
 

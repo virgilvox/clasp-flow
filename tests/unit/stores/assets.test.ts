@@ -395,7 +395,7 @@ describe('Assets Store Logic', () => {
 
   describe('Sort Direction Toggle', () => {
     it('toggles direction when clicking same field', () => {
-      let sortBy = 'name'
+      const sortBy = 'name'
       let sortAsc = true
 
       // Click same field

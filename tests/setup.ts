@@ -31,7 +31,7 @@ class MockWorker {
 
 // Only set if not already defined
 if (typeof Worker === 'undefined') {
-  ;(globalThis as unknown as { Worker: typeof MockWorker }).Worker = MockWorker
+  (globalThis as unknown as { Worker: typeof MockWorker }).Worker = MockWorker
 }
 
 // Mock matchMedia if not present

@@ -560,46 +560,209 @@ export function getPresetsByCategory(category: ShaderPreset['category']): Shader
 
 /**
  * Parse uniform declarations from GLSL code
- * Returns uniforms that start with u_ (user uniforms)
+ * Robust parser that handles:
+ * - Various GLSL syntax variations
+ * - Precision qualifiers (lowp, mediump, highp)
+ * - Layout qualifiers
+ * - Comments (single and multi-line)
+ * - Array uniforms
+ * - Multiple declarations on one line
+ *
+ * Returns all user uniforms (u_*) and common custom uniforms
  */
 export function parseUniformsFromCode(code: string): UniformDefinition[] {
   const uniforms: UniformDefinition[] = []
+  const seenNames = new Set<string>()
 
-  // Match uniform declarations: uniform type name;
-  const uniformRegex = /uniform\s+(float|int|vec2|vec3|vec4|sampler2D)\s+(u_\w+)\s*;/g
+  // Remove comments first to avoid false matches
+  const cleanCode = code
+    // Remove multi-line comments
+    .replace(/\/\*[\s\S]*?\*\//g, '')
+    // Remove single-line comments
+    .replace(/\/\/.*$/gm, '')
+
+  // Built-in uniforms that should NOT create input ports
+  const builtInUniforms = new Set([
+    'iTime', 'iResolution', 'iMouse', 'iFrame', 'iDate', 'iTimeDelta',
+    'iChannel0', 'iChannel1', 'iChannel2', 'iChannel3',
+    'iChannelTime', 'iChannelResolution', 'iSampleRate',
+    'u_time', 'u_resolution', 'u_mouse', 'u_frame',
+    'u_texture', 'u_texture0', 'u_texture1', 'u_texture2', 'u_texture3',
+  ])
+
+  // Comprehensive regex that matches:
+  // - Optional precision (lowp, mediump, highp)
+  // - Type (float, int, bool, vec2-4, mat2-4, sampler2D, etc.)
+  // - Name (any valid identifier)
+  // - Optional array size
+  const uniformRegex = /uniform\s+(?:(?:lowp|mediump|highp)\s+)?(float|int|bool|vec2|vec3|vec4|ivec2|ivec3|ivec4|bvec2|bvec3|bvec4|mat2|mat3|mat4|sampler2D|samplerCube)\s+(\w+)(?:\s*\[\s*(\d+)\s*\])?\s*;/gi
+
   let match
-
-  while ((match = uniformRegex.exec(code)) !== null) {
-    const type = match[1] as UniformDefinition['type']
+  while ((match = uniformRegex.exec(cleanCode)) !== null) {
+    const rawType = match[1].toLowerCase()
     const name = match[2]
+    // Note: match[3] contains array size if present (e.g., uniform float arr[4];)
+    // Currently we don't support array uniforms, but the regex captures them
 
-    // Create label from name (u_myParam -> My Param)
-    const label = name
-      .replace(/^u_/, '')
-      .replace(/([A-Z])/g, ' $1')
-      .replace(/^./, s => s.toUpperCase())
-      .trim()
+    // Skip built-in uniforms
+    if (builtInUniforms.has(name)) continue
 
-    let defaultValue: number | number[]
-    switch (type) {
+    // Skip if already seen
+    if (seenNames.has(name)) continue
+    seenNames.add(name)
+
+    // Normalize type
+    let type: UniformDefinition['type']
+    switch (rawType) {
       case 'float':
+        type = 'float'
+        break
       case 'int':
-        defaultValue = 0
+      case 'bool':
+        type = 'int'
         break
       case 'vec2':
-        defaultValue = [0, 0]
+      case 'ivec2':
+      case 'bvec2':
+        type = 'vec2'
         break
       case 'vec3':
-        defaultValue = [0, 0, 0]
+      case 'ivec3':
+      case 'bvec3':
+        type = 'vec3'
         break
       case 'vec4':
-        defaultValue = [0, 0, 0, 1]
+      case 'ivec4':
+      case 'bvec4':
+        type = 'vec4'
         break
+      case 'sampler2d':
+      case 'samplercube':
+        type = 'sampler2D'
+        break
+      default:
+        // Skip unsupported types like mat2/mat3/mat4
+        continue
+    }
+
+    // Create human-readable label from name
+    // u_myParam -> My Param
+    // brightness -> Brightness
+    // u_color1 -> Color 1
+    const label = name
+      .replace(/^u_/, '')
+      .replace(/_/g, ' ')
+      .replace(/([a-z])([A-Z])/g, '$1 $2')
+      .replace(/(\d+)/g, ' $1')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .replace(/^./, s => s.toUpperCase())
+
+    // Determine default value and range based on type and name hints
+    let defaultValue: number | number[]
+    let min: number | undefined
+    let max: number | undefined
+    let step: number | undefined
+
+    // Try to infer reasonable defaults from name
+    const nameLower = name.toLowerCase()
+    const isColor = nameLower.includes('color') || nameLower.includes('col') || nameLower.includes('rgb')
+    const isScale = nameLower.includes('scale') || nameLower.includes('zoom')
+    const isSpeed = nameLower.includes('speed') || nameLower.includes('velocity')
+    const isAngle = nameLower.includes('angle') || nameLower.includes('rotation') || nameLower.includes('rot')
+    const isCount = nameLower.includes('count') || nameLower.includes('num') || nameLower.includes('segments')
+    const isSize = nameLower.includes('size') || nameLower.includes('radius') || nameLower.includes('thickness')
+    const isIntensity = nameLower.includes('intensity') || nameLower.includes('amount') || nameLower.includes('strength')
+    const isOffset = nameLower.includes('offset') || nameLower.includes('position') || nameLower.includes('pos')
+
+    switch (type) {
+      case 'float':
+        if (isAngle) {
+          defaultValue = 0
+          min = 0
+          max = 6.28318 // 2*PI
+          step = 0.01
+        } else if (isScale) {
+          defaultValue = 1.0
+          min = 0.1
+          max = 10
+          step = 0.1
+        } else if (isSpeed) {
+          defaultValue = 1.0
+          min = 0
+          max = 5
+          step = 0.1
+        } else if (isCount) {
+          defaultValue = 5
+          min = 1
+          max = 20
+          step = 1
+        } else if (isSize) {
+          defaultValue = 0.1
+          min = 0.001
+          max = 1
+          step = 0.01
+        } else if (isIntensity) {
+          defaultValue = 0.5
+          min = 0
+          max = 1
+          step = 0.01
+        } else {
+          // Default float: 0-1 range normalized
+          defaultValue = 0.5
+          min = 0
+          max = 1
+          step = 0.01
+        }
+        break
+
+      case 'int':
+        if (isCount) {
+          defaultValue = 5
+          min = 1
+          max = 20
+          step = 1
+        } else {
+          defaultValue = 0
+          min = 0
+          max = 10
+          step = 1
+        }
+        break
+
+      case 'vec2':
+        if (isOffset) {
+          defaultValue = [0, 0]
+        } else if (isScale) {
+          defaultValue = [1, 1]
+        } else {
+          defaultValue = [0.5, 0.5]
+        }
+        break
+
+      case 'vec3':
+        if (isColor) {
+          defaultValue = [1, 1, 1] // White
+        } else if (isOffset) {
+          defaultValue = [0, 0, 0]
+        } else if (isScale) {
+          defaultValue = [1, 1, 1]
+        } else {
+          defaultValue = [0.5, 0.5, 0.5]
+        }
+        break
+
+      case 'vec4':
+        if (isColor) {
+          defaultValue = [1, 1, 1, 1] // White with full alpha
+        } else {
+          defaultValue = [0, 0, 0, 1]
+        }
+        break
+
       case 'sampler2D':
         defaultValue = 0 // texture unit
         break
-      default:
-        defaultValue = 0
     }
 
     uniforms.push({
@@ -607,11 +770,113 @@ export function parseUniformsFromCode(code: string): UniformDefinition[] {
       type,
       label,
       default: defaultValue,
-      min: type === 'float' ? 0 : undefined,
-      max: type === 'float' ? 1 : undefined,
-      step: type === 'float' ? 0.01 : undefined,
+      min,
+      max,
+      step,
     })
   }
 
   return uniforms
+}
+
+/**
+ * Map GLSL uniform type to node port data type
+ */
+export function uniformTypeToDataType(uniformType: UniformDefinition['type']): string {
+  switch (uniformType) {
+    case 'float':
+    case 'int':
+      return 'number'
+    case 'vec2':
+    case 'vec3':
+    case 'vec4':
+      return 'data' // vec types use data (arrays)
+    case 'sampler2D':
+      return 'texture'
+    default:
+      return 'any'
+  }
+}
+
+/**
+ * Generate dynamic input ports from parsed uniforms
+ */
+export function generateInputsFromUniforms(uniforms: UniformDefinition[]): Array<{
+  id: string
+  type: string
+  label: string
+  default?: unknown
+}> {
+  return uniforms.map(u => ({
+    id: u.name,
+    type: uniformTypeToDataType(u.type),
+    label: u.label,
+    default: u.default,
+  }))
+}
+
+/**
+ * Generate control definitions from parsed uniforms
+ * This creates sliders, color pickers, etc. for the properties panel
+ */
+export function generateControlsFromUniforms(uniforms: UniformDefinition[]): Array<{
+  id: string
+  type: string
+  label: string
+  default: unknown
+  props?: Record<string, unknown>
+}> {
+  return uniforms.map(u => {
+    const control: {
+      id: string
+      type: string
+      label: string
+      default: unknown
+      props?: Record<string, unknown>
+    } = {
+      id: u.name,
+      type: 'slider',
+      label: u.label,
+      default: u.default,
+    }
+
+    switch (u.type) {
+      case 'float':
+        control.type = 'slider'
+        control.props = {
+          min: u.min ?? 0,
+          max: u.max ?? 1,
+          step: u.step ?? 0.01,
+        }
+        break
+      case 'int':
+        control.type = 'number'
+        control.props = {
+          min: u.min ?? 0,
+          max: u.max ?? 100,
+          step: u.step ?? 1,
+        }
+        break
+      case 'vec2':
+        control.type = 'vec2'
+        break
+      case 'vec3':
+        // Check if it looks like a color
+        if (u.name.toLowerCase().includes('color') || u.name.toLowerCase().includes('col')) {
+          control.type = 'color'
+        } else {
+          control.type = 'vec3'
+        }
+        break
+      case 'vec4':
+        control.type = 'color' // vec4 often used for color with alpha
+        break
+      case 'sampler2D':
+        // Texture inputs are handled as input ports, not controls
+        control.type = 'hidden'
+        break
+    }
+
+    return control
+  }).filter(c => c.type !== 'hidden')
 }
