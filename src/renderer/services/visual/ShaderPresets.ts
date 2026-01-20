@@ -719,9 +719,17 @@ export function parseUniformsFromCode(code: string): UniformDefinition[] {
 
     // Helper to check if a word appears as a complete word in the name
     // Handles: snake_case, camelCase, and whole word matches
+    // Avoids lookbehind for broader browser compatibility
     const hasWord = (word: string): boolean => {
-      const pattern = new RegExp(`(?:^|_)${word}(?:_|$|\\d)|(?<=[a-z])${word.charAt(0).toUpperCase()}${word.slice(1)}|^${word}$`, 'i')
-      return pattern.test(name)
+      const wordLower = word.toLowerCase()
+      // Check snake_case: word at start, end, or surrounded by underscores
+      if (new RegExp(`(?:^|_)${wordLower}(?:_|$|\\d)`, 'i').test(name)) return true
+      // Check camelCase: word starts with uppercase after lowercase letter
+      const camelPattern = word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      if (name.includes(camelPattern)) return true
+      // Check exact match
+      if (nameLower === wordLower) return true
+      return false
     }
 
     // More specific matching - prefer full words over partial matches

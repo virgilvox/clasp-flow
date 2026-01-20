@@ -508,7 +508,9 @@ export const shaderExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
         break
 
       case 'sampler2D':
+      case 'samplerCube':
         // Texture uniform - accepts both THREE.Texture and raw WebGLTexture
+        // Note: samplerCube treated same as sampler2D for now (cubemaps not fully supported)
         if (value instanceof THREE.Texture) {
           uniforms.push({
             name: def.name,

@@ -98,12 +98,14 @@ function renderPreview() {
   renderer.setTime(currentTime)
 
   // Render using the Three.js renderer with proper uniforms
-  // Pass default values for detected uniforms
-  const uniformValues = detectedUniforms.value.map(u => ({
-    name: u.name,
-    type: u.type as 'float' | 'int' | 'vec2' | 'vec3' | 'vec4' | 'sampler2D',
-    value: u.default as number | number[] | null,
-  }))
+  // Pass default values for detected uniforms (filter out unsupported types like samplerCube)
+  const uniformValues = detectedUniforms.value
+    .filter(u => u.type !== 'samplerCube') // Cubemaps not supported in preview
+    .map(u => ({
+      name: u.name,
+      type: u.type as 'float' | 'int' | 'vec2' | 'vec3' | 'vec4' | 'sampler2D',
+      value: u.default as number | number[] | null,
+    }))
 
   renderer.renderToScreen(compiledShaderMaterial, uniformValues, 400, 300)
 
@@ -219,6 +221,7 @@ function getUniformTypeLabel(type: string): string {
     vec3: 'vec3/color',
     vec4: 'vec4/color',
     sampler2D: 'texture',
+    samplerCube: 'cubemap',
   }
   return labels[type] ?? type
 }
