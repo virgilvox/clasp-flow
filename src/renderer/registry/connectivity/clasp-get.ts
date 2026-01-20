@@ -19,7 +19,7 @@ export const claspGetNode: NodeDefinition = {
     { id: 'error', type: 'string', label: 'Error' },
   ],
   controls: [
-    { id: 'connectionId', type: 'text', label: 'Connection ID', default: 'default' },
+    { id: 'connectionId', type: 'connection', label: 'Connection', default: '', props: { protocol: 'clasp', placeholder: 'Select CLASP connection...' } },
     { id: 'address', type: 'text', label: 'Address', default: '/param', props: { placeholder: '/lights/strip1/brightness' } },
   ],
   tags: ['clasp', 'get', 'read', 'fetch'],

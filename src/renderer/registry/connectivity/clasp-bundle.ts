@@ -20,7 +20,7 @@ export const claspBundleNode: NodeDefinition = {
     { id: 'error', type: 'string', label: 'Error' },
   ],
   controls: [
-    { id: 'connectionId', type: 'text', label: 'Connection ID', default: 'default' },
+    { id: 'connectionId', type: 'connection', label: 'Connection', default: '', props: { protocol: 'clasp', placeholder: 'Select CLASP connection...' } },
   ],
   tags: ['clasp', 'bundle', 'atomic', 'batch'],
 }

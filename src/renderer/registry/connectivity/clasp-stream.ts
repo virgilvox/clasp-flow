@@ -18,7 +18,7 @@ export const claspStreamNode: NodeDefinition = {
     { id: 'sent', type: 'boolean', label: 'Sent' },
   ],
   controls: [
-    { id: 'connectionId', type: 'text', label: 'Connection ID', default: 'default' },
+    { id: 'connectionId', type: 'connection', label: 'Connection', default: '', props: { protocol: 'clasp', placeholder: 'Select CLASP connection...' } },
     { id: 'address', type: 'text', label: 'Address', default: '/stream', props: { placeholder: '/sensor/temperature' } },
     { id: 'enabled', type: 'toggle', label: 'Enabled', default: true },
   ],

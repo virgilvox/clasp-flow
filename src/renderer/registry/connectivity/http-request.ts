@@ -3,12 +3,15 @@ import type { NodeDefinition } from '../types'
 export const httpRequestNode: NodeDefinition = {
   id: 'http-request',
   name: 'HTTP Request',
-  version: '1.0.0',
+  version: '2.0.0',
   category: 'connectivity',
-  description: 'Make HTTP/REST API requests',
+  description: 'Make HTTP/REST API requests with optional template support',
   icon: 'globe',
   platforms: ['web', 'electron'],
   inputs: [
+    { id: 'connectionId', type: 'string', label: 'Connection' },
+    { id: 'templateId', type: 'string', label: 'Template' },
+    { id: 'params', type: 'data', label: 'Params' },
     { id: 'url', type: 'string', label: 'URL' },
     { id: 'headers', type: 'data', label: 'Headers' },
     { id: 'body', type: 'data', label: 'Body' },
@@ -21,7 +24,33 @@ export const httpRequestNode: NodeDefinition = {
     { id: 'loading', type: 'boolean', label: 'Loading' },
   ],
   controls: [
-    { id: 'url', type: 'text', label: 'URL', default: 'https://api.example.com/data' },
-    { id: 'method', type: 'select', label: 'Method', default: 'GET', props: { options: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'] } },
+    {
+      id: 'connectionId',
+      type: 'connection',
+      label: 'Connection',
+      default: '',
+      props: { protocol: 'http', placeholder: 'Select HTTP connection...' },
+    },
+    {
+      id: 'templateId',
+      type: 'template-select',
+      label: 'Template',
+      default: '',
+      props: { connectionControlId: 'connectionId', allowInline: true },
+    },
+    {
+      id: 'url',
+      type: 'text',
+      label: 'URL',
+      default: '',
+      props: { placeholder: '/path or https://...', showWhen: { templateId: '' } },
+    },
+    {
+      id: 'method',
+      type: 'select',
+      label: 'Method',
+      default: 'GET',
+      props: { options: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'], showWhen: { templateId: '' } },
+    },
   ],
 }

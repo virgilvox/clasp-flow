@@ -861,7 +861,7 @@ onUnmounted(() => {
                 <div class="synth-instrument">
                   <select
                     :value="getControlValue(node.id, 'instrument', 'sine')"
-                    @change="setControlValue(node.id, 'instrument', ($event.target as HTMLSelectElement).value)"
+                    @change="updateControlValue(node.id, 'instrument', ($event.target as HTMLSelectElement).value)"
                   >
                     <option value="sine">
                       Sine
@@ -892,7 +892,7 @@ onUnmounted(() => {
                     label="VOL"
                     size="small"
                     accent-color="#f59e0b"
-                    @update:model-value="v => setControlValue(node.id, 'volume', v)"
+                    @update:model-value="v => updateControlValue(node.id, 'volume', v)"
                   />
                   <RotaryKnob
                     :model-value="getControlValue(node.id, 'attack', 0.01) as number"
@@ -901,7 +901,7 @@ onUnmounted(() => {
                     label="ATK"
                     size="small"
                     accent-color="#f59e0b"
-                    @update:model-value="v => setControlValue(node.id, 'attack', v)"
+                    @update:model-value="v => updateControlValue(node.id, 'attack', v)"
                   />
                   <RotaryKnob
                     :model-value="getControlValue(node.id, 'decay', 0.1) as number"
@@ -910,7 +910,7 @@ onUnmounted(() => {
                     label="DEC"
                     size="small"
                     accent-color="#f59e0b"
-                    @update:model-value="v => setControlValue(node.id, 'decay', v)"
+                    @update:model-value="v => updateControlValue(node.id, 'decay', v)"
                   />
                   <RotaryKnob
                     :model-value="getControlValue(node.id, 'sustain', 0.7) as number"
@@ -919,7 +919,7 @@ onUnmounted(() => {
                     label="SUS"
                     size="small"
                     accent-color="#f59e0b"
-                    @update:model-value="v => setControlValue(node.id, 'sustain', v)"
+                    @update:model-value="v => updateControlValue(node.id, 'sustain', v)"
                   />
                   <RotaryKnob
                     :model-value="getControlValue(node.id, 'release', 0.3) as number"
@@ -928,7 +928,7 @@ onUnmounted(() => {
                     label="REL"
                     size="small"
                     accent-color="#f59e0b"
-                    @update:model-value="v => setControlValue(node.id, 'release', v)"
+                    @update:model-value="v => updateControlValue(node.id, 'release', v)"
                   />
                   <!-- Moog filter controls -->
                   <template v-if="getControlValue(node.id, 'instrument', 'sine') === 'moog'">
@@ -939,7 +939,7 @@ onUnmounted(() => {
                       label="CUT"
                       size="small"
                       accent-color="#ec4899"
-                      @update:model-value="v => setControlValue(node.id, 'filterCutoff', v)"
+                      @update:model-value="v => updateControlValue(node.id, 'filterCutoff', v)"
                     />
                     <RotaryKnob
                       :model-value="getControlValue(node.id, 'filterResonance', 1) as number"
@@ -948,7 +948,7 @@ onUnmounted(() => {
                       label="RES"
                       size="small"
                       accent-color="#ec4899"
-                      @update:model-value="v => setControlValue(node.id, 'filterResonance', v)"
+                      @update:model-value="v => updateControlValue(node.id, 'filterResonance', v)"
                     />
                   </template>
                 </div>

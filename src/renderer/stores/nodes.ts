@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import type { Component } from 'vue'
 import { fuzzySearch } from '@/utils/fuzzySearch'
+import type { NodeConnectionRequirement } from '@/services/connections/types'
 
 export type NodeCategory =
   | 'debug'
@@ -80,6 +81,8 @@ export interface NodeDefinition {
   outputs: PortDefinition[]
   controls: ControlDefinition[]
   tags?: string[]
+  /** Connection requirements for this node (protocols it needs) */
+  connections?: NodeConnectionRequirement[]
 }
 
 interface NodesStoreState {

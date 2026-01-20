@@ -45,9 +45,6 @@ const octaveShift = computed(() => (props.data?.octaveShift as number) ?? 0)
 const includeBlackKeys = computed(() => (props.data?.includeBlackKeys as boolean) ?? true)
 const velocitySensitive = computed(() => (props.data?.velocitySensitive as boolean) ?? true)
 
-// Current note state
-const currentNote = computed(() => (props.data?.note as number) ?? 0)
-
 // Keyboard fills the node (minus header and handle space)
 const keyboardWidth = computed(() => nodeWidth.value - 18) // 12px handles margin + 6px right frame
 const keyboardHeight = computed(() => nodeHeight.value - HEADER_HEIGHT)

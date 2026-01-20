@@ -10,7 +10,7 @@
  */
 
 import { BaseAdapter } from './BaseAdapter'
-import type { BleConnectionConfig } from '../types'
+import type { BleConnectionConfig, SendOptions } from '../types'
 
 // ============================================================================
 // Types
@@ -111,6 +111,8 @@ export class BleAdapter extends BaseAdapter {
     private bleConfig: BleConnectionConfig
   ) {
     super(connectionId, 'ble', bleConfig)
+    // BLE doesn't benefit from message buffering
+    this.bufferEnabled = false
   }
 
   // =========================================================================
@@ -190,73 +192,57 @@ export class BleAdapter extends BaseAdapter {
   // Connection
   // =========================================================================
 
-  async connect(): Promise<void> {
-    if (this._disposed) return
-    this.setStatus('connecting')
+  protected async doConnect(): Promise<void> {
+    // If we don't have a device, request one
+    if (!this.device) {
+      const filters: BluetoothLEScanFilter[] = []
+      const optionalServices: BluetoothServiceUUID[] = []
 
-    try {
-      // If we don't have a device, request one
-      if (!this.device) {
-        const filters: BluetoothLEScanFilter[] = []
-        const optionalServices: BluetoothServiceUUID[] = []
-
-        if (this.bleConfig.serviceUUID) {
-          // Try to use short UUID if it's a standard service
-          const shortUUID = this.bleConfig.serviceUUID.length <= 4
-            ? this.bleConfig.serviceUUID
-            : this.bleConfig.serviceUUID
-
-          filters.push({ services: [shortUUID] })
-          optionalServices.push(shortUUID)
-        }
-
-        if (this.bleConfig.characteristicUUIDs) {
-          optionalServices.push(...this.bleConfig.characteristicUUIDs)
-        }
-
-        this.device = await BleAdapter.scanDevices({
-          filters: filters.length > 0 ? filters : undefined,
-          optionalServices,
-          acceptAllDevices: filters.length === 0,
-        })
-
-        if (!this.device) {
-          throw new Error('No device selected')
-        }
-
-        // Listen for disconnection - store bound handler for cleanup
-        this.boundDisconnectHandler = () => this.handleDisconnect()
-        this.device.addEventListener('gattserverdisconnected', this.boundDisconnectHandler)
-      }
-
-      // Connect to GATT server
-      if (!this.device.gatt) {
-        throw new Error('GATT not available on device')
-      }
-
-      this.server = await this.device.gatt.connect()
-
-      // Enumerate services if we have a service UUID
       if (this.bleConfig.serviceUUID) {
-        await this.discoverServices()
+        // Try to use short UUID if it's a standard service
+        const shortUUID = this.bleConfig.serviceUUID.length <= 4
+          ? this.bleConfig.serviceUUID
+          : this.bleConfig.serviceUUID
+
+        filters.push({ services: [shortUUID] })
+        optionalServices.push(shortUUID)
       }
 
-      this.setStatus('connected')
-      console.log(`[BLE] Connected to ${this.device.name || 'Unknown Device'}`)
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Connection failed'
-      this.setStatus('error', message)
-      this.emitError(error instanceof Error ? error : new Error(message))
-
-      if (this.config.autoReconnect) {
-        this.scheduleReconnect()
+      if (this.bleConfig.characteristicUUIDs) {
+        optionalServices.push(...this.bleConfig.characteristicUUIDs)
       }
+
+      this.device = await BleAdapter.scanDevices({
+        filters: filters.length > 0 ? filters : undefined,
+        optionalServices,
+        acceptAllDevices: filters.length === 0,
+      })
+
+      if (!this.device) {
+        throw new Error('No device selected')
+      }
+
+      // Listen for disconnection - store bound handler for cleanup
+      this.boundDisconnectHandler = () => this.handleBleDisconnect()
+      this.device.addEventListener('gattserverdisconnected', this.boundDisconnectHandler)
     }
+
+    // Connect to GATT server
+    if (!this.device.gatt) {
+      throw new Error('GATT not available on device')
+    }
+
+    this.server = await this.device.gatt.connect()
+
+    // Enumerate services if we have a service UUID
+    if (this.bleConfig.serviceUUID) {
+      await this.discoverServices()
+    }
+
+    console.log(`[BLE] Connected to ${this.device.name || 'Unknown Device'}`)
   }
 
-  async disconnect(): Promise<void> {
-    this.cancelReconnect()
-
+  protected async doDisconnect(): Promise<void> {
     // Stop all notifications
     for (const [uuid, characteristic] of this.characteristics) {
       try {
@@ -278,25 +264,27 @@ export class BleAdapter extends BaseAdapter {
 
     this.server = null
     // Keep device reference for reconnection
-
-    this.setStatus('disconnected')
   }
 
-  private handleDisconnect(): void {
+  protected async doSend(data: unknown, options?: SendOptions): Promise<void> {
+    const uuid = options?.topic
+    const format = (options?.format as BleDataFormat) || 'raw'
+
+    if (!uuid) {
+      throw new Error('Characteristic UUID required for send')
+    }
+
+    await this.writeCharacteristic(uuid, data as ArrayBuffer | Uint8Array | number | string, format)
+  }
+
+  private handleBleDisconnect(): void {
     this.server = null
     this.characteristics.clear()
     this.services.clear()
     this.notificationHandlers.clear()
 
-    if (this._disposed) {
-      this.setStatus('disconnected')
-      return
-    }
-
-    if (this.config.autoReconnect) {
-      this.scheduleReconnect()
-    } else {
-      this.setStatus('disconnected')
+    if (!this._disposed) {
+      this.handleUnexpectedDisconnect()
     }
   }
 
@@ -550,21 +538,6 @@ export class BleAdapter extends BaseAdapter {
     }
 
     return buffer
-  }
-
-  // =========================================================================
-  // BaseAdapter Implementation
-  // =========================================================================
-
-  async send(data: unknown, options?: Record<string, unknown>): Promise<void> {
-    const uuid = options?.characteristic as string
-    const format = (options?.format as BleDataFormat) || 'raw'
-
-    if (!uuid) {
-      throw new Error('Characteristic UUID required for send')
-    }
-
-    await this.writeCharacteristic(uuid, data as ArrayBuffer | Uint8Array | number | string, format)
   }
 
   // =========================================================================

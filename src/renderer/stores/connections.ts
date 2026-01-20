@@ -55,6 +55,10 @@ export const useConnectionsStore = defineStore('connections', () => {
   function syncFromManager() {
     connections.value = manager.getConnections()
     types.value = manager.getTypes()
+    console.log('[Connections] Synced from manager:', {
+      connections: connections.value.length,
+      types: types.value.map(t => t.id),
+    })
 
     // Sync statuses
     const newStatuses = new Map<string, ConnectionStatusInfo>()
@@ -226,12 +230,22 @@ export const useConnectionsStore = defineStore('connections', () => {
 
   /** Connect a connection */
   async function connect(connectionId: string) {
-    await manager.connect(connectionId)
+    try {
+      await manager.connect(connectionId)
+    } catch (e) {
+      console.error('[Connections] Connect error:', e)
+      throw e
+    }
   }
 
   /** Disconnect a connection */
   async function disconnect(connectionId: string) {
-    await manager.disconnect(connectionId)
+    try {
+      await manager.disconnect(connectionId)
+    } catch (e) {
+      console.error('[Connections] Disconnect error:', e)
+      throw e
+    }
   }
 
   /** Connect all auto-connect connections */

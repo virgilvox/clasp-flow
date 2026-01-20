@@ -30,6 +30,7 @@ import { categoryMeta, dataTypeMeta, type NodeDefinition, type NodeCategory, use
 import { useFlowsStore } from '@/stores/flows'
 import { getExecutionEngine } from '@/engine/ExecutionEngine'
 import TexturePreview from '@/components/preview/TexturePreview.vue'
+import NodeConnectionStatus from '@/components/connections/NodeConnectionStatus.vue'
 import { useDeviceEnumeration, type DeviceType, type DeviceOption } from '@/composables/useDeviceEnumeration'
 
 const props = defineProps<NodeProps>()
@@ -150,6 +151,45 @@ const controls = computed(() => {
   const mergedDynamic = dynamicControls.filter(d => !staticIds.has(d.id))
 
   return [...staticControls, ...mergedDynamic]
+})
+
+// Compute connection bindings from controls of type 'connection' or 'connection-select'
+// These bindings drive the NodeConnectionStatus component
+const connectionBindings = computed(() => {
+  const bindings: Array<{
+    connectionId: string
+    controlId: string
+    required?: boolean
+  }> = []
+
+  // Look for controls that reference connections
+  for (const control of controls.value) {
+    if (control.type === 'connection' || control.type === 'connection-select') {
+      const connectionId = props.data?.[control.id] as string | undefined
+      if (connectionId) {
+        bindings.push({
+          connectionId,
+          controlId: control.id,
+          required: (control.props as Record<string, unknown>)?.required as boolean | undefined,
+        })
+      }
+    }
+  }
+
+  // Also check for connections defined in the node definition
+  const nodeConnections = definition.value?.connections ?? []
+  for (const conn of nodeConnections) {
+    const connectionId = props.data?.[conn.controlId] as string | undefined
+    if (connectionId && !bindings.some(b => b.controlId === conn.controlId)) {
+      bindings.push({
+        connectionId,
+        controlId: conn.controlId,
+        required: conn.required,
+      })
+    }
+  }
+
+  return bindings
 })
 
 // Check if this is a visual node with texture output
@@ -452,6 +492,12 @@ function onLabelKeydown(e: KeyboardEvent) {
           />
         </button>
       </div>
+
+      <!-- Connection Status (like Node-RED's colored dots) -->
+      <NodeConnectionStatus
+        v-if="connectionBindings.length > 0 && !isCollapsed"
+        :bindings="connectionBindings"
+      />
 
       <!-- Compact Body - just icon with category color -->
       <div

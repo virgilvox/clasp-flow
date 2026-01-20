@@ -3,15 +3,15 @@ import type { NodeDefinition } from '../types'
 export const websocketNode: NodeDefinition = {
   id: 'websocket',
   name: 'WebSocket',
-  version: '1.0.0',
+  version: '2.0.0',
   category: 'connectivity',
-  description: 'Real-time WebSocket connection',
+  description: 'Real-time WebSocket connection using ConnectionManager',
   icon: 'radio',
   platforms: ['web', 'electron'],
   inputs: [
-    { id: 'url', type: 'string', label: 'URL' },
+    { id: 'connectionId', type: 'string', label: 'Connection' },
     { id: 'send', type: 'data', label: 'Send' },
-    { id: 'connect', type: 'boolean', label: 'Connect' },
+    { id: 'trigger', type: 'trigger', label: 'Send Trigger' },
   ],
   outputs: [
     { id: 'message', type: 'data', label: 'Message' },
@@ -19,7 +19,12 @@ export const websocketNode: NodeDefinition = {
     { id: 'error', type: 'string', label: 'Error' },
   ],
   controls: [
-    { id: 'url', type: 'text', label: 'URL', default: 'wss://echo.websocket.org' },
-    { id: 'autoConnect', type: 'toggle', label: 'Auto Connect', default: false },
+    {
+      id: 'connectionId',
+      type: 'connection',
+      label: 'Connection',
+      default: '',
+      props: { protocol: 'websocket', placeholder: 'Select WebSocket connection...' },
+    },
   ],
 }

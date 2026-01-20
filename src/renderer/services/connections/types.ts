@@ -127,11 +127,55 @@ export interface BleConnectionConfig extends BaseConnectionConfig {
   characteristicUUIDs?: string[]
 }
 
+// ============================================================================
+// HTTP Endpoint Templates
+// ============================================================================
+
+/**
+ * Parameter definition for HTTP endpoint templates
+ */
+export interface HttpTemplateParameter {
+  /** Parameter name - matches {{name}} in templates */
+  name: string
+  /** Parameter type for validation/conversion */
+  type: 'string' | 'number' | 'boolean' | 'json'
+  /** Default value if not provided */
+  default?: unknown
+  /** Whether this parameter is required */
+  required?: boolean
+  /** Human-readable description */
+  description?: string
+}
+
+/**
+ * HTTP endpoint template for reusable request configurations
+ */
+export interface HttpEndpointTemplate {
+  /** Unique identifier within the connection */
+  id: string
+  /** Human-readable name (e.g., "Get User", "Create Order") */
+  name: string
+  /** HTTP method */
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
+  /** Request path (can include {{placeholders}}) */
+  path: string
+  /** Additional headers (can include {{placeholders}}) */
+  headers?: Record<string, string>
+  /** Request body template (JSON with {{placeholders}}) */
+  bodyTemplate?: string
+  /** Parameter definitions */
+  parameters?: HttpTemplateParameter[]
+  /** Human-readable description */
+  description?: string
+}
+
 export interface HttpConnectionConfig extends BaseConnectionConfig {
   protocol: 'http'
   baseUrl: string
   headers?: Record<string, string>
   timeout?: number
+  /** Endpoint templates for reusable request configurations */
+  templates?: HttpEndpointTemplate[]
 }
 
 /** Union of all connection config types */
@@ -336,4 +380,134 @@ export interface NodeConnectionRequirement {
   controlId: string
   /** Whether a connection is required for the node to work */
   required?: boolean
+}
+
+// ============================================================================
+// Extended Status Info (with buffer stats)
+// ============================================================================
+
+/**
+ * Extended connection status with buffer information
+ */
+export interface ExtendedConnectionStatusInfo extends ConnectionStatusInfo {
+  /** Number of messages buffered for this connection */
+  bufferedMessages?: number
+  /** State machine state (if using state machine) */
+  machineState?: string
+  /** Whether connection is currently busy (connecting/disconnecting) */
+  isBusy?: boolean
+}
+
+// ============================================================================
+// Send Options
+// ============================================================================
+
+/**
+ * Options when sending a message through an adapter
+ */
+export interface SendOptions {
+  /** Topic/channel for the message (protocol-specific) */
+  topic?: string
+  /** Whether to buffer the message if disconnected (default: true) */
+  buffer?: boolean
+  /** Message priority for buffering */
+  priority?: 'low' | 'normal' | 'high' | 'critical'
+  /** Time-to-live for buffered message (ms) */
+  ttl?: number
+  /** QoS level (for MQTT) */
+  qos?: 0 | 1 | 2
+  /** Retain flag (for MQTT) */
+  retain?: boolean
+  /** Additional protocol-specific options */
+  [key: string]: unknown
+}
+
+// ============================================================================
+// Validation Types
+// ============================================================================
+
+/**
+ * Result of validating a node's connections
+ */
+export interface ConnectionValidationResult {
+  /** Whether the node passed validation */
+  valid: boolean
+  /** Validation errors (blocking issues) */
+  errors: ConnectionValidationError[]
+  /** Validation warnings (non-blocking issues) */
+  warnings: ConnectionValidationWarning[]
+}
+
+/**
+ * A validation error for a connection
+ */
+export interface ConnectionValidationError {
+  /** The node ID with the error */
+  nodeId: string
+  /** The connection requirement that failed */
+  requirement: NodeConnectionRequirement
+  /** Error message */
+  message: string
+  /** Error code for programmatic handling */
+  code: 'MISSING_CONNECTION' | 'DISCONNECTED' | 'ERROR_STATE' | 'INVALID_CONFIG'
+}
+
+/**
+ * A validation warning for a connection
+ */
+export interface ConnectionValidationWarning {
+  /** The node ID with the warning */
+  nodeId: string
+  /** Warning message */
+  message: string
+  /** Warning code */
+  code: 'RECONNECTING' | 'UNSTABLE' | 'LEGACY_CREDENTIALS'
+}
+
+// ============================================================================
+// Credential Types
+// ============================================================================
+
+/**
+ * Credential field definition
+ */
+export interface CredentialFieldDefinition {
+  /** Field ID (e.g., "password", "apiKey") */
+  id: string
+  /** Field label */
+  label: string
+  /** Field type */
+  type: 'password' | 'token' | 'certificate'
+  /** Whether this field is required */
+  required?: boolean
+}
+
+/**
+ * Credential metadata (stored in connection config, not the actual secret)
+ */
+export interface CredentialMetadata {
+  /** Whether credentials exist for this connection */
+  hasCredentials: boolean
+  /** Which credential fields are configured */
+  configuredFields: string[]
+  /** Last updated timestamp */
+  lastUpdated?: Date
+}
+
+// ============================================================================
+// Custom Connection Type Registration
+// ============================================================================
+
+/**
+ * Context provided to custom nodes for registering connection types
+ */
+export interface ConnectionRegistrationContext {
+  /** Register a custom connection type */
+  registerType: <TConfig extends BaseConnectionConfig>(
+    definition: ConnectionTypeDefinition<TConfig>
+  ) => void
+  /** Unregister a custom connection type */
+  unregisterType: (typeId: string) => void
+  /** Check if a type is already registered */
+  hasType: (typeId: string) => boolean
 }

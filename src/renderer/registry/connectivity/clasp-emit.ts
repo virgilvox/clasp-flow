@@ -20,7 +20,7 @@ export const claspEmitNode: NodeDefinition = {
     { id: 'error', type: 'string', label: 'Error' },
   ],
   controls: [
-    { id: 'connectionId', type: 'text', label: 'Connection ID', default: 'default' },
+    { id: 'connectionId', type: 'connection', label: 'Connection', default: '', props: { protocol: 'clasp', placeholder: 'Select CLASP connection...' } },
     { id: 'address', type: 'text', label: 'Event Address', default: '/event', props: { placeholder: '/cue/fire' } },
   ],
   tags: ['clasp', 'emit', 'event', 'trigger'],

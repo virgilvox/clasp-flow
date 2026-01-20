@@ -9,10 +9,10 @@ import { BaseAdapter } from './BaseAdapter'
 import type {
   WebSocketConnectionConfig,
   ConnectionTypeDefinition,
+  SendOptions,
 } from '../types'
 
 export class WebSocketAdapterImpl extends BaseAdapter {
-  protocol = 'websocket'
   private ws: WebSocket | null = null
   private wsConfig: WebSocketConnectionConfig
 
@@ -21,12 +21,10 @@ export class WebSocketAdapterImpl extends BaseAdapter {
     this.wsConfig = config
   }
 
-  async connect(): Promise<void> {
+  protected async doConnect(): Promise<void> {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       return
     }
-
-    this.setStatus('connecting')
 
     return new Promise((resolve, reject) => {
       try {
@@ -40,7 +38,6 @@ export class WebSocketAdapterImpl extends BaseAdapter {
 
         ws.onopen = () => {
           clearTimeout(timeout)
-          this.setStatus('connected')
           console.log(`[WebSocket] Connected to ${this.wsConfig.url}`)
           resolve()
         }
@@ -58,7 +55,6 @@ export class WebSocketAdapterImpl extends BaseAdapter {
         ws.onerror = () => {
           clearTimeout(timeout)
           const error = new Error('WebSocket error')
-          this.setStatus('error', error.message)
           this.emitError(error)
           reject(error)
         }
@@ -67,23 +63,18 @@ export class WebSocketAdapterImpl extends BaseAdapter {
           clearTimeout(timeout)
           this.ws = null
 
-          if (this._status !== 'error' && !this._disposed) {
-            this.setStatus('disconnected')
-            this.scheduleReconnect()
+          if (!this._disposed) {
+            this.handleUnexpectedDisconnect()
           }
         }
       } catch (e) {
         const error = e instanceof Error ? e : new Error(String(e))
-        this.setStatus('error', error.message)
         reject(error)
       }
     })
   }
 
-  async disconnect(): Promise<void> {
-    this.cancelReconnect()
-    this.config.autoReconnect = false
-
+  protected async doDisconnect(): Promise<void> {
     if (this.ws) {
       // Nullify event handlers before closing to prevent stale callbacks
       this.ws.onopen = null
@@ -93,21 +84,15 @@ export class WebSocketAdapterImpl extends BaseAdapter {
       this.ws.close()
       this.ws = null
     }
-
-    this.setStatus('disconnected')
   }
 
-  async send(data: unknown): Promise<void> {
+  protected async doSend(data: unknown, _options?: SendOptions): Promise<void> {
     if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
       throw new Error('Not connected')
     }
 
     const message = typeof data === 'string' ? data : JSON.stringify(data)
     this.ws.send(message)
-  }
-
-  dispose(): void {
-    super.dispose()
   }
 }
 

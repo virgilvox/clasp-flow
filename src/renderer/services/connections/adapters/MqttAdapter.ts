@@ -11,11 +11,11 @@ import { BaseAdapter } from './BaseAdapter'
 import type {
   MqttConnectionConfig,
   ConnectionTypeDefinition,
+  SendOptions,
 } from '../types'
 import { isElectron } from '@/utils/platform'
 
 export class MqttAdapterImpl extends BaseAdapter {
-  protocol = 'mqtt'
   private client: MqttClient | null = null
   private mqttConfig: MqttConnectionConfig
   private subscriptions = new Map<string, { qos: 0 | 1 | 2 }>()
@@ -52,12 +52,10 @@ export class MqttAdapterImpl extends BaseAdapter {
     }
   }
 
-  async connect(): Promise<void> {
+  protected async doConnect(): Promise<void> {
     if (this.client?.connected) {
       return
     }
-
-    this.setStatus('connecting')
 
     return new Promise((resolve, reject) => {
       try {
@@ -102,7 +100,6 @@ export class MqttAdapterImpl extends BaseAdapter {
 
         client.on('connect', () => {
           clearTimeout(timeout)
-          this.setStatus('connected')
           console.log(`[MQTT] Connected to ${brokerUrl}`)
 
           // Resubscribe to any existing subscriptions
@@ -126,7 +123,6 @@ export class MqttAdapterImpl extends BaseAdapter {
         client.on('error', (err) => {
           clearTimeout(timeout)
           console.error(`[MQTT] Error:`, err.message)
-          this.setStatus('error', err.message)
           this.emitError(err)
           reject(err)
         })
@@ -135,29 +131,24 @@ export class MqttAdapterImpl extends BaseAdapter {
           clearTimeout(timeout)
           this.client = null
 
-          if (this._status !== 'error' && !this._disposed) {
-            this.setStatus('disconnected')
-            this.scheduleReconnect()
+          if (!this._disposed) {
+            this.handleUnexpectedDisconnect()
           }
         })
 
         client.on('offline', () => {
-          if (this._status === 'connected') {
-            this.setStatus('disconnected')
+          if (this.stateMachine.isConnected()) {
+            this.handleUnexpectedDisconnect('Connection went offline')
           }
         })
       } catch (e) {
         const error = e instanceof Error ? e : new Error(String(e))
-        this.setStatus('error', error.message)
         reject(error)
       }
     })
   }
 
-  async disconnect(): Promise<void> {
-    this.cancelReconnect()
-    this.config.autoReconnect = false
-
+  protected async doDisconnect(): Promise<void> {
     if (this.client) {
       await new Promise<void>((resolve) => {
         this.client!.end(false, {}, () => {
@@ -166,11 +157,9 @@ export class MqttAdapterImpl extends BaseAdapter {
         })
       })
     }
-
-    this.setStatus('disconnected')
   }
 
-  async send(data: unknown, options?: { topic?: string; qos?: 0 | 1 | 2; retain?: boolean }): Promise<void> {
+  protected async doSend(data: unknown, options?: SendOptions): Promise<void> {
     if (!this.client || !this.client.connected) {
       throw new Error('Not connected')
     }

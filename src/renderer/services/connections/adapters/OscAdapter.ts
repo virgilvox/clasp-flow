@@ -15,10 +15,10 @@ import { BaseAdapter } from './BaseAdapter'
 import type {
   OscConnectionConfig,
   ConnectionTypeDefinition,
+  SendOptions,
 } from '../types'
 
 export class OscAdapterImpl extends BaseAdapter {
-  protocol = 'osc'
   private osc: OSC | null = null
   private oscConfig: OscConnectionConfig
 
@@ -27,18 +27,14 @@ export class OscAdapterImpl extends BaseAdapter {
     this.oscConfig = config
   }
 
-  async connect(): Promise<void> {
+  protected async doConnect(): Promise<void> {
     if (this.osc?.status() === OSC.STATUS.IS_OPEN) {
       return
     }
 
-    this.setStatus('connecting')
-
     return new Promise((resolve, reject) => {
       try {
-        const wsUrl = this.oscConfig.transport === 'websocket'
-          ? `ws://${this.oscConfig.host}:${this.oscConfig.port}`
-          : `ws://${this.oscConfig.host}:${this.oscConfig.port}`
+        const wsUrl = `ws://${this.oscConfig.host}:${this.oscConfig.port}`
 
         // osc-js uses WebSocket plugin for browser
         const osc = new OSC({
@@ -56,7 +52,6 @@ export class OscAdapterImpl extends BaseAdapter {
 
         osc.on('open', () => {
           clearTimeout(timeout)
-          this.setStatus('connected')
           console.log(`[OSC] Connected to ${wsUrl}`)
           resolve()
         })
@@ -70,7 +65,6 @@ export class OscAdapterImpl extends BaseAdapter {
 
         osc.on('error', (err: Error) => {
           clearTimeout(timeout)
-          this.setStatus('error', err.message)
           this.emitError(err)
           reject(err)
         })
@@ -79,39 +73,32 @@ export class OscAdapterImpl extends BaseAdapter {
           clearTimeout(timeout)
           this.osc = null
 
-          if (this._status !== 'error' && !this._disposed) {
-            this.setStatus('disconnected')
-            this.scheduleReconnect()
+          if (!this._disposed) {
+            this.handleUnexpectedDisconnect()
           }
         })
 
         osc.open()
       } catch (e) {
         const error = e instanceof Error ? e : new Error(String(e))
-        this.setStatus('error', error.message)
         reject(error)
       }
     })
   }
 
-  async disconnect(): Promise<void> {
-    this.cancelReconnect()
-    this.config.autoReconnect = false
-
+  protected async doDisconnect(): Promise<void> {
     if (this.osc) {
       this.osc.close()
       this.osc = null
     }
-
-    this.setStatus('disconnected')
   }
 
-  async send(data: unknown, options?: { address?: string }): Promise<void> {
+  protected async doSend(data: unknown, options?: SendOptions): Promise<void> {
     if (!this.osc || this.osc.status() !== OSC.STATUS.IS_OPEN) {
       throw new Error('Not connected')
     }
 
-    const address = options?.address
+    const address = options?.topic
     if (!address) {
       throw new Error('OSC address is required')
     }
@@ -144,10 +131,6 @@ export class OscAdapterImpl extends BaseAdapter {
     const oscMessages = messages.map(m => new OSC.Message(m.address, ...(m.args as any[])))
     const bundle = new OSC.Bundle(oscMessages, timetag ?? Date.now())
     this.osc.send(bundle)
-  }
-
-  dispose(): void {
-    super.dispose()
   }
 }
 

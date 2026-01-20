@@ -4,10 +4,14 @@ import { X, Code, ChevronRight, Crosshair, Check, Trash2, Pencil, Settings, Bug 
 import { useUIStore } from '@/stores/ui'
 import { useFlowsStore } from '@/stores/flows'
 import { useNodesStore, categoryMeta, type NodeDefinition } from '@/stores/nodes'
+import { useConnectionsStore } from '@/stores/connections'
 import { useRuntimeStore } from '@/stores/runtime'
 import TexturePreview from '@/components/preview/TexturePreview.vue'
 import ConnectionSelect from '@/components/connections/ConnectionSelect.vue'
+import TemplateSelect from '@/components/connections/TemplateSelect.vue'
+import HttpTemplateEditor from '@/components/connections/HttpTemplateEditor.vue'
 import AssetPickerControl from '@/components/controls/AssetPickerControl.vue'
+import type { HttpConnectionConfig, HttpEndpointTemplate } from '@/services/connections/types'
 import DebugPanel from '@/components/debug/DebugPanel.vue'
 import { useDeviceEnumeration, type DeviceType, type DeviceOption } from '@/composables/useDeviceEnumeration'
 
@@ -222,6 +226,11 @@ const isEditingLabel = ref(false)
 const editedLabel = ref('')
 const labelInputRef = ref<HTMLInputElement | null>(null)
 
+// Template editor state
+const templateEditorVisible = ref(false)
+const templateEditorConnectionId = ref('')
+const templateEditorTemplateId = ref<string | null>(null)
+
 const nodeLabel = computed(() => {
   if (!inspectedNode.value) return ''
   return (inspectedNode.value.data?.label as string) || nodeDefinition.value?.name || 'Node'
@@ -260,6 +269,75 @@ function onLabelKeydown(e: KeyboardEvent) {
 watch(inspectedNode, () => {
   isEditingLabel.value = false
 })
+
+// Template select helpers
+function getConnectionIdForTemplateSelect(connectionControlId: string): string {
+  return (controlValues.value[connectionControlId] as string) ?? ''
+}
+
+function openTemplateEditor(connectionId: string, templateId?: string) {
+  templateEditorConnectionId.value = connectionId
+  templateEditorTemplateId.value = templateId ?? null
+  templateEditorVisible.value = true
+}
+
+function closeTemplateEditor() {
+  templateEditorVisible.value = false
+  templateEditorConnectionId.value = ''
+  templateEditorTemplateId.value = null
+}
+
+function handleTemplateSave(template: HttpEndpointTemplate) {
+  const connectionId = templateEditorConnectionId.value
+  const connectionsStore = useConnectionsStore()
+  const connection = connectionsStore.connections.find(c => c.id === connectionId) as HttpConnectionConfig | undefined
+
+  if (connection) {
+    const templates = connection.templates ?? []
+    const existingIndex = templates.findIndex(t => t.id === template.id)
+
+    let updatedTemplates: HttpEndpointTemplate[]
+    if (existingIndex >= 0) {
+      updatedTemplates = [...templates]
+      updatedTemplates[existingIndex] = template
+    } else {
+      updatedTemplates = [...templates, template]
+    }
+
+    // Update the connection config (cast to allow templates property)
+    connectionsStore.updateConnection(connectionId, { templates: updatedTemplates } as Partial<HttpConnectionConfig>)
+  }
+
+  closeTemplateEditor()
+}
+
+function handleTemplateDelete(templateId: string) {
+  const connectionId = templateEditorConnectionId.value
+  const connectionsStore = useConnectionsStore()
+  const connection = connectionsStore.connections.find(c => c.id === connectionId) as HttpConnectionConfig | undefined
+
+  if (connection) {
+    const templates = (connection.templates ?? []).filter(t => t.id !== templateId)
+
+    // Update the connection config (cast to allow templates property)
+    connectionsStore.updateConnection(connectionId, { templates } as Partial<HttpConnectionConfig>)
+  }
+
+  closeTemplateEditor()
+}
+
+// Check if a control should be shown based on showWhen condition
+function shouldShowControl(control: { props?: Record<string, unknown> }): boolean {
+  const showWhen = control.props?.showWhen as Record<string, unknown> | undefined
+  if (!showWhen) return true
+
+  for (const [key, value] of Object.entries(showWhen)) {
+    if (controlValues.value[key] !== value) {
+      return false
+    }
+  }
+  return true
+}
 </script>
 
 <template>
@@ -426,6 +504,7 @@ watch(inspectedNode, () => {
             <div class="controls-list">
               <div
                 v-for="control in nodeDefinition.controls"
+                v-show="shouldShowControl(control)"
                 :key="control.id"
                 class="control-item"
                 :class="{ exposed: isExposed(control.id) }"
@@ -548,6 +627,18 @@ watch(inspectedNode, () => {
                   @update:model-value="updateControl(control.id, $event)"
                 />
 
+                <!-- Template selector -->
+                <TemplateSelect
+                  v-else-if="control.type === 'template-select'"
+                  :model-value="(controlValues[control.id] as string | undefined)"
+                  :connection-id="getConnectionIdForTemplateSelect((control.props?.connectionControlId as string) ?? 'connectionId')"
+                  :allow-inline="(control.props?.allowInline as boolean) ?? false"
+                  :placeholder="(control.props?.placeholder as string)"
+                  @update:model-value="updateControl(control.id, $event)"
+                  @edit-template="openTemplateEditor(getConnectionIdForTemplateSelect((control.props?.connectionControlId as string) ?? 'connectionId'), $event)"
+                  @add-template="openTemplateEditor(getConnectionIdForTemplateSelect((control.props?.connectionControlId as string) ?? 'connectionId'))"
+                />
+
                 <!-- Asset picker -->
                 <AssetPickerControl
                   v-else-if="control.type === 'asset-picker'"
@@ -617,6 +708,16 @@ watch(inspectedNode, () => {
       </div>
     </div>
   </aside>
+
+  <!-- HTTP Template Editor Modal -->
+  <HttpTemplateEditor
+    :visible="templateEditorVisible"
+    :connection-id="templateEditorConnectionId"
+    :template-id="templateEditorTemplateId"
+    @close="closeTemplateEditor"
+    @save="handleTemplateSave"
+    @delete="handleTemplateDelete"
+  />
 </template>
 
 <style scoped>

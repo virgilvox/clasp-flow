@@ -1,6 +1,7 @@
 import { ref, watch } from 'vue'
 import { useFlowsStore, type FlowState } from '@/stores/flows'
 import { useUIStore } from '@/stores/ui'
+import { useConnectionsStore } from '@/stores/connections'
 import { flowStorage, settingsStorage, initializeDatabase, type PersistedFlow } from '@/services/database'
 
 // Debounce helper
@@ -28,12 +29,15 @@ export function usePersistence() {
    * Convert FlowState to PersistedFlow (includes all properties)
    */
   function toPersistedFlow(flow: FlowState): PersistedFlow {
+    const connectionsStore = useConnectionsStore()
+
     return {
       id: flow.id,
       name: flow.name,
       description: flow.description,
       nodes: JSON.parse(JSON.stringify(flow.nodes)),
       edges: JSON.parse(JSON.stringify(flow.edges)),
+      connections: JSON.parse(JSON.stringify(connectionsStore.exportConnections())),
       createdAt: flow.createdAt,
       updatedAt: flow.updatedAt,
       // Subflow properties
@@ -112,6 +116,8 @@ export function usePersistence() {
    */
   async function loadFlows(): Promise<void> {
     isLoading.value = true
+    const connectionsStore = useConnectionsStore()
+
     try {
       const persistedFlows = await flowStorage.getAll()
 
@@ -125,10 +131,22 @@ export function usePersistence() {
 
       // Load settings to get last opened flow
       const settings = await settingsStorage.get()
+      let activeFlowId: string | null = null
+
       if (settings?.lastOpenedFlowId && flowsStore.flows.some(f => f.id === settings.lastOpenedFlowId)) {
-        flowsStore.setActiveFlow(settings.lastOpenedFlowId)
+        activeFlowId = settings.lastOpenedFlowId
       } else if (flowsStore.flows.length > 0) {
-        flowsStore.setActiveFlow(flowsStore.flows[0].id)
+        activeFlowId = flowsStore.flows[0].id
+      }
+
+      if (activeFlowId) {
+        flowsStore.setActiveFlow(activeFlowId)
+
+        // Load connections for the active flow
+        const activePersistedFlow = persistedFlows.find(f => f.id === activeFlowId)
+        if (activePersistedFlow?.connections) {
+          connectionsStore.replaceConnections(activePersistedFlow.connections)
+        }
       }
     } finally {
       isLoading.value = false
@@ -240,11 +258,24 @@ export function usePersistence() {
       { deep: true }
     )
 
-    // Save last opened flow when it changes
+    // Save last opened flow when it changes and load its connections
     watch(
       () => flowsStore.activeFlowId,
-      () => {
+      async (newFlowId, oldFlowId) => {
+        // Save settings
         saveSettings()
+
+        // Load connections for the new active flow
+        if (newFlowId && newFlowId !== oldFlowId) {
+          const connectionsStore = useConnectionsStore()
+          const persisted = await flowStorage.getById(newFlowId)
+          if (persisted?.connections) {
+            connectionsStore.replaceConnections(persisted.connections)
+          } else {
+            // Clear connections if the flow has none
+            connectionsStore.replaceConnections([])
+          }
+        }
       }
     )
   }

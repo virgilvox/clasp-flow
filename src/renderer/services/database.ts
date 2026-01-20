@@ -1,5 +1,6 @@
 import Dexie, { type Table } from 'dexie'
 import type { Node, Edge } from '@vue-flow/core'
+import type { BaseConnectionConfig } from '@/services/connections/types'
 
 /**
  * Database schema for persisted flow data
@@ -10,6 +11,7 @@ export interface PersistedFlow {
   description: string
   nodes: Node[]
   edges: Edge[]
+  connections?: BaseConnectionConfig[]
   createdAt: Date
   updatedAt: Date
 }

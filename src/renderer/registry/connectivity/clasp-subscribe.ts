@@ -22,7 +22,7 @@ export const claspSubscribeNode: NodeDefinition = {
     { id: 'updated', type: 'boolean', label: 'Updated' },
   ],
   controls: [
-    { id: 'connectionId', type: 'text', label: 'Connection ID', default: 'default' },
+    { id: 'connectionId', type: 'connection', label: 'Connection', default: '', props: { protocol: 'clasp', placeholder: 'Select CLASP connection...' } },
     { id: 'pattern', type: 'text', label: 'Pattern', default: '/**', props: { placeholder: '/lights/** or /param/*' } },
     { id: 'types', type: 'select', label: 'Signal Types', default: 'all', props: { options: ['all', 'param', 'event', 'stream', 'gesture'] } },
     { id: 'maxRate', type: 'number', label: 'Max Rate (Hz)', default: 0, props: { min: 0, max: 120, step: 1 } },

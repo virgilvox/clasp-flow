@@ -10,6 +10,9 @@ import { visualExecutors } from './visual'
 import { aiExecutors } from './ai'
 import { connectivityExecutors } from './connectivity'
 import { claspExecutors, disposeClaspNode, disposeAllClaspConnections, getClaspConnectionStatus } from './clasp'
+import { mqttExecutor, disposeMqttNode, disposeAllMqttNodes, gcMqttState } from './mqtt'
+import { websocketExecutor, disposeWebSocketNode, disposeAllWebSocketNodes, gcWebSocketState } from './websocket'
+import { httpExecutor, disposeHttpNode, disposeAllHttpNodes, gcHttpState } from './http'
 import { codeExecutors } from './code'
 import { subflowExecutors } from './subflow'
 import { threeExecutors } from './3d'
@@ -18,6 +21,11 @@ import { messagingExecutors } from './messaging'
 
 // Re-export CLASP utilities for external use
 export { disposeClaspNode, disposeAllClaspConnections, getClaspConnectionStatus }
+
+// Re-export new connection executor utilities
+export { disposeMqttNode, disposeAllMqttNodes, gcMqttState }
+export { disposeWebSocketNode, disposeAllWebSocketNodes, gcWebSocketState }
+export { disposeHttpNode, disposeAllHttpNodes, gcHttpState }
 
 // ============================================================================
 // Input Nodes
@@ -1135,8 +1143,13 @@ export const builtinExecutors: Record<string, NodeExecutorFn> = {
   // AI
   ...aiExecutors,
 
-  // Connectivity
+  // Connectivity (legacy)
   ...connectivityExecutors,
+
+  // Override with new ConnectionManager-based executors
+  'mqtt': mqttExecutor,
+  'websocket': websocketExecutor,
+  'http-request': httpExecutor,
 
   // CLASP Protocol
   ...claspExecutors,
