@@ -47,7 +47,11 @@ class AudioManagerService {
    * Must be called after a user gesture (click, keypress, etc.)
    */
   async initialize(): Promise<void> {
-    if (this._initialized) return
+    // If already initialized, just ensure the context is running
+    if (this._initialized) {
+      await this.resume()
+      return
+    }
 
     try {
       // Start Tone.js audio context
@@ -224,6 +228,19 @@ class AudioManagerService {
       this._masterGain.gain.value = muted ? 0 : this._masterVolume
     }
     this.notifyListeners()
+  }
+
+  /**
+   * Resume the audio context if suspended
+   * Browsers may suspend AudioContext after periods of inactivity
+   */
+  async resume(): Promise<void> {
+    const context = Tone.getContext()
+    if (context.state === 'suspended') {
+      console.log('[AudioManager] Resuming suspended AudioContext')
+      await Tone.start()
+      console.log('[AudioManager] AudioContext resumed, state:', context.state)
+    }
   }
 
   /**
