@@ -33,6 +33,9 @@ class AudioBufferServiceImpl {
   private silentGain: GainNode | null = null
   private audioContext: AudioContext | null = null
 
+  // Track the original MediaStream to properly stop tracks on disconnect
+  private ownedMediaStream: MediaStream | null = null
+
   // For Tone.js bridge (fallback)
   private toneStreamDest: MediaStreamAudioDestinationNode | null = null
   private toneSourceNode: Tone.ToneAudioNode | null = null
@@ -170,6 +173,9 @@ class AudioBufferServiceImpl {
       },
     })
 
+    // Track ownership so we can stop tracks on disconnect
+    this.ownedMediaStream = stream
+
     await this.connectSource(stream, options)
   }
 
@@ -188,7 +194,9 @@ class AudioBufferServiceImpl {
       this.toneStreamDest = null
     }
 
+    // Clear onaudioprocess callback to prevent any stale references
     if (this.scriptProcessor) {
+      this.scriptProcessor.onaudioprocess = null
       this.scriptProcessor.disconnect()
       this.scriptProcessor = null
     }
@@ -208,6 +216,12 @@ class AudioBufferServiceImpl {
       this.mediaStreamSource = null
     }
 
+    // Stop owned media stream tracks (from getUserMedia)
+    if (this.ownedMediaStream) {
+      this.ownedMediaStream.getTracks().forEach(track => track.stop())
+      this.ownedMediaStream = null
+    }
+
     if (this.audioContext && this.audioContext.state !== 'closed') {
       this.audioContext.close().catch(() => {})
       this.audioContext = null
@@ -220,6 +234,7 @@ class AudioBufferServiceImpl {
       speechStartTime: null,
       silenceStartTime: null,
     }
+    this.listeners.clear()
   }
 
   /**

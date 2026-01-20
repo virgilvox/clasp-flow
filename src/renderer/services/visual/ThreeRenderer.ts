@@ -637,6 +637,9 @@ export class ThreeRenderer {
     const prefix = `${nodeId}_`
     for (const [key, target] of this.renderTargets) {
       if (key.startsWith(prefix)) {
+        if (target.depthTexture) {
+          target.depthTexture.dispose()
+        }
         target.dispose()
         this.renderTargets.delete(key)
       }
@@ -656,8 +659,11 @@ export class ThreeRenderer {
     // Dispose all cameras
     this.cameras.clear()
 
-    // Dispose all render targets
+    // Dispose all render targets (including depth textures)
     for (const target of this.renderTargets.values()) {
+      if (target.depthTexture) {
+        target.depthTexture.dispose()
+      }
       target.dispose()
     }
     this.renderTargets.clear()

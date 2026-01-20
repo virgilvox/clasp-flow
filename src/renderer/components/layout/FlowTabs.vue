@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onUnmounted } from 'vue'
 import { Plus, X } from 'lucide-vue-next'
 import { useFlowsStore } from '@/stores/flows'
 import { usePersistence } from '@/composables/usePersistence'
@@ -23,6 +23,9 @@ const contextMenu = ref<{
   x: 0,
   y: 0,
 })
+
+// Track context menu cleanup function for proper disposal
+let contextMenuCleanup: (() => void) | null = null
 
 // Rename modal state
 const renameModal = ref<{
@@ -71,6 +74,12 @@ function showContextMenu(flowId: string, event: MouseEvent) {
   event.preventDefault()
   event.stopPropagation()
 
+  // Clean up any existing listener
+  if (contextMenuCleanup) {
+    contextMenuCleanup()
+    contextMenuCleanup = null
+  }
+
   contextMenu.value = {
     visible: true,
     flowId,
@@ -82,11 +91,21 @@ function showContextMenu(flowId: string, event: MouseEvent) {
   const closeMenu = () => {
     contextMenu.value.visible = false
     document.removeEventListener('click', closeMenu)
+    contextMenuCleanup = null
   }
   setTimeout(() => {
     document.addEventListener('click', closeMenu)
+    contextMenuCleanup = closeMenu
   }, 0)
 }
+
+// Clean up on unmount
+onUnmounted(() => {
+  if (contextMenuCleanup) {
+    contextMenuCleanup()
+    contextMenuCleanup = null
+  }
+})
 
 function renameFlow() {
   const flow = flowsStore.getFlowById(contextMenu.value.flowId!)

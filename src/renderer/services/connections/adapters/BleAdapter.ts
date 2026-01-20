@@ -104,6 +104,7 @@ export class BleAdapter extends BaseAdapter {
   private services: Map<string, BluetoothRemoteGATTService> = new Map()
   private characteristics: Map<string, BluetoothRemoteGATTCharacteristic> = new Map()
   private notificationHandlers: Map<string, (value: DataView) => void> = new Map()
+  private boundDisconnectHandler: (() => void) | null = null
 
   constructor(
     connectionId: string,
@@ -223,10 +224,9 @@ export class BleAdapter extends BaseAdapter {
           throw new Error('No device selected')
         }
 
-        // Listen for disconnection
-        this.device.addEventListener('gattserverdisconnected', () => {
-          this.handleDisconnect()
-        })
+        // Listen for disconnection - store bound handler for cleanup
+        this.boundDisconnectHandler = () => this.handleDisconnect()
+        this.device.addEventListener('gattserverdisconnected', this.boundDisconnectHandler)
       }
 
       // Connect to GATT server
@@ -594,6 +594,12 @@ export class BleAdapter extends BaseAdapter {
   // =========================================================================
 
   override dispose(): void {
+    // Remove gattserverdisconnected event listener
+    if (this.device && this.boundDisconnectHandler) {
+      this.device.removeEventListener('gattserverdisconnected', this.boundDisconnectHandler)
+      this.boundDisconnectHandler = null
+    }
+
     super.dispose()
     this.device = null
     this.server = null

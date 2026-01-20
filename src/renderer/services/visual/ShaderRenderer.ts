@@ -416,10 +416,11 @@ export class ShaderRenderer {
 
     // Delete and recreate framebuffers at new size
     // Must properly release GPU resources before clearing the Map
+    // Delete texture before framebuffer (correct order for WebGL cleanup)
     const gl = this.gl
     for (const fb of this.framebuffers.values()) {
-      gl.deleteFramebuffer(fb.fbo)
       gl.deleteTexture(fb.texture)
+      gl.deleteFramebuffer(fb.fbo)
     }
     this.framebuffers.clear()
   }
@@ -431,8 +432,9 @@ export class ShaderRenderer {
     const fb = this.framebuffers.get(id)
     if (fb) {
       const gl = this.gl
-      gl.deleteFramebuffer(fb.fbo)
+      // Delete texture before framebuffer (correct order for WebGL cleanup)
       gl.deleteTexture(fb.texture)
+      gl.deleteFramebuffer(fb.fbo)
       this.framebuffers.delete(id)
     }
   }
@@ -478,10 +480,10 @@ export class ShaderRenderer {
     }
     this.shaderCache.clear()
 
-    // Delete framebuffers
+    // Delete framebuffers (texture before framebuffer for correct WebGL cleanup)
     for (const fb of this.framebuffers.values()) {
-      gl.deleteFramebuffer(fb.fbo)
       gl.deleteTexture(fb.texture)
+      gl.deleteFramebuffer(fb.fbo)
     }
     this.framebuffers.clear()
 

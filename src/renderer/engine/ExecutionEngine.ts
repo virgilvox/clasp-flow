@@ -13,8 +13,10 @@ import {
   disposeAllMessagingState,
   endMessagingFrame,
 } from './executors/messaging'
-import { gcCodeState } from './executors/code'
-import { gc3DState } from './executors/3d'
+import { gcCodeState, disposeAllCodeNodes } from './executors/code'
+import { gc3DState, disposeAll3DNodes } from './executors/3d'
+import { disposeAllConnectivityNodes, gcConnectivityState } from './executors/connectivity'
+import { disposeAllAINodes, gcAIState } from './executors/ai'
 
 /**
  * Result of executing a node
@@ -91,6 +93,10 @@ export class ExecutionEngine {
         gcVisualState(validNodeIds)
         gcCodeState(validNodeIds)
         gc3DState(validNodeIds)
+        gcConnectivityState(validNodeIds)
+        gcAIState(validNodeIds)
+        // Clean up node metrics for deleted nodes
+        this.runtimeStore.gcNodeMetrics(validNodeIds)
       }
     }
 
@@ -375,6 +381,10 @@ export class ExecutionEngine {
     disposeAllDebugState()
     disposeAllInputState()
     disposeAllMessagingState()
+    disposeAllCodeNodes()
+    disposeAll3DNodes()
+    disposeAllConnectivityNodes()
+    disposeAllAINodes()
   }
 
   /**

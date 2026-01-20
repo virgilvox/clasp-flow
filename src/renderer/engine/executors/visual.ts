@@ -68,8 +68,16 @@ export function disposeVisualNode(nodeId: string): void {
   const renderer = getShaderRenderer()
   const threeRenderer = getThreeShaderRenderer()
 
-  // Clean up Three.js shader materials
+  // Clean up Three.js shader materials (both nodeId key and cacheKey entries)
   compiledShaderMaterials.delete(nodeId)
+  // Also clean up any cacheKey entries that start with this nodeId
+  for (const key of compiledShaderMaterials.keys()) {
+    if (key.startsWith(`${nodeId}_`)) {
+      const material = compiledShaderMaterials.get(key)
+      if (material) material.material.dispose()
+      compiledShaderMaterials.delete(key)
+    }
+  }
   compiledShaders.delete(nodeId)
   lastPreset.delete(nodeId)
   cachedUniforms.delete(nodeId)
@@ -172,6 +180,21 @@ export function disposeAllVisualNodes(): void {
     texture.dispose()
   }
   canvasTextureCache.clear()
+
+  // Clean up all webcam snapshot states
+  for (const nodeId of webcamSnapshotState.keys()) {
+    disposeWebcamSnapshotNode(nodeId)
+  }
+
+  // Clear pending asset loads
+  pendingAssetLoads.clear()
+
+  // Clean up textureToDataCanvas
+  if (textureToDataCanvas) {
+    textureToDataCanvas.width = 0
+    textureToDataCanvas.height = 0
+    textureToDataCanvas = null
+  }
 }
 
 /**
@@ -271,6 +294,20 @@ export function gcVisualState(validNodeIds: Set<string>): void {
       const texture = canvasTextureCache.get(key)
       if (texture) texture.dispose()
       canvasTextureCache.delete(key)
+    }
+  }
+
+  // Clean webcamSnapshotState
+  for (const nodeId of webcamSnapshotState.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      disposeWebcamSnapshotNode(nodeId)
+    }
+  }
+
+  // Clean pendingAssetLoads
+  for (const nodeId of pendingAssetLoads.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      pendingAssetLoads.delete(nodeId)
     }
   }
 }

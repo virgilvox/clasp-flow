@@ -1,0 +1,233 @@
+# LATCH Development Handoff
+
+## Project Overview
+
+LATCH (Live Art Tool for Creative Humans) is a node-based creative flow programming environment built on Vue 3 + Electron with 133+ nodes across 18 categories. It serves creative coders, VJs, installation artists, hardware hackers, and IoT makers.
+
+## Tech Stack
+
+- **Frontend**: Vue 3 + TypeScript + Vite
+- **Desktop**: Electron
+- **Audio**: Tone.js
+- **3D/Shaders**: Three.js
+- **AI/ML**: ONNX Runtime, MediaPipe Tasks Vision, Transformers.js
+- **State**: Pinia stores
+- **Testing**: Vitest (668 tests, 657 passing, 11 todo)
+
+## Current Status
+
+**Build**: Passing
+**Tests**: 657 passed | 11 todo (668 total)
+**Branch**: main
+
+---
+
+## Recent Session (2026-01-19)
+
+### Bugs Fixed
+
+#### 1. MediaPipe Timestamp Mismatch Error
+**Problem**: When playback stopped and restarted, MediaPipe nodes (Hand, Face, Pose, Object Detection) would fail with:
+```
+Packet timestamp mismatch on a calculator receiving from stream "norm_rect".
+Current minimum expected timestamp is 48901901 but received 22900.
+```
+
+**Root Cause**: MediaPipe requires monotonically increasing timestamps. When playback restarts, `ctx.totalTime` resets to 0, causing timestamps to go backwards.
+
+**Fix**: Added timestamp tracking and automatic landmarker reset in `MediaPipeService.ts`:
+- Track last timestamp per task type
+- Detect when timestamp goes backwards significantly
+- Reset landmarker when timestamp resets (playback restart)
+- Ensure timestamps are always monotonically increasing
+
+**Files Modified**: `src/renderer/services/ai/MediaPipeService.ts`
+
+#### 2. WebcamCapture OverconstrainedError
+**Problem**: Repeated `OverconstrainedError` when starting webcam capture.
+
+**Fix**: Changed `deviceId` constraint from `exact` to `ideal` in `WebcamCapture.ts:67-85`. This prevents errors when:
+- The requested device is unavailable
+- The device ID is 'default'
+- Device enumeration hasn't completed yet
+
+**Files Modified**: `src/renderer/services/visual/WebcamCapture.ts`
+
+#### 3. Build Errors (TypeScript)
+Fixed multiple TS errors across files:
+- **AssetBrowser.vue**: Removed unused imports (`computed`, `watch`), prefixed unused params
+- **useDeviceEnumeration.ts**: Removed unused `onUnmounted` import and subscription variables
+- **MediaPipeService.ts**: Fixed `InstanceType` errors with MediaPipe's private constructors
+- **AudioBufferService.ts**: Fixed interface and type casting issues for Tone.js integration
+
+### Comprehensive Audits & Fixes Completed
+
+Five parallel audit agents analyzed the codebase and identified 68+ issues across 42 files. **All critical and high-priority memory leak issues have been fixed** (see "Resource Management Fixes" section below). Lower-priority items (type safety, validation, edge cases) are documented in "Known Issues / Future Work".
+
+| System | Critical/High Issues | Status |
+|--------|---------------------|--------|
+| Shader | displayMaterial leak, effectShaders not disposed | **FIXED** |
+| BLE/Connectivity | Event listener accumulation, BLE characteristic handlers not removed | **FIXED** |
+| MediaPipe/AI | disposedNodes tracking, STT cleanup, gcAIState | **FIXED** |
+| Execution Engine | GC integration, disposal calls for all executors | **FIXED** |
+| 3D | CanvasTexture leak, material disposal in mesh creators, GLTF URL change leak | **FIXED** |
+| Audio | GC for all state maps (beat, SVF, pitch, parametricEQ, wavetable) | **FIXED** |
+| Visual | Webcam snapshot cleanup, shader material cacheKey leak | **FIXED** |
+
+---
+
+## Key Architecture
+
+### Node System
+- **Registry**: `src/renderer/registry/` - Node definitions by category
+- **Executors**: `src/renderer/engine/executors/` - Runtime behavior
+- **Components**: `src/renderer/components/nodes/` - Vue components
+- **Engine**: `src/renderer/engine/ExecutionEngine.ts` - Graph execution
+
+### Services
+- **Audio**: `src/renderer/services/audio/` - AudioManager, AudioBufferService
+- **Visual**: `src/renderer/services/visual/` - WebcamCapture, ThreeShaderRenderer
+- **AI**: `src/renderer/services/ai/` - AIInference, MediaPipeService
+- **Connections**: `src/renderer/services/connections/` - BLE, Serial, MIDI, OSC, etc.
+
+### Stores
+- **flows.ts**: Graph state (nodes, edges, viewports)
+- **runtime.ts**: Execution state
+- **ui.ts**: UI state (panels, selection)
+- **assets.ts**: Asset management
+
+---
+
+## Resource Management Fixes (2026-01-19)
+
+Following a comprehensive audit of 68+ issues across 42 files, the following resource management fixes were implemented:
+
+### Phase 1: Core Engine Integration (`ExecutionEngine.ts`)
+- Added GC calls: `gcAudioState`, `gcVisualState`, `gcCodeState`, `gc3DState`, `gcConnectivityState`, `gcAIState`, `gcNodeMetrics`
+- Added disposal calls: `disposeAllCodeNodes`, `disposeAll3DNodes`, `disposeAllConnectivityNodes`, `disposeAllAINodes`
+- Integrated node metrics garbage collection into graph updates
+
+### Phase 2: Connectivity Executor (`connectivity.ts`)
+- Added `midiNoteOffTimeouts` Map to track MIDI timeouts
+- Added `bleCharacteristicHandlers` Map to track BLE event listeners
+- Nullify WebSocket/MQTT/OSC handlers before closing connections
+- Proper BLE characteristic event listener cleanup (removeEventListener + stopNotifications)
+- Full `gcConnectivityState()` function for orphaned network resources
+
+### Phase 3: AI Executor (`ai.ts`)
+- Added `disposedNodes` Set to prevent async callbacks on disposed nodes
+- Added `gcAIState()` for cleaning up nodeCache, pendingOperations, sttState
+
+### Phase 4: Visual/Shader Services
+- `ShaderRenderer.ts`: Fixed framebuffer cleanup order (texture before framebuffer)
+- `ThreeRenderer.ts`: Explicit depth texture disposal
+- `ThreeShaderRenderer.ts`: Effect shaders and display material disposal
+- `visual.ts`: Webcam snapshot and pending asset loads cleanup
+- `visual.ts`: Fixed duplicate shader material key leak (cacheKey cleanup)
+
+### Phase 5: 3D Executor (`3d.ts`)
+- Added `canvasTextures` Map to track Three.js CanvasTexture instances
+- Updated `convertToThreeTexture()` to cache and track canvas textures
+- Updated `dispose3DNode()`, `disposeAll3DNodes()`, and `gc3DState()` to properly dispose canvas textures
+- Fixed material disposal in all mesh creators (box, sphere, plane, cylinder, torus) - old materials now disposed when new material is assigned
+- Fixed GLTF loader URL change leak:
+  - Added `loadedGLTFUrls` Map to track loaded URL per node
+  - Added `disposeGLTFGroup()` helper to properly traverse and dispose geometry/materials
+  - GLTF loader now detects URL changes and disposes old model before loading new one
+  - Updated disposal functions to use helper and clean up URL tracking
+
+### Phase 6: Audio Services
+- `AudioBufferService.ts`: Track owned MediaStream for proper track stopping
+
+### Phase 7: Connection Adapters
+- `WebSocketAdapter.ts`: Nullify handlers before close
+- `BleAdapter.ts`: Track and remove `gattserverdisconnected` listener
+- `MqttAdapter.ts`: Unsubscribe from topics before dispose (using `.keys()` for Map iteration)
+
+### Phase 8: Vue Components
+- `RotaryKnob.vue`: `onUnmounted` cleanup for mouse listeners
+- `FlowTabs.vue`: Context menu listener cleanup
+- `EditorView.vue`: `connectionErrorTimeout` cleanup
+
+### Phase 9: Stores
+- `runtime.ts`: Added `gcNodeMetrics()` method for cleaning up metrics of deleted nodes
+
+---
+
+## Session 2026-01-19 (Continued) - Lower Priority Audit Fixes
+
+The following lower-priority items from the audit have been fixed:
+
+### Shader System Fixes
+
+| Item | Fix |
+|------|-----|
+| Regex recompiled every call | **FIXED** - Moved `UNIFORM_REGEX` and `BUILT_IN_UNIFORMS` to module-level constants |
+| Animation frame cleanup edge case | **FIXED** - Added `isUnmounted` flag to prevent callbacks after unmount |
+| No actual debounce implemented | **FIXED** - Added 300ms debounce to `handleCodeChange()` with proper cleanup |
+
+### 3D System Fixes
+
+| Item | Fix |
+|------|-----|
+| Hardcoded 512x512 texture dimensions | **FIXED** - Added optional `width`/`height` parameters to `convertToThreeTexture()` |
+
+### Audio System Fixes
+
+| Item | Fix |
+|------|-----|
+| `autoCorrelate()` mutates input buffer | **FIXED** - Now copies to `processed` array before modifying |
+| SVF drive toggle cleanup | **FIXED** - Properly disposes drive node when amount changes from >0 to 0 |
+| Parametric EQ chain cleanup | **FIXED** - Added explicit chain disconnection in `disposeParametricEq()` |
+| Oscillator volume no bounds | **FIXED** - Added `-96 dB` to `+6 dB` clamping |
+
+---
+
+## Known Issues / Future Work
+
+### Remaining Audit Items (Lower Priority)
+
+**Shader System (`ShaderPresets.ts`, `ShaderEditorModal.vue`):**
+- `samplerCube` not distinguished from `sampler2D` in type system
+- Default value inference is name-based and fragile (e.g., "collideDamage" treated as color)
+
+**3D System (`3d.ts`):**
+- Group node clones objects instead of sharing geometry (memory inefficient for repeated meshes)
+
+**Audio System (`audio.ts`):**
+- Audio player state not fully reset on failed load (player reference persists)
+
+### Architecture Improvements
+
+1. **Race Conditions**: Graph updates and model loading have potential races (partially mitigated)
+2. **Cache Size Limits**: Consider adding LRU eviction for unbounded caches (`textureDataCache`, `canvasTextureCache`)
+3. **Error Handling**: Some error paths could be more robust with proper logging
+4. **Type Safety**: Several unsafe `as` casts in executors could use runtime validation
+
+---
+
+## Development Commands
+
+```bash
+# Install dependencies
+npm install
+
+# Development server
+npm run dev
+
+# Build for production
+npm run build
+
+# Run tests
+npm test
+
+# Type check
+npm run typecheck
+```
+
+---
+
+## Contact
+
+Project: LATCH - Live Art Tool for Creative Humans
+Repository: lumencanvas/latch

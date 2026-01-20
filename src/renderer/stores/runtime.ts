@@ -193,6 +193,22 @@ export const useRuntimeStore = defineStore('runtime', {
       this.nodeMetricsVersion++
     },
 
+    /**
+     * Garbage collect metrics for nodes that no longer exist
+     */
+    gcNodeMetrics(validNodeIds: Set<string>) {
+      let changed = false
+      for (const nodeId of this.nodeMetrics.keys()) {
+        if (!validNodeIds.has(nodeId)) {
+          this.nodeMetrics.delete(nodeId)
+          changed = true
+        }
+      }
+      if (changed) {
+        this.nodeMetricsVersion++
+      }
+    },
+
     reset() {
       this.stop()
       this.clearErrors()

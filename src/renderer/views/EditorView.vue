@@ -618,6 +618,11 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyDown)
+  // Clear any pending connection error timeout
+  if (connectionErrorTimeout) {
+    clearTimeout(connectionErrorTimeout)
+    connectionErrorTimeout = null
+  }
 })
 </script>
 

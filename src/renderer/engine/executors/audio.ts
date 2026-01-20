@@ -49,11 +49,17 @@ export function disposeAllAudioNodes(): void {
 // Oscillator Node
 // ============================================================================
 
+// Volume bounds for oscillator (in dB)
+const MIN_OSCILLATOR_VOLUME = -96 // Essentially silent
+const MAX_OSCILLATOR_VOLUME = 6 // Some headroom but prevents extreme amplification
+
 export const oscillatorExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
   const frequency = (ctx.inputs.get('frequency') as number) ?? (ctx.controls.get('frequency') as number) ?? 440
   const detune = (ctx.inputs.get('detune') as number) ?? (ctx.controls.get('detune') as number) ?? 0
   const waveform = (ctx.controls.get('waveform') as OscillatorType) ?? 'sine'
-  const volume = (ctx.controls.get('volume') as number) ?? -6 // dB
+  const rawVolume = (ctx.controls.get('volume') as number) ?? -6 // dB
+  // Clamp volume to safe bounds
+  const volume = Math.max(MIN_OSCILLATOR_VOLUME, Math.min(MAX_OSCILLATOR_VOLUME, rawVolume))
 
   // Get or create oscillator
   const osc = getOrCreateNode(ctx.nodeId, () => {
@@ -855,20 +861,36 @@ export const svfFilterExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
   state.notch.Q.value = Q
 
   // Handle drive
+  const hadDrive = state.drive !== null
   if (driveAmount > 0) {
     if (!state.drive) {
       state.drive = new Tone.Distortion(driveAmount)
     }
     state.drive.distortion = driveAmount
+  } else if (state.drive) {
+    // Drive was disabled - disconnect and dispose old drive node
+    try {
+      state.drive.disconnect()
+    } catch { /* ignore */ }
+    state.drive.dispose()
+    state.drive = null
   }
+  const hasDrive = state.drive !== null
+  const driveStateChanged = hadDrive !== hasDrive
 
   // Connect input to all filters (via drive if enabled)
-  if (state.prevInput !== audio) {
-    // Disconnect previous input
+  // Also reconnect if drive state changed
+  if (state.prevInput !== audio || driveStateChanged) {
+    // Disconnect previous input based on PREVIOUS drive state (hadDrive)
     if (state.prevInput) {
       try {
-        if (state.drive) state.prevInput.disconnect(state.drive)
-        else {
+        if (hadDrive) {
+          // Was connected via drive - but drive may have been disposed, so just disconnect from filters
+          state.prevInput.disconnect(state.lowpass)
+          state.prevInput.disconnect(state.highpass)
+          state.prevInput.disconnect(state.bandpass)
+          state.prevInput.disconnect(state.notch)
+        } else {
           state.prevInput.disconnect(state.lowpass)
           state.prevInput.disconnect(state.highpass)
           state.prevInput.disconnect(state.bandpass)
@@ -877,8 +899,8 @@ export const svfFilterExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
       } catch { /* ignore */ }
     }
 
-    // Connect new input
-    if (state.drive) {
+    // Connect new input based on CURRENT drive state (hasDrive)
+    if (hasDrive && state.drive) {
       audio.connect(state.drive)
       state.drive.connect(state.lowpass)
       state.drive.connect(state.highpass)
@@ -934,11 +956,12 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number, minFreq: number
   }
   const dc = sum / size
 
-  // Remove DC offset and find RMS
+  // Copy buffer and remove DC offset to avoid mutating input
+  const processed = new Float32Array(size)
   let rms = 0
   for (let i = 0; i < size; i++) {
-    buffer[i] -= dc
-    rms += buffer[i] * buffer[i]
+    processed[i] = buffer[i] - dc
+    rms += processed[i] * processed[i]
   }
   rms = Math.sqrt(rms / size)
 
@@ -954,7 +977,7 @@ function autoCorrelate(buffer: Float32Array, sampleRate: number, minFreq: number
   for (let offset = minPeriod; offset < Math.min(maxPeriod, size); offset++) {
     let correlation = 0
     for (let i = 0; i < size - offset; i++) {
-      correlation += buffer[i] * buffer[i + offset]
+      correlation += processed[i] * processed[i + offset]
     }
     correlation /= size - offset
 
@@ -1156,6 +1179,12 @@ export const parametricEqExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
 export function disposeParametricEq(nodeId: string): void {
   const state = parametricEqState.get(nodeId)
   if (state) {
+    // Disconnect the chain before disposing
+    try {
+      if (state.prevInput) state.prevInput.disconnect(state.band1)
+      state.band1.disconnect(state.band2)
+      state.band2.disconnect(state.band3)
+    } catch { /* ignore - may already be disconnected */ }
     state.band1.dispose()
     state.band2.dispose()
     state.band3.dispose()

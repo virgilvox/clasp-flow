@@ -18,6 +18,14 @@ const nodeCache = new Map<string, unknown>()
 // Track pending async operations per node
 const pendingOperations = new Map<string, Promise<void>>()
 
+// Track disposed nodes to prevent async callbacks from updating stale state
+const disposedNodes = new Set<string>()
+
+// Check if a node has been disposed (for use in async callbacks)
+export function isNodeDisposed(nodeId: string): boolean {
+  return disposedNodes.has(nodeId)
+}
+
 function getCached<T>(key: string, defaultValue: T): T {
   const val = nodeCache.get(key)
   return val !== undefined ? (val as T) : defaultValue
@@ -1460,16 +1468,82 @@ export const mediapipeObjectExecutor: NodeExecutorFn = async (ctx: ExecutionCont
 // ============================================================================
 
 export function disposeAINode(nodeId: string): void {
+  // Mark as disposed to prevent async callbacks from updating stale state
+  disposedNodes.add(nodeId)
+
   const keys = Array.from(nodeCache.keys()).filter(k => k.startsWith(nodeId))
   keys.forEach(k => nodeCache.delete(k))
   pendingOperations.delete(nodeId)
+
+  // Disconnect STT audio service before deleting
+  const stt = sttState.get(nodeId)
+  if (stt?.audioBufferService) {
+    stt.audioBufferService.disconnect()
+  }
   sttState.delete(nodeId)
 }
 
 export function disposeAllAINodes(): void {
+  // Mark all nodes as disposed
+  for (const key of nodeCache.keys()) {
+    const nodeId = key.split(':')[0]
+    disposedNodes.add(nodeId)
+  }
+  for (const nodeId of pendingOperations.keys()) {
+    disposedNodes.add(nodeId)
+  }
+  for (const nodeId of sttState.keys()) {
+    disposedNodes.add(nodeId)
+  }
+
+  // Disconnect all STT audio services before clearing
+  for (const state of sttState.values()) {
+    if (state?.audioBufferService) {
+      state.audioBufferService.disconnect()
+    }
+  }
   nodeCache.clear()
   pendingOperations.clear()
   sttState.clear()
+}
+
+export function gcAIState(validNodeIds: Set<string>): void {
+  // Clean nodeCache - keys formatted as "nodeId:suffix"
+  for (const key of nodeCache.keys()) {
+    const nodeId = key.split(':')[0]
+    if (!validNodeIds.has(nodeId)) {
+      disposedNodes.add(nodeId)
+      nodeCache.delete(key)
+    }
+  }
+
+  // Clean pendingOperations
+  for (const nodeId of pendingOperations.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      disposedNodes.add(nodeId)
+      pendingOperations.delete(nodeId)
+    }
+  }
+
+  // Clean sttState (disconnect audio first)
+  for (const nodeId of sttState.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      disposedNodes.add(nodeId)
+      const state = sttState.get(nodeId)
+      if (state?.audioBufferService) {
+        state.audioBufferService.disconnect()
+      }
+      sttState.delete(nodeId)
+    }
+  }
+
+  // Clean up old entries from disposedNodes set to prevent unbounded growth
+  // Keep only recently disposed nodes (those not in validNodeIds)
+  for (const nodeId of disposedNodes) {
+    if (validNodeIds.has(nodeId)) {
+      disposedNodes.delete(nodeId)
+    }
+  }
 }
 
 // ============================================================================

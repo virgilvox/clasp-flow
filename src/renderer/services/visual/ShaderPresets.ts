@@ -601,6 +601,23 @@ export function injectUniformDeclarations(code: string, uniforms: UniformDefinit
   return declarationBlock + code
 }
 
+// Module-level regex for parsing uniform declarations
+// Comprehensive regex that matches:
+// - Optional precision (lowp, mediump, highp)
+// - Type (float, int, bool, vec2-4, mat2-4, sampler2D, etc.)
+// - Name (any valid identifier)
+// - Optional array size
+const UNIFORM_REGEX = /uniform\s+(?:(?:lowp|mediump|highp)\s+)?(float|int|bool|vec2|vec3|vec4|ivec2|ivec3|ivec4|bvec2|bvec3|bvec4|mat2|mat3|mat4|sampler2D|samplerCube)\s+(\w+)(?:\s*\[\s*(\d+)\s*\])?\s*;/gi
+
+// Built-in uniforms that should NOT create input ports
+const BUILT_IN_UNIFORMS = new Set([
+  'iTime', 'iResolution', 'iMouse', 'iFrame', 'iDate', 'iTimeDelta',
+  'iChannel0', 'iChannel1', 'iChannel2', 'iChannel3',
+  'iChannelTime', 'iChannelResolution', 'iSampleRate',
+  'u_time', 'u_resolution', 'u_mouse', 'u_frame',
+  'u_texture', 'u_texture0', 'u_texture1', 'u_texture2', 'u_texture3',
+])
+
 /**
  * Parse uniform declarations from GLSL code
  * Robust parser that handles:
@@ -624,31 +641,18 @@ export function parseUniformsFromCode(code: string): UniformDefinition[] {
     // Remove single-line comments
     .replace(/\/\/.*$/gm, '')
 
-  // Built-in uniforms that should NOT create input ports
-  const builtInUniforms = new Set([
-    'iTime', 'iResolution', 'iMouse', 'iFrame', 'iDate', 'iTimeDelta',
-    'iChannel0', 'iChannel1', 'iChannel2', 'iChannel3',
-    'iChannelTime', 'iChannelResolution', 'iSampleRate',
-    'u_time', 'u_resolution', 'u_mouse', 'u_frame',
-    'u_texture', 'u_texture0', 'u_texture1', 'u_texture2', 'u_texture3',
-  ])
-
-  // Comprehensive regex that matches:
-  // - Optional precision (lowp, mediump, highp)
-  // - Type (float, int, bool, vec2-4, mat2-4, sampler2D, etc.)
-  // - Name (any valid identifier)
-  // - Optional array size
-  const uniformRegex = /uniform\s+(?:(?:lowp|mediump|highp)\s+)?(float|int|bool|vec2|vec3|vec4|ivec2|ivec3|ivec4|bvec2|bvec3|bvec4|mat2|mat3|mat4|sampler2D|samplerCube)\s+(\w+)(?:\s*\[\s*(\d+)\s*\])?\s*;/gi
+  // Reset lastIndex since module-level regex retains state
+  UNIFORM_REGEX.lastIndex = 0
 
   let match
-  while ((match = uniformRegex.exec(cleanCode)) !== null) {
+  while ((match = UNIFORM_REGEX.exec(cleanCode)) !== null) {
     const rawType = match[1].toLowerCase()
     const name = match[2]
     // Note: match[3] contains array size if present (e.g., uniform float arr[4];)
     // Currently we don't support array uniforms, but the regex captures them
 
     // Skip built-in uniforms
-    if (builtInUniforms.has(name)) continue
+    if (BUILT_IN_UNIFORMS.has(name)) continue
 
     // Skip if already seen
     if (seenNames.has(name)) continue

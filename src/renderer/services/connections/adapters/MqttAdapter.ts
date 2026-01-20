@@ -223,6 +223,16 @@ export class MqttAdapterImpl extends BaseAdapter {
   }
 
   dispose(): void {
+    // Unsubscribe from all topics before clearing
+    if (this.client?.connected) {
+      for (const topic of this.subscriptions.keys()) {
+        try {
+          this.client.unsubscribe(topic)
+        } catch {
+          // Ignore errors during dispose
+        }
+      }
+    }
     this.subscriptions.clear()
     super.dispose()
   }

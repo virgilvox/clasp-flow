@@ -12,10 +12,12 @@ const nodeObjects = new Map<string, THREE.Object3D>()
 const nodeMaterials = new Map<string, THREE.Material>()
 const nodeSceneRefs = new Map<string, { objects: THREE.Object3D[]; lights: THREE.Light[] }>()
 const loadedGLTFs = new Map<string, THREE.Group>()
+const loadedGLTFUrls = new Map<string, string>() // Track URL for each loaded GLTF
 
 // Cache for converted textures (video textures need to be reused)
 const videoTextures = new Map<string, THREE.VideoTexture>()
 const dataTextures = new Map<string, THREE.Texture>()
+const canvasTextures = new Map<string, THREE.CanvasTexture>()
 
 // Track which texture keys belong to which node for O(1) disposal lookup
 const nodeTextureKeys = new Map<string, Set<string>>()
@@ -35,11 +37,15 @@ function trackTextureKey(nodeId: string, cacheKey: string): void {
 /**
  * Convert a pipeline texture (WebGLTexture or HTMLVideoElement) to THREE.Texture
  * Returns undefined if the input is not a valid texture source
+ * @param width - Width of the texture (used for WebGLTexture conversion, defaults to 512)
+ * @param height - Height of the texture (used for WebGLTexture conversion, defaults to 512)
  */
 function convertToThreeTexture(
   input: unknown,
   cacheKey: string,
-  nodeId?: string
+  nodeId?: string,
+  width = 512,
+  height = 512
 ): THREE.Texture | undefined {
   if (!input) return undefined
 
@@ -74,8 +80,8 @@ function convertToThreeTexture(
   // Note: This requires reading pixels which is slow - use sparingly
   if (input instanceof WebGLTexture) {
     const renderer = getThreeRenderer()
-    // Use default size - in a real implementation we'd want to track the actual size
-    const texture = renderer.createTextureFromWebGL(input, 512, 512)
+    // Use provided dimensions (defaulted to 512x512 if not specified)
+    const texture = renderer.createTextureFromWebGL(input, width, height)
 
     // Cache the data texture
     const existing = dataTextures.get(cacheKey)
@@ -89,14 +95,39 @@ function convertToThreeTexture(
     return texture
   }
 
-  // If it's a canvas element, create CanvasTexture
+  // If it's a canvas element, create or reuse CanvasTexture
   if (input instanceof HTMLCanvasElement) {
-    const canvasTex = new THREE.CanvasTexture(input)
+    const cacheKey = `canvas_${nodeId ?? 'unknown'}`
+    let canvasTex = canvasTextures.get(cacheKey)
+    if (!canvasTex) {
+      canvasTex = new THREE.CanvasTexture(input)
+      canvasTextures.set(cacheKey, canvasTex)
+      if (nodeId) trackTextureKey(nodeId, cacheKey)
+    } else if (canvasTex.image !== input) {
+      // Canvas changed, update reference
+      canvasTex.image = input
+    }
     canvasTex.needsUpdate = true
     return canvasTex
   }
 
   return undefined
+}
+
+/**
+ * Helper to dispose a GLTF group and all its resources
+ */
+function disposeGLTFGroup(group: THREE.Group): void {
+  group.traverse((child) => {
+    if (child instanceof THREE.Mesh) {
+      child.geometry?.dispose()
+      if (Array.isArray(child.material)) {
+        child.material.forEach((m) => m.dispose())
+      } else if (child.material) {
+        child.material.dispose()
+      }
+    }
+  })
 }
 
 /**
@@ -126,7 +157,9 @@ export function dispose3DNode(nodeId: string): void {
 
   const gltf = loadedGLTFs.get(nodeId)
   if (gltf) {
+    disposeGLTFGroup(gltf)
     loadedGLTFs.delete(nodeId)
+    loadedGLTFUrls.delete(nodeId)
   }
 
   // Dispose cached textures for this node - O(1) lookup using nodeTextureKeys
@@ -142,6 +175,11 @@ export function dispose3DNode(nodeId: string): void {
       if (dataTex) {
         dataTex.dispose()
         dataTextures.delete(key)
+      }
+      const canvasTex = canvasTextures.get(key)
+      if (canvasTex) {
+        canvasTex.dispose()
+        canvasTextures.delete(key)
       }
     }
     nodeTextureKeys.delete(nodeId)
@@ -163,6 +201,7 @@ export function disposeAll3DNodes(): void {
   nodeMaterials.clear()
   nodeSceneRefs.clear()
   loadedGLTFs.clear()
+  loadedGLTFUrls.clear()
 
   // Clear texture caches
   for (const tex of videoTextures.values()) {
@@ -174,6 +213,11 @@ export function disposeAll3DNodes(): void {
     tex.dispose()
   }
   dataTextures.clear()
+
+  for (const tex of canvasTextures.values()) {
+    tex.dispose()
+  }
+  canvasTextures.clear()
 
   // Clear texture tracking
   nodeTextureKeys.clear()
@@ -207,10 +251,13 @@ export function gc3DState(validNodeIds: Set<string>): void {
     }
   }
 
-  // Clean loadedGLTFs
+  // Clean loadedGLTFs (dispose resources before removing)
   for (const nodeId of loadedGLTFs.keys()) {
     if (!validNodeIds.has(nodeId)) {
+      const gltf = loadedGLTFs.get(nodeId)
+      if (gltf) disposeGLTFGroup(gltf)
       loadedGLTFs.delete(nodeId)
+      loadedGLTFUrls.delete(nodeId)
     }
   }
 
@@ -229,6 +276,11 @@ export function gc3DState(validNodeIds: Set<string>): void {
           if (dataTex) {
             dataTex.dispose()
             dataTextures.delete(key)
+          }
+          const canvasTex = canvasTextures.get(key)
+          if (canvasTex) {
+            canvasTex.dispose()
+            canvasTextures.delete(key)
           }
         }
       }
@@ -399,8 +451,13 @@ export const box3DExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
     mesh.geometry.dispose()
     mesh.geometry = new THREE.BoxGeometry(width, height, depth)
 
-    // Update material if provided
-    if (material) {
+    // Update material if provided - dispose old material if it's not shared
+    if (material && mesh.material !== material) {
+      const oldMat = mesh.material as THREE.Material
+      // Only dispose if it's a default material (not provided by user via input)
+      if (oldMat && !nodeMaterials.has(ctx.nodeId)) {
+        oldMat.dispose()
+      }
       mesh.material = material
     }
   }
@@ -440,7 +497,11 @@ export const sphere3DExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
     mesh.geometry.dispose()
     mesh.geometry = new THREE.SphereGeometry(radius, widthSegments, heightSegments)
 
-    if (material) {
+    if (material && mesh.material !== material) {
+      const oldMat = mesh.material as THREE.Material
+      if (oldMat && !nodeMaterials.has(ctx.nodeId)) {
+        oldMat.dispose()
+      }
       mesh.material = material
     }
   }
@@ -481,7 +542,11 @@ export const plane3DExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
     mesh.geometry.dispose()
     mesh.geometry = new THREE.PlaneGeometry(width, height)
 
-    if (material) {
+    if (material && mesh.material !== material) {
+      const oldMat = mesh.material as THREE.Material
+      if (oldMat && !nodeMaterials.has(ctx.nodeId)) {
+        oldMat.dispose()
+      }
       mesh.material = material
     }
   }
@@ -521,7 +586,11 @@ export const cylinder3DExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
     mesh.geometry.dispose()
     mesh.geometry = new THREE.CylinderGeometry(radiusTop, radiusBottom, height, radialSegments)
 
-    if (material) {
+    if (material && mesh.material !== material) {
+      const oldMat = mesh.material as THREE.Material
+      if (oldMat && !nodeMaterials.has(ctx.nodeId)) {
+        oldMat.dispose()
+      }
       mesh.material = material
     }
   }
@@ -561,7 +630,11 @@ export const torus3DExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
     mesh.geometry.dispose()
     mesh.geometry = new THREE.TorusGeometry(radius, tube, radialSegments, tubularSegments)
 
-    if (material) {
+    if (material && mesh.material !== material) {
+      const oldMat = mesh.material as THREE.Material
+      if (oldMat && !nodeMaterials.has(ctx.nodeId)) {
+        oldMat.dispose()
+      }
       mesh.material = material
     }
   }
@@ -867,14 +940,25 @@ export const gltfLoader3DExecutor: NodeExecutorFn = async (ctx: ExecutionContext
     return outputs
   }
 
-  // Check if already loaded
+  // Check if already loaded with same URL
   const existingGltf = loadedGLTFs.get(ctx.nodeId)
-  if (existingGltf) {
+  const existingUrl = loadedGLTFUrls.get(ctx.nodeId)
+
+  if (existingGltf && existingUrl === url) {
+    // Same URL, reuse existing model
     const outputs = new Map<string, unknown>()
     outputs.set('object', existingGltf)
     outputs.set('loading', false)
     outputs.set('error', null)
     return outputs
+  }
+
+  // URL changed - dispose old GLTF before loading new one
+  if (existingGltf) {
+    disposeGLTFGroup(existingGltf)
+    loadedGLTFs.delete(ctx.nodeId)
+    loadedGLTFUrls.delete(ctx.nodeId)
+    nodeObjects.delete(ctx.nodeId)
   }
 
   // Load GLTF
@@ -893,6 +977,7 @@ export const gltfLoader3DExecutor: NodeExecutorFn = async (ctx: ExecutionContext
     group.scale.setScalar(scale)
 
     loadedGLTFs.set(ctx.nodeId, group)
+    loadedGLTFUrls.set(ctx.nodeId, url)
     nodeObjects.set(ctx.nodeId, group)
 
     const outputs = new Map<string, unknown>()

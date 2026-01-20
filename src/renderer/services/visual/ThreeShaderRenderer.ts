@@ -779,6 +779,18 @@ export class ThreeShaderRenderer {
     }
     this.materials.clear()
 
+    // Dispose effect shaders
+    for (const shader of this.effectShaders.values()) {
+      shader.material.dispose()
+    }
+    this.effectShaders.clear()
+
+    // Dispose display material
+    if (this.displayMaterial) {
+      this.displayMaterial.dispose()
+      this.displayMaterial = null
+    }
+
     // Dispose blank texture
     this.blankTexture.dispose()
 

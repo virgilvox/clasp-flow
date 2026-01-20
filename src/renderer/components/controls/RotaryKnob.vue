@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted, watch } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 
 const props = withDefaults(defineProps<{
   modelValue: number
@@ -184,6 +184,14 @@ watch([() => props.modelValue, () => props.accentColor, () => props.size], draw)
 
 onMounted(() => {
   draw()
+})
+
+// Clean up window event listeners if component unmounts while dragging
+onUnmounted(() => {
+  if (isDragging.value) {
+    window.removeEventListener('mousemove', onMouseMove)
+    window.removeEventListener('mouseup', onMouseUp)
+  }
 })
 </script>
 

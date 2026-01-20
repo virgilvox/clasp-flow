@@ -85,6 +85,11 @@ export class WebSocketAdapterImpl extends BaseAdapter {
     this.config.autoReconnect = false
 
     if (this.ws) {
+      // Nullify event handlers before closing to prevent stale callbacks
+      this.ws.onopen = null
+      this.ws.onmessage = null
+      this.ws.onerror = null
+      this.ws.onclose = null
       this.ws.close()
       this.ws = null
     }

@@ -49,6 +49,8 @@ const nodeDefinition = computed(() => {
 let animationFrame: number | null = null
 let compiledShaderMaterial: CompiledShaderMaterial | null = null
 let startTime = 0
+let compileTimeout: ReturnType<typeof setTimeout> | null = null
+let isUnmounted = false
 
 // Initialize code when node changes
 watch(() => uiStore.shaderEditorNodeId, () => {
@@ -113,6 +115,7 @@ function renderPreview() {
 function startLoop() {
   startTime = performance.now()
   const loop = () => {
+    if (isUnmounted) return
     if (isPlaying.value && uiStore.shaderEditorOpen) {
       renderPreview()
     }
@@ -130,8 +133,15 @@ function stopLoop() {
 
 function handleCodeChange(newCode: string) {
   code.value = newCode
-  // Debounced compilation
-  compileShader()
+  // Debounced compilation - wait 300ms after user stops typing
+  if (compileTimeout) {
+    clearTimeout(compileTimeout)
+  }
+  compileTimeout = setTimeout(() => {
+    if (!isUnmounted) {
+      compileShader()
+    }
+  }, 300)
 }
 
 function togglePlay() {
@@ -182,7 +192,12 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  isUnmounted = true
   stopLoop()
+  if (compileTimeout) {
+    clearTimeout(compileTimeout)
+    compileTimeout = null
+  }
 })
 
 // Shadertoy uniforms help text

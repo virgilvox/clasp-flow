@@ -22,6 +22,7 @@ const httpCache = new Map<string, unknown>()
 const midiInputs = new Map<string, MIDIInput>()
 const midiOutputs = new Map<string, MIDIOutput>()
 const midiState = new Map<string, unknown>()
+const midiNoteOffTimeouts = new Map<string, ReturnType<typeof setTimeout>[]>()
 
 // Pre-compiled regex patterns for performance
 const JSON_PATH_SPLIT_REGEX = /[.[\]]/
@@ -329,10 +330,22 @@ export const midiOutputExecutor: NodeExecutorFn = async (ctx: ExecutionContext) 
     // Send Note On
     output.send([noteOnStatus, note, velocityByte])
 
-    // Schedule Note Off after 100ms
-    setTimeout(() => {
+    // Schedule Note Off after 100ms - track for cleanup
+    const timeoutId = setTimeout(() => {
       output.send([noteOffStatus, note, 0])
+      // Remove from tracking after execution
+      const timeouts = midiNoteOffTimeouts.get(ctx.nodeId)
+      if (timeouts) {
+        const idx = timeouts.indexOf(timeoutId)
+        if (idx >= 0) timeouts.splice(idx, 1)
+      }
     }, 100)
+
+    // Track the timeout for cleanup
+    if (!midiNoteOffTimeouts.has(ctx.nodeId)) {
+      midiNoteOffTimeouts.set(ctx.nodeId, [])
+    }
+    midiNoteOffTimeouts.get(ctx.nodeId)!.push(timeoutId)
   }
 
   outputs.set('connected', getCached(`${ctx.nodeId}:connected`, false))
@@ -930,6 +943,8 @@ export const serialExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
 
 const bleDevices = new Map<string, { device: BluetoothDevice; server: BluetoothRemoteGATTServer | null }>()
 const bleState = new Map<string, unknown>()
+// Store BLE characteristic handlers for cleanup
+const bleCharacteristicHandlers = new Map<string, { characteristic: BluetoothRemoteGATTCharacteristic; handler: (event: Event) => void }>()
 
 // Enhanced BLE state for new nodes
 const bleAdapters = new Map<string, BleAdapter>()
@@ -1006,7 +1021,9 @@ export const bleExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
 
             // Enable notifications
             await characteristic.startNotifications()
-            characteristic.addEventListener('characteristicvaluechanged', (event) => {
+
+            // Store handler reference for cleanup
+            const handler = (event: Event) => {
               const value = (event.target as BluetoothRemoteGATTCharacteristic).value
               if (value) {
                 const bytes = new Uint8Array(value.buffer)
@@ -1024,7 +1041,9 @@ export const bleExecutor: NodeExecutorFn = async (ctx: ExecutionContext) => {
                 const text = new TextDecoder().decode(bytes)
                 setCached(bleState, `${ctx.nodeId}:text`, text)
               }
-            })
+            }
+            characteristic.addEventListener('characteristicvaluechanged', handler)
+            bleCharacteristicHandlers.set(ctx.nodeId, { characteristic, handler })
           } catch (error) {
             console.error('[BLE] Characteristic setup error:', error)
           }
@@ -1467,26 +1486,38 @@ export const bleCharacteristicExecutor: NodeExecutorFn = async (ctx: ExecutionCo
 // ============================================================================
 
 export function disposeConnectivityNode(nodeId: string): void {
-  // Close WebSocket
+  // Close WebSocket - nullify handlers first to prevent stale callbacks
   const wsKey = `${nodeId}:ws`
   const ws = wsConnections.get(wsKey)
   if (ws) {
+    ws.onopen = null
+    ws.onmessage = null
+    ws.onerror = null
+    ws.onclose = null
     ws.close()
     wsConnections.delete(wsKey)
   }
 
-  // Close MQTT connection
+  // Close MQTT connection - nullify handlers first
   const mqttKey = `${nodeId}:mqtt`
   const mqtt = mqttConnections.get(mqttKey)
   if (mqtt) {
+    mqtt.client.onopen = null
+    mqtt.client.onmessage = null
+    mqtt.client.onerror = null
+    mqtt.client.onclose = null
     mqtt.client.close()
     mqttConnections.delete(mqttKey)
   }
 
-  // Close OSC connection
+  // Close OSC connection - nullify handlers first
   const oscKey = `${nodeId}:osc`
   const osc = oscConnections.get(oscKey)
   if (osc) {
+    osc.onopen = null
+    osc.onmessage = null
+    osc.onerror = null
+    osc.onclose = null
     osc.close()
     oscConnections.delete(oscKey)
   }
@@ -1498,6 +1529,36 @@ export function disposeConnectivityNode(nodeId: string): void {
     serial.reader?.cancel()
     serial.port.close().catch(() => {})
     serialPorts.delete(serialKey)
+  }
+
+  // Clear MIDI note-off timeouts
+  const midiTimeouts = midiNoteOffTimeouts.get(nodeId)
+  if (midiTimeouts) {
+    midiTimeouts.forEach(timeoutId => clearTimeout(timeoutId))
+    midiNoteOffTimeouts.delete(nodeId)
+  }
+
+  // Remove MIDI input listener
+  const midiKey = `${nodeId}:midi`
+  const midiInput = midiInputs.get(midiKey)
+  if (midiInput) {
+    midiInput.onmidimessage = null
+    midiInputs.delete(midiKey)
+  }
+
+  // Remove MIDI output reference
+  midiOutputs.delete(midiKey)
+
+  // Clean up BLE characteristic event listener before disconnect
+  const bleCharHandler = bleCharacteristicHandlers.get(nodeId)
+  if (bleCharHandler) {
+    try {
+      bleCharHandler.characteristic.removeEventListener('characteristicvaluechanged', bleCharHandler.handler)
+      bleCharHandler.characteristic.stopNotifications()
+    } catch {
+      // Ignore errors during cleanup - device may already be disconnected
+    }
+    bleCharacteristicHandlers.delete(nodeId)
   }
 
   // Disconnect BLE (legacy)
@@ -1548,16 +1609,34 @@ export function disposeConnectivityNode(nodeId: string): void {
 }
 
 export function disposeAllConnectivityNodes(): void {
-  // Close all WebSockets
-  wsConnections.forEach(ws => ws.close())
+  // Close all WebSockets - nullify handlers first
+  wsConnections.forEach(ws => {
+    ws.onopen = null
+    ws.onmessage = null
+    ws.onerror = null
+    ws.onclose = null
+    ws.close()
+  })
   wsConnections.clear()
 
-  // Close all MQTT connections
-  mqttConnections.forEach(conn => conn.client.close())
+  // Close all MQTT connections - nullify handlers first
+  mqttConnections.forEach(conn => {
+    conn.client.onopen = null
+    conn.client.onmessage = null
+    conn.client.onerror = null
+    conn.client.onclose = null
+    conn.client.close()
+  })
   mqttConnections.clear()
 
-  // Close all OSC connections
-  oscConnections.forEach(ws => ws.close())
+  // Close all OSC connections - nullify handlers first
+  oscConnections.forEach(ws => {
+    ws.onopen = null
+    ws.onmessage = null
+    ws.onerror = null
+    ws.onclose = null
+    ws.close()
+  })
   oscConnections.clear()
 
   // Close all Serial connections
@@ -1566,6 +1645,30 @@ export function disposeAllConnectivityNodes(): void {
     conn.port.close().catch(() => {})
   })
   serialPorts.clear()
+
+  // Clear all MIDI note-off timeouts
+  midiNoteOffTimeouts.forEach(timeouts => {
+    timeouts.forEach(timeoutId => clearTimeout(timeoutId))
+  })
+  midiNoteOffTimeouts.clear()
+
+  // Clear MIDI input listeners
+  midiInputs.forEach(input => {
+    input.onmidimessage = null
+  })
+  midiInputs.clear()
+  midiOutputs.clear()
+
+  // Clean up all BLE characteristic handlers before disconnect
+  bleCharacteristicHandlers.forEach(({ characteristic, handler }) => {
+    try {
+      characteristic.removeEventListener('characteristicvaluechanged', handler)
+      characteristic.stopNotifications()
+    } catch {
+      // Ignore errors during cleanup
+    }
+  })
+  bleCharacteristicHandlers.clear()
 
   // Disconnect all BLE devices (legacy)
   bleDevices.forEach(conn => conn.server?.disconnect())
@@ -1579,8 +1682,6 @@ export function disposeAllConnectivityNodes(): void {
   httpCache.clear()
   wsState.clear()
   midiState.clear()
-  midiInputs.clear()
-  midiOutputs.clear()
   mqttState.clear()
   oscState.clear()
   serialState.clear()
@@ -1590,6 +1691,175 @@ export function disposeAllConnectivityNodes(): void {
   bleScannerState.clear()
   bleDeviceState.clear()
   bleCharacteristicState.clear()
+}
+
+export function gcConnectivityState(validNodeIds: Set<string>): void {
+  // Helper to extract nodeId from keys like "nodeId:suffix"
+  const getNodeId = (key: string) => key.split(':')[0]
+
+  // Clean WebSocket connections - nullify handlers first
+  for (const key of wsConnections.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) {
+      const ws = wsConnections.get(key)
+      if (ws) {
+        ws.onopen = null
+        ws.onmessage = null
+        ws.onerror = null
+        ws.onclose = null
+        ws.close()
+      }
+      wsConnections.delete(key)
+    }
+  }
+
+  // Clean MQTT connections - nullify handlers first
+  for (const key of mqttConnections.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) {
+      const conn = mqttConnections.get(key)
+      if (conn) {
+        conn.client.onopen = null
+        conn.client.onmessage = null
+        conn.client.onerror = null
+        conn.client.onclose = null
+        conn.client.close()
+      }
+      mqttConnections.delete(key)
+    }
+  }
+
+  // Clean OSC connections - nullify handlers first
+  for (const key of oscConnections.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) {
+      const ws = oscConnections.get(key)
+      if (ws) {
+        ws.onopen = null
+        ws.onmessage = null
+        ws.onerror = null
+        ws.onclose = null
+        ws.close()
+      }
+      oscConnections.delete(key)
+    }
+  }
+
+  // Clean Serial connections
+  for (const key of serialPorts.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) {
+      const conn = serialPorts.get(key)
+      if (conn) {
+        conn.reader?.cancel()
+        conn.port.close().catch(() => {})
+      }
+      serialPorts.delete(key)
+    }
+  }
+
+  // Clean MIDI note-off timeouts
+  for (const nodeId of midiNoteOffTimeouts.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      const timeouts = midiNoteOffTimeouts.get(nodeId)
+      if (timeouts) {
+        timeouts.forEach(timeoutId => clearTimeout(timeoutId))
+      }
+      midiNoteOffTimeouts.delete(nodeId)
+    }
+  }
+
+  // Clean MIDI inputs - remove listeners
+  for (const key of midiInputs.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) {
+      const input = midiInputs.get(key)
+      if (input) input.onmidimessage = null
+      midiInputs.delete(key)
+    }
+  }
+
+  // Clean MIDI outputs
+  for (const key of midiOutputs.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) {
+      midiOutputs.delete(key)
+    }
+  }
+
+  // Clean BLE adapters
+  for (const nodeId of bleAdapters.keys()) {
+    // Handle both regular adapters and char_ prefixed adapters
+    const baseNodeId = nodeId.startsWith('char_') ? nodeId.slice(5) : nodeId
+    if (!validNodeIds.has(baseNodeId)) {
+      const adapter = bleAdapters.get(nodeId)
+      if (adapter) adapter.dispose()
+      bleAdapters.delete(nodeId)
+    }
+  }
+
+  // Clean BLE scanner state
+  for (const nodeId of bleScannerState.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      bleScannerState.delete(nodeId)
+    }
+  }
+
+  // Clean BLE device state
+  for (const nodeId of bleDeviceState.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      bleDeviceState.delete(nodeId)
+    }
+  }
+
+  // Clean BLE characteristic state
+  for (const nodeId of bleCharacteristicState.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      bleCharacteristicState.delete(nodeId)
+    }
+  }
+
+  // Clean BLE characteristic handlers before disconnecting devices
+  for (const nodeId of bleCharacteristicHandlers.keys()) {
+    if (!validNodeIds.has(nodeId)) {
+      const entry = bleCharacteristicHandlers.get(nodeId)
+      if (entry) {
+        try {
+          entry.characteristic.removeEventListener('characteristicvaluechanged', entry.handler)
+          entry.characteristic.stopNotifications()
+        } catch {
+          // Ignore errors during cleanup
+        }
+      }
+      bleCharacteristicHandlers.delete(nodeId)
+    }
+  }
+
+  // Clean BLE devices (legacy)
+  for (const key of bleDevices.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) {
+      const conn = bleDevices.get(key)
+      if (conn) conn.server?.disconnect()
+      bleDevices.delete(key)
+    }
+  }
+
+  // Clean state caches
+  for (const key of httpCache.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) httpCache.delete(key)
+  }
+  for (const key of wsState.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) wsState.delete(key)
+  }
+  for (const key of midiState.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) midiState.delete(key)
+  }
+  for (const key of mqttState.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) mqttState.delete(key)
+  }
+  for (const key of oscState.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) oscState.delete(key)
+  }
+  for (const key of serialState.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) serialState.delete(key)
+  }
+  for (const key of bleState.keys()) {
+    if (!validNodeIds.has(getNodeId(key))) bleState.delete(key)
+  }
 }
 
 // ============================================================================
