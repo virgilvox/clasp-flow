@@ -43,6 +43,7 @@ const vueFlow = useVueFlow()
 const {
   onConnect,
   addEdges,
+  onNodeDragStart,
   onNodeDragStop,
   onPaneReady,
   onPaneClick,
@@ -53,6 +54,9 @@ const {
   getViewport,
   getSelectedEdges,
 } = vueFlow
+
+// Track drag state for undo/redo
+const dragStartSnapshot = ref<ReturnType<typeof startBatch>>(null)
 
 // Edge types - use markRaw to prevent Vue reactivity warnings
 const edgeTypes = {
@@ -132,9 +136,20 @@ onConnect((connection: Connection) => {
   }
 })
 
-// Handle node drag
+// Handle node drag start - capture state for undo
+onNodeDragStart(() => {
+  dragStartSnapshot.value = startBatch()
+})
+
+// Handle node drag stop - update position and record history
 onNodeDragStop(({ node }) => {
   flowsStore.updateNodePosition(node.id, node.position)
+
+  // Record history for the position change
+  if (dragStartSnapshot.value) {
+    endBatch(dragStartSnapshot.value, 'Move node')
+    dragStartSnapshot.value = null
+  }
 })
 
 // Handle drop from sidebar

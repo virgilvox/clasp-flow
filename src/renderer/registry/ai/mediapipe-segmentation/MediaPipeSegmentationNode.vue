@@ -90,9 +90,9 @@ function drawSegmentationOverlay(
   const outData = imageData.data
 
   for (let i = 0; i < maskData.length; i += 4) {
-    // MediaPipe selfie segmenter: Category 0 = background, Category 1 = person
-    // The mask data red channel contains the category index (0 or 1)
-    const isPerson = maskData[i] > 0
+    // MediaPipe selfie segmenter: R channel > 0 means person detected
+    // The mask is now pre-processed to have white (255) for person, black (0) for background
+    const isPerson = maskData[i] > 128
 
     if (mode === 'mask') {
       // Show mask color on person

@@ -627,9 +627,47 @@ class MediaPipeServiceImpl {
     try {
       const result = this.imageSegmenter.segmentForVideo(video, safeTimestamp)
 
+      // Convert MPImage to ImageData
+      // MPImage can be converted via canvas or by accessing raw data
+      let categoryMask: ImageData | null = null
+      if (result.categoryMask) {
+        const mpImage = result.categoryMask
+        const width = mpImage.width
+        const height = mpImage.height
+
+        // Get the raw data - categoryMask contains category indices (0 = background, 1+ = foreground)
+        // Try different methods depending on MediaPipe version
+        let rawData: Uint8Array | Uint8ClampedArray | null = null
+
+        if (typeof mpImage.getAsUint8Array === 'function') {
+          rawData = mpImage.getAsUint8Array()
+        } else if (mpImage.canvas) {
+          // Fallback: draw to canvas and extract
+          const ctx = mpImage.canvas.getContext('2d')
+          if (ctx) {
+            const imgData = ctx.getImageData(0, 0, width, height)
+            categoryMask = imgData
+          }
+        }
+
+        // Convert single-channel mask to RGBA ImageData
+        if (rawData && !categoryMask) {
+          const rgba = new Uint8ClampedArray(width * height * 4)
+          for (let i = 0; i < rawData.length; i++) {
+            const val = rawData[i]
+            // Store category value in R channel, full opacity
+            rgba[i * 4] = val > 0 ? 255 : 0     // R - person mask
+            rgba[i * 4 + 1] = val > 0 ? 255 : 0 // G
+            rgba[i * 4 + 2] = val > 0 ? 255 : 0 // B
+            rgba[i * 4 + 3] = 255               // A
+          }
+          categoryMask = new ImageData(rgba, width, height)
+        }
+      }
+
       return {
-        categoryMask: result.categoryMask?.getAsImageData() ?? null,
-        confidenceMasks: result.confidenceMasks?.map((m: { getAsImageData: () => ImageData }) => m.getAsImageData()) ?? [],
+        categoryMask,
+        confidenceMasks: [],
         width: result.categoryMask?.width ?? video.videoWidth,
         height: result.categoryMask?.height ?? video.videoHeight,
       }
