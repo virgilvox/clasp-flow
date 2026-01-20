@@ -12,6 +12,9 @@ const flowsStore = useFlowsStore()
 
 const hoveredPort = ref<string | null>(null)
 
+// Track all currently held notes to properly manage gate
+const activeNotes = ref<Set<number>>(new Set())
+
 // Resize state
 const isResizing = ref(false)
 const resizeEdge = ref<'right' | 'bottom' | 'corner' | null>(null)
@@ -51,6 +54,7 @@ const keyboardHeight = computed(() => nodeHeight.value - HEADER_HEIGHT)
 
 // Handle note events
 function handleNoteOn(note: number, velocity: number) {
+  activeNotes.value.add(note)
   flowsStore.updateNodeData(props.id, {
     note,
     velocity,
@@ -63,7 +67,9 @@ function handleNoteOn(note: number, velocity: number) {
 }
 
 function handleNoteOff(note: number) {
-  if (currentNote.value === note) {
+  activeNotes.value.delete(note)
+  // Only close gate when ALL notes are released
+  if (activeNotes.value.size === 0) {
     flowsStore.updateNodeData(props.id, { gate: false })
   }
 }
