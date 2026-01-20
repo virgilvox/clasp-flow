@@ -886,69 +886,69 @@ onUnmounted(() => {
                 <!-- Knobs grid -->
                 <div class="synth-knobs">
                   <RotaryKnob
-                    :value="getControlValue(node.id, 'volume', -6) as number"
+                    :model-value="getControlValue(node.id, 'volume', -6) as number"
                     :min="-60"
                     :max="0"
                     label="VOL"
                     size="small"
                     accent-color="#f59e0b"
-                    @update:value="v => setControlValue(node.id, 'volume', v)"
+                    @update:model-value="v => setControlValue(node.id, 'volume', v)"
                   />
                   <RotaryKnob
-                    :value="getControlValue(node.id, 'attack', 0.01) as number"
+                    :model-value="getControlValue(node.id, 'attack', 0.01) as number"
                     :min="0.001"
                     :max="2"
                     label="ATK"
                     size="small"
                     accent-color="#f59e0b"
-                    @update:value="v => setControlValue(node.id, 'attack', v)"
+                    @update:model-value="v => setControlValue(node.id, 'attack', v)"
                   />
                   <RotaryKnob
-                    :value="getControlValue(node.id, 'decay', 0.1) as number"
+                    :model-value="getControlValue(node.id, 'decay', 0.1) as number"
                     :min="0.001"
                     :max="2"
                     label="DEC"
                     size="small"
                     accent-color="#f59e0b"
-                    @update:value="v => setControlValue(node.id, 'decay', v)"
+                    @update:model-value="v => setControlValue(node.id, 'decay', v)"
                   />
                   <RotaryKnob
-                    :value="getControlValue(node.id, 'sustain', 0.7) as number"
+                    :model-value="getControlValue(node.id, 'sustain', 0.7) as number"
                     :min="0"
                     :max="1"
                     label="SUS"
                     size="small"
                     accent-color="#f59e0b"
-                    @update:value="v => setControlValue(node.id, 'sustain', v)"
+                    @update:model-value="v => setControlValue(node.id, 'sustain', v)"
                   />
                   <RotaryKnob
-                    :value="getControlValue(node.id, 'release', 0.3) as number"
+                    :model-value="getControlValue(node.id, 'release', 0.3) as number"
                     :min="0.001"
                     :max="5"
                     label="REL"
                     size="small"
                     accent-color="#f59e0b"
-                    @update:value="v => setControlValue(node.id, 'release', v)"
+                    @update:model-value="v => setControlValue(node.id, 'release', v)"
                   />
                   <!-- Moog filter controls -->
                   <template v-if="getControlValue(node.id, 'instrument', 'sine') === 'moog'">
                     <RotaryKnob
-                      :value="getControlValue(node.id, 'filterCutoff', 2000) as number"
+                      :model-value="getControlValue(node.id, 'filterCutoff', 2000) as number"
                       :min="20"
                       :max="20000"
                       label="CUT"
                       size="small"
                       accent-color="#ec4899"
-                      @update:value="v => setControlValue(node.id, 'filterCutoff', v)"
+                      @update:model-value="v => setControlValue(node.id, 'filterCutoff', v)"
                     />
                     <RotaryKnob
-                      :value="getControlValue(node.id, 'filterResonance', 1) as number"
+                      :model-value="getControlValue(node.id, 'filterResonance', 1) as number"
                       :min="0.1"
                       :max="20"
                       label="RES"
                       size="small"
                       accent-color="#ec4899"
-                      @update:value="v => setControlValue(node.id, 'filterResonance', v)"
+                      @update:model-value="v => setControlValue(node.id, 'filterResonance', v)"
                     />
                   </template>
                 </div>
