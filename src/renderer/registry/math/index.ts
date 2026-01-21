@@ -11,6 +11,13 @@ export { trigNode } from './trig'
 export { powerNode } from './power'
 export { vectorMathNode } from './vector-math'
 export { moduloNode } from './modulo'
+// New advanced math nodes
+export { lerpNode } from './lerp'
+export { stepNode } from './step'
+export { smoothstepNode } from './smoothstep'
+export { remapNode } from './remap'
+export { quantizeNode } from './quantize'
+export { wrapNode } from './wrap'
 
 import { addNode } from './add'
 import { subtractNode } from './subtract'
@@ -25,6 +32,13 @@ import { trigNode } from './trig'
 import { powerNode } from './power'
 import { vectorMathNode } from './vector-math'
 import { moduloNode } from './modulo'
+// New advanced math nodes
+import { lerpNode } from './lerp'
+import { stepNode } from './step'
+import { smoothstepNode } from './smoothstep'
+import { remapNode } from './remap'
+import { quantizeNode } from './quantize'
+import { wrapNode } from './wrap'
 import type { NodeDefinition } from '../types'
 
 export const mathNodes: NodeDefinition[] = [
@@ -41,4 +55,11 @@ export const mathNodes: NodeDefinition[] = [
   powerNode,
   vectorMathNode,
   moduloNode,
+  // New advanced math nodes
+  lerpNode,
+  stepNode,
+  smoothstepNode,
+  remapNode,
+  quantizeNode,
+  wrapNode,
 ]

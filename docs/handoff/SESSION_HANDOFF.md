@@ -18,11 +18,64 @@
 
 ## Current Status
 
-### Phase: 9 Complete - 3D System + Polish + Full Feature Set
+### Phase: 9 Complete - 3D System + Polish + Full Feature Set + Utility Nodes
 ### Next Step: Phase 10 - Polish & Export
-### Latest Release: v0.1.3
+### Latest Release: v0.2.1
+### Test Status: 1096 tests passing
 
-### Latest Session Accomplishments (Texture Display Fix, PixiJS Infrastructure)
+### Latest Session Accomplishments (55 Utility Nodes Implementation)
+
+**Implemented 55 Utility Nodes Across 8 Categories:**
+
+| Category | Nodes | Description |
+|----------|-------|-------------|
+| Value Checking (8) | `is-null`, `is-empty`, `pass-if`, `default-value`, `coalesce`, `changed`, `sample-hold`, `latch` | Null/empty detection, conditional gating, state memory |
+| Type Comparison (3) | `equals`, `type-of`, `in-range` | Universal equality, type detection, range checking |
+| String Operations (7) | `string-length`, `string-contains`, `string-starts-ends`, `string-trim`, `string-pad`, `string-template`, `string-match` | String manipulation and regex matching |
+| Array Operations (12) | `array-length`, `array-get`, `array-first-last`, `array-contains`, `array-slice`, `array-join`, `array-reverse`, `array-push`, `array-filter-nulls`, `array-unique`, `array-sort`, `array-range` | Array manipulation and generation |
+| Object Operations (8) | `object-get`, `object-set`, `object-keys`, `object-values`, `object-has`, `object-merge`, `object-create`, `object-entries` | JSON/object manipulation with path notation |
+| Flow Control (4) | `router`, `counter`, `debounce`, `throttle` | Data routing, counting, rate limiting |
+| Advanced Math (6) | `lerp`, `step`, `smoothstep`, `remap`, `quantize`, `wrap` | Interpolation, easing, value mapping |
+| Type Conversion (7) | `to-string`, `to-number`, `to-boolean`, `parse-int`, `parse-float`, `to-array`, `format-number` | Type coercion and formatting |
+
+**Key Design Decisions:**
+- All nodes follow existing NodeDefinition + executor patterns
+- Stateful nodes (changed, latch, counter, debounce, throttle) use module-level Maps keyed by nodeId
+- Added disposal functions for state cleanup (`disposeUtilityNode`, `disposeAllUtilityState`)
+- `pass-if` node returns empty Map when blocking (no output propagation)
+- Object path notation supports dot and bracket syntax: `data.items[0].name`
+
+**Test Coverage:**
+- Created `tests/unit/executors/utility.test.ts` - 62 tests for value/flow control
+- Created `tests/unit/executors/data.test.ts` - 73 tests for array/object/conversion
+- Added 36 tests to `tests/unit/executors/string.test.ts` for new string operations
+- Added 43 tests to `tests/unit/executors/math.test.ts` for new math operations
+- **Total: 1096 tests passing**
+
+**Bug Fixed:**
+- Throttle executor first-value bug: Changed `lastOutput` init from `0` to `-Infinity`
+
+**Node Definition Files Created (55 files):**
+- `src/renderer/registry/logic/`: `is-null.ts`, `is-empty.ts`, `pass-if.ts`, `default-value.ts`, `coalesce.ts`, `equals.ts`, `changed.ts`, `type-of.ts`, `in-range.ts`, `sample-hold.ts`, `latch.ts`
+- `src/renderer/registry/string/`: `length.ts`, `contains.ts`, `starts-ends.ts`, `trim.ts`, `pad.ts`, `template.ts`, `match.ts`
+- `src/renderer/registry/math/`: `lerp.ts`, `step.ts`, `smoothstep.ts`, `remap.ts`, `quantize.ts`, `wrap.ts`
+- `src/renderer/registry/data/`: 31 files for array, object, flow, and conversion nodes
+
+**Executor Files Created/Modified:**
+- `src/renderer/engine/executors/utility.ts` - NEW: 14 executors for value checking + flow control
+- `src/renderer/engine/executors/data.ts` - NEW: 27 executors for array/object/conversion
+- `src/renderer/engine/executors/string.ts` - Added 7 new string executors
+- `src/renderer/engine/executors/index.ts` - Added 6 inline math executors, registered all
+
+**Registry Index Files Updated:**
+- `src/renderer/registry/logic/index.ts` - 11 new exports
+- `src/renderer/registry/string/index.ts` - 7 new exports
+- `src/renderer/registry/math/index.ts` - 6 new exports
+- `src/renderer/registry/data/index.ts` - 31 new exports
+
+---
+
+### Previous Session Accomplishments (Texture Display Fix, PixiJS Infrastructure)
 
 **Fixed Texture Display in OUTPUT Nodes (Critical Bug)**
 - **Problem**: Shaders and 3D renders worked in editor preview but showed "No Input" in OUTPUT nodes
@@ -1131,6 +1184,8 @@ npm run dev:electron
 | 2026-01-19 | Shader Dynamic Ports | Complete shader node overhaul - uniforms in GLSL code automatically become input ports, robust parser, dynamic port mutation API, engine hooks for port updates |
 | 2026-01-19 | AI Auto-Load & Fixes | AI model auto-load on startup feature, Control Panel oscilloscope audio mode fix, custom node UI for knob/envelope/EQ/wavetable nodes |
 | 2026-01-19 | Shader Fix, BLE, MediaPipe | Fixed shader preview (uniform injection), BLE adapter + 3 nodes, MediaPipe service + 4 nodes, 108 new tests (668 total), shader UX design doc |
+| 2026-01-20 | Texture Display, PixiJS | Fixed texture display in OUTPUT nodes, added PixiJS 8 infrastructure for 2D compositing |
+| 2026-01-21 | 55 Utility Nodes | Implemented 55 utility nodes across 8 categories (value checking, comparison, string, array, object, flow control, math, conversion), 214 new tests (1096 total) |
 
 ---
 

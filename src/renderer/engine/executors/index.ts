@@ -18,6 +18,8 @@ import { subflowExecutors } from './subflow'
 import { threeExecutors } from './3d'
 import { stringExecutors } from './string'
 import { messagingExecutors } from './messaging'
+import { utilityExecutors, disposeUtilityNode, disposeAllUtilityState } from './utility'
+import { dataExecutors } from './data'
 
 // Re-export CLASP utilities for external use
 export { disposeClaspNode, disposeAllClaspConnections, getClaspConnectionStatus }
@@ -26,6 +28,9 @@ export { disposeClaspNode, disposeAllClaspConnections, getClaspConnectionStatus 
 export { disposeMqttNode, disposeAllMqttNodes, gcMqttState }
 export { disposeWebSocketNode, disposeAllWebSocketNodes, gcWebSocketState }
 export { disposeHttpNode, disposeAllHttpNodes, gcHttpState }
+
+// Re-export utility node disposal functions
+export { disposeUtilityNode, disposeAllUtilityState }
 
 // ============================================================================
 // Input Nodes
@@ -448,6 +453,110 @@ export const moduloExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
     default:
       result = value % divisor
   }
+
+  return new Map([['result', result]])
+}
+
+// ============================================================================
+// Advanced Math Nodes
+// ============================================================================
+
+export const lerpExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const a = (ctx.inputs.get('a') as number) ?? 0
+  const b = (ctx.inputs.get('b') as number) ?? 1
+  const t = (ctx.inputs.get('t') as number) ?? 0.5
+
+  const result = a + (b - a) * t
+
+  return new Map([['result', result]])
+}
+
+export const stepExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const value = (ctx.inputs.get('value') as number) ?? 0
+  const edge = (ctx.controls.get('edge') as number) ?? 0.5
+
+  const result = value < edge ? 0 : 1
+
+  return new Map([['result', result]])
+}
+
+export const smoothstepExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const value = (ctx.inputs.get('value') as number) ?? 0
+  const edge0 = (ctx.controls.get('edge0') as number) ?? 0
+  const edge1 = (ctx.controls.get('edge1') as number) ?? 1
+
+  // Clamp to 0-1 range
+  let t = (value - edge0) / (edge1 - edge0)
+  t = Math.max(0, Math.min(1, t))
+
+  // Hermite interpolation
+  const result = t * t * (3 - 2 * t)
+
+  return new Map([['result', result]])
+}
+
+export const remapExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const value = (ctx.inputs.get('value') as number) ?? 0
+  const inMin = (ctx.controls.get('inMin') as number) ?? 0
+  const inMax = (ctx.controls.get('inMax') as number) ?? 1
+  const outMin = (ctx.controls.get('outMin') as number) ?? 0
+  const outMax = (ctx.controls.get('outMax') as number) ?? 100
+  const clamp = (ctx.controls.get('clamp') as boolean) ?? true
+  const easing = (ctx.controls.get('easing') as string) ?? 'linear'
+
+  // Normalize to 0-1
+  let t = inMax !== inMin ? (value - inMin) / (inMax - inMin) : 0
+
+  // Clamp if enabled
+  if (clamp) {
+    t = Math.max(0, Math.min(1, t))
+  }
+
+  // Apply easing
+  switch (easing) {
+    case 'ease-in':
+      t = t * t
+      break
+    case 'ease-out':
+      t = 1 - (1 - t) * (1 - t)
+      break
+    case 'ease-in-out':
+      t = t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2
+      break
+    // linear: no change
+  }
+
+  const result = t * (outMax - outMin) + outMin
+
+  return new Map([['result', result]])
+}
+
+export const quantizeExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const value = (ctx.inputs.get('value') as number) ?? 0
+  const step = (ctx.controls.get('step') as number) ?? 1
+
+  if (step === 0) {
+    return new Map([['result', value]])
+  }
+
+  const result = Math.round(value / step) * step
+
+  return new Map([['result', result]])
+}
+
+export const wrapExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const value = (ctx.inputs.get('value') as number) ?? 0
+  const min = (ctx.controls.get('min') as number) ?? 0
+  const max = (ctx.controls.get('max') as number) ?? 1
+
+  const range = max - min
+
+  if (range === 0) {
+    return new Map([['result', min]])
+  }
+
+  // Proper wrap that handles negatives correctly
+  const result = ((value - min) % range + range) % range + min
 
   return new Map([['result', result]])
 }
@@ -1117,6 +1226,13 @@ export const builtinExecutors: Record<string, NodeExecutorFn> = {
   power: powerExecutor,
   'vector-math': vectorMathExecutor,
   modulo: moduloExecutor,
+  // Advanced Math
+  lerp: lerpExecutor,
+  step: stepExecutor,
+  smoothstep: smoothstepExecutor,
+  remap: remapExecutor,
+  quantize: quantizeExecutor,
+  wrap: wrapExecutor,
 
   // Logic
   compare: compareExecutor,
@@ -1168,4 +1284,10 @@ export const builtinExecutors: Record<string, NodeExecutorFn> = {
 
   // Messaging
   ...messagingExecutors,
+
+  // Utility (value checking, type comparison, flow control)
+  ...utilityExecutors,
+
+  // Data (arrays, objects, type conversion)
+  ...dataExecutors,
 }

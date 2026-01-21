@@ -205,6 +205,193 @@ export const stringCaseExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
 }
 
 // ============================================================================
+// String Length (NEW)
+// ============================================================================
+
+export const stringLengthExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const input = (ctx.inputs.get('input') as string) ?? ''
+
+  return new Map([
+    ['length', input.length],
+    ['isEmpty', input.length === 0 ? 1 : 0],
+  ])
+}
+
+// ============================================================================
+// String Contains (NEW)
+// ============================================================================
+
+export const stringContainsExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const input = (ctx.inputs.get('input') as string) ?? ''
+  const search = (ctx.inputs.get('search') as string) ?? ''
+  const caseSensitive = (ctx.controls.get('caseSensitive') as boolean) ?? true
+
+  if (!input || !search) {
+    return new Map([
+      ['result', 0],
+      ['index', -1],
+    ])
+  }
+
+  let result: boolean
+  let index: number
+
+  if (caseSensitive) {
+    index = input.indexOf(search)
+    result = index !== -1
+  } else {
+    index = input.toLowerCase().indexOf(search.toLowerCase())
+    result = index !== -1
+  }
+
+  return new Map([
+    ['result', result ? 1 : 0],
+    ['index', index],
+  ])
+}
+
+// ============================================================================
+// String Starts/Ends With (NEW)
+// ============================================================================
+
+export const stringStartsEndsExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const input = (ctx.inputs.get('input') as string) ?? ''
+  const search = (ctx.inputs.get('search') as string) ?? ''
+  const caseSensitive = (ctx.controls.get('caseSensitive') as boolean) ?? true
+
+  if (!input || !search) {
+    return new Map([
+      ['startsWith', 0],
+      ['endsWith', 0],
+    ])
+  }
+
+  let startsWith: boolean
+  let endsWith: boolean
+
+  if (caseSensitive) {
+    startsWith = input.startsWith(search)
+    endsWith = input.endsWith(search)
+  } else {
+    const lowerInput = input.toLowerCase()
+    const lowerSearch = search.toLowerCase()
+    startsWith = lowerInput.startsWith(lowerSearch)
+    endsWith = lowerInput.endsWith(lowerSearch)
+  }
+
+  return new Map([
+    ['startsWith', startsWith ? 1 : 0],
+    ['endsWith', endsWith ? 1 : 0],
+  ])
+}
+
+// ============================================================================
+// String Trim (NEW)
+// ============================================================================
+
+export const stringTrimExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const input = (ctx.inputs.get('input') as string) ?? ''
+  const mode = (ctx.controls.get('mode') as string) ?? 'both'
+
+  let result: string
+
+  switch (mode) {
+    case 'both':
+      result = input.trim()
+      break
+    case 'start':
+      result = input.trimStart()
+      break
+    case 'end':
+      result = input.trimEnd()
+      break
+    default:
+      result = input.trim()
+  }
+
+  return new Map([['result', result]])
+}
+
+// ============================================================================
+// String Pad (NEW)
+// ============================================================================
+
+export const stringPadExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const input = (ctx.inputs.get('input') as string) ?? ''
+  const length = (ctx.controls.get('length') as number) ?? 10
+  const char = (ctx.controls.get('char') as string) ?? ' '
+  const mode = (ctx.controls.get('mode') as string) ?? 'start'
+
+  const padChar = char || ' ' // Ensure at least space
+
+  let result: string
+
+  if (mode === 'start') {
+    result = input.padStart(length, padChar)
+  } else {
+    result = input.padEnd(length, padChar)
+  }
+
+  return new Map([['result', result]])
+}
+
+// ============================================================================
+// String Template (NEW)
+// ============================================================================
+
+export const stringTemplateExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const a = ctx.inputs.get('a')
+  const b = ctx.inputs.get('b')
+  const c = ctx.inputs.get('c')
+  const d = ctx.inputs.get('d')
+  const template = (ctx.controls.get('template') as string) ?? ''
+
+  // Replace placeholders {a}, {b}, {c}, {d} with values
+  const result = template
+    .replace(/\{a\}/g, String(a ?? ''))
+    .replace(/\{b\}/g, String(b ?? ''))
+    .replace(/\{c\}/g, String(c ?? ''))
+    .replace(/\{d\}/g, String(d ?? ''))
+
+  return new Map([['result', result]])
+}
+
+// ============================================================================
+// String Match (Regex) (NEW)
+// ============================================================================
+
+export const stringMatchExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
+  const input = (ctx.inputs.get('input') as string) ?? ''
+  const pattern = (ctx.controls.get('pattern') as string) ?? '.*'
+  const flags = (ctx.controls.get('flags') as string) ?? ''
+
+  const outputs = new Map<string, unknown>()
+
+  try {
+    const regex = new RegExp(pattern, flags)
+    const match = input.match(regex)
+
+    if (match) {
+      outputs.set('match', 1)
+      outputs.set('groups', match.slice(1)) // Capture groups
+      outputs.set('fullMatch', match[0])
+    } else {
+      outputs.set('match', 0)
+      outputs.set('groups', [])
+      outputs.set('fullMatch', '')
+    }
+  } catch {
+    // Invalid regex
+    outputs.set('match', 0)
+    outputs.set('groups', [])
+    outputs.set('fullMatch', '')
+    outputs.set('_error', 'Invalid regex pattern')
+  }
+
+  return outputs
+}
+
+// ============================================================================
 // Registry
 // ============================================================================
 
@@ -214,4 +401,12 @@ export const stringExecutors: Record<string, NodeExecutorFn> = {
   'string-replace': stringReplaceExecutor,
   'string-slice': stringSliceExecutor,
   'string-case': stringCaseExecutor,
+  // New string operations
+  'string-length': stringLengthExecutor,
+  'string-contains': stringContainsExecutor,
+  'string-starts-ends': stringStartsEndsExecutor,
+  'string-trim': stringTrimExecutor,
+  'string-pad': stringPadExecutor,
+  'string-template': stringTemplateExecutor,
+  'string-match': stringMatchExecutor,
 }

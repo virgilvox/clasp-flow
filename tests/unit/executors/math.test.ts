@@ -10,6 +10,12 @@ import {
   powerExecutor,
   vectorMathExecutor,
   moduloExecutor,
+  lerpExecutor,
+  stepExecutor,
+  smoothstepExecutor,
+  remapExecutor,
+  quantizeExecutor,
+  wrapExecutor,
 } from '@/engine/executors/index'
 import type { ExecutionContext } from '@/engine/ExecutionEngine'
 
@@ -764,6 +770,302 @@ describe('Math Executors', () => {
         const result = moduloExecutor(ctx)
         expect(result.get('result')).toBe(0) // 7 % 1 = 0
       })
+    })
+  })
+
+  // ============================================================================
+  // Lerp (Linear Interpolation)
+  // ============================================================================
+  describe('lerpExecutor', () => {
+    it('interpolates at t=0', () => {
+      const ctx = createContext({ a: 0, b: 100, t: 0 })
+      const result = lerpExecutor(ctx)
+      expect(result.get('result')).toBe(0)
+    })
+
+    it('interpolates at t=1', () => {
+      const ctx = createContext({ a: 0, b: 100, t: 1 })
+      const result = lerpExecutor(ctx)
+      expect(result.get('result')).toBe(100)
+    })
+
+    it('interpolates at t=0.5', () => {
+      const ctx = createContext({ a: 0, b: 100, t: 0.5 })
+      const result = lerpExecutor(ctx)
+      expect(result.get('result')).toBe(50)
+    })
+
+    it('interpolates with negative values', () => {
+      const ctx = createContext({ a: -10, b: 10, t: 0.5 })
+      const result = lerpExecutor(ctx)
+      expect(result.get('result')).toBe(0)
+    })
+
+    it('extrapolates beyond 0-1', () => {
+      const ctx = createContext({ a: 0, b: 100, t: 2 })
+      const result = lerpExecutor(ctx)
+      expect(result.get('result')).toBe(200)
+    })
+
+    it('handles t < 0', () => {
+      const ctx = createContext({ a: 0, b: 100, t: -0.5 })
+      const result = lerpExecutor(ctx)
+      expect(result.get('result')).toBe(-50)
+    })
+
+    it('handles default values', () => {
+      const ctx = createContext({})
+      const result = lerpExecutor(ctx)
+      expect(result.get('result')).toBe(0.5) // lerp(0, 1, 0.5) = 0.5 with defaults
+    })
+  })
+
+  // ============================================================================
+  // Step Function
+  // ============================================================================
+  describe('stepExecutor', () => {
+    it('returns 0 when value < edge', () => {
+      const ctx = createContext({ value: 0.3 }, { edge: 0.5 })
+      const result = stepExecutor(ctx)
+      expect(result.get('result')).toBe(0)
+    })
+
+    it('returns 1 when value >= edge', () => {
+      const ctx = createContext({ value: 0.5 }, { edge: 0.5 })
+      const result = stepExecutor(ctx)
+      expect(result.get('result')).toBe(1)
+    })
+
+    it('returns 1 when value > edge', () => {
+      const ctx = createContext({ value: 0.7 }, { edge: 0.5 })
+      const result = stepExecutor(ctx)
+      expect(result.get('result')).toBe(1)
+    })
+
+    it('handles negative values', () => {
+      const ctx = createContext({ value: -1 }, { edge: 0 })
+      const result = stepExecutor(ctx)
+      expect(result.get('result')).toBe(0)
+    })
+
+    it('uses default edge of 0.5', () => {
+      const ctx = createContext({ value: 0.6 })
+      const result = stepExecutor(ctx)
+      expect(result.get('result')).toBe(1)
+    })
+  })
+
+  // ============================================================================
+  // Smoothstep
+  // ============================================================================
+  describe('smoothstepExecutor', () => {
+    it('returns 0 when value <= edge0', () => {
+      const ctx = createContext({ value: -0.5 }, { edge0: 0, edge1: 1 })
+      const result = smoothstepExecutor(ctx)
+      expect(result.get('result')).toBe(0)
+    })
+
+    it('returns 1 when value >= edge1', () => {
+      const ctx = createContext({ value: 1.5 }, { edge0: 0, edge1: 1 })
+      const result = smoothstepExecutor(ctx)
+      expect(result.get('result')).toBe(1)
+    })
+
+    it('returns 0.5 at midpoint', () => {
+      const ctx = createContext({ value: 0.5 }, { edge0: 0, edge1: 1 })
+      const result = smoothstepExecutor(ctx)
+      expect(result.get('result')).toBe(0.5)
+    })
+
+    it('has zero derivative at edges', () => {
+      // Smoothstep should have zero derivative at edge0
+      const ctx0 = createContext({ value: 0.001 }, { edge0: 0, edge1: 1 })
+      const ctx1 = createContext({ value: 0.999 }, { edge0: 0, edge1: 1 })
+      const result0 = smoothstepExecutor(ctx0)
+      const result1 = smoothstepExecutor(ctx1)
+      // Near 0 and 1 respectively, but with smooth transition
+      expect(result0.get('result')).toBeLessThan(0.01)
+      expect(result1.get('result')).toBeGreaterThan(0.99)
+    })
+
+    it('handles custom edge range', () => {
+      const ctx = createContext({ value: 75 }, { edge0: 50, edge1: 100 })
+      const result = smoothstepExecutor(ctx)
+      expect(result.get('result')).toBe(0.5)
+    })
+
+    it('uses default edges of 0 and 1', () => {
+      const ctx = createContext({ value: 0.5 })
+      const result = smoothstepExecutor(ctx)
+      expect(result.get('result')).toBe(0.5)
+    })
+  })
+
+  // ============================================================================
+  // Remap
+  // ============================================================================
+  describe('remapExecutor', () => {
+    it('remaps value from one range to another', () => {
+      const ctx = createContext(
+        { value: 50 },
+        { inMin: 0, inMax: 100, outMin: 0, outMax: 1, clamp: false }
+      )
+      const result = remapExecutor(ctx)
+      expect(result.get('result')).toBe(0.5)
+    })
+
+    it('handles inverted output range', () => {
+      const ctx = createContext(
+        { value: 0 },
+        { inMin: 0, inMax: 100, outMin: 100, outMax: 0, clamp: false }
+      )
+      const result = remapExecutor(ctx)
+      expect(result.get('result')).toBe(100)
+    })
+
+    it('clamps value when enabled', () => {
+      const ctx = createContext(
+        { value: 150 },
+        { inMin: 0, inMax: 100, outMin: 0, outMax: 1, clamp: true }
+      )
+      const result = remapExecutor(ctx)
+      expect(result.get('result')).toBe(1)
+    })
+
+    it('does not clamp when disabled', () => {
+      const ctx = createContext(
+        { value: 150 },
+        { inMin: 0, inMax: 100, outMin: 0, outMax: 1, clamp: false }
+      )
+      const result = remapExecutor(ctx)
+      expect(result.get('result')).toBe(1.5)
+    })
+
+    it('applies ease-in easing', () => {
+      const ctx = createContext(
+        { value: 50 },
+        { inMin: 0, inMax: 100, outMin: 0, outMax: 1, easing: 'ease-in' }
+      )
+      const result = remapExecutor(ctx)
+      // Ease-in (t^2) at 0.5 = 0.25
+      expect(result.get('result')).toBeCloseTo(0.25, 5)
+    })
+
+    it('applies ease-out easing', () => {
+      const ctx = createContext(
+        { value: 50 },
+        { inMin: 0, inMax: 100, outMin: 0, outMax: 1, easing: 'ease-out' }
+      )
+      const result = remapExecutor(ctx)
+      // Ease-out (1-(1-t)^2) at 0.5 = 0.75
+      expect(result.get('result')).toBeCloseTo(0.75, 5)
+    })
+
+    it('applies ease-in-out easing', () => {
+      const ctx = createContext(
+        { value: 50 },
+        { inMin: 0, inMax: 100, outMin: 0, outMax: 1, easing: 'ease-in-out' }
+      )
+      const result = remapExecutor(ctx)
+      // Ease-in-out at 0.5 = 0.5
+      expect(result.get('result')).toBeCloseTo(0.5, 5)
+    })
+
+    it('handles zero input range', () => {
+      const ctx = createContext(
+        { value: 50 },
+        { inMin: 50, inMax: 50, outMin: 0, outMax: 1 }
+      )
+      const result = remapExecutor(ctx)
+      expect(result.get('result')).toBe(0) // Should return outMin when division by zero
+    })
+  })
+
+  // ============================================================================
+  // Quantize
+  // ============================================================================
+  describe('quantizeExecutor', () => {
+    it('quantizes to step size', () => {
+      const ctx = createContext({ value: 4.7 }, { step: 1 })
+      const result = quantizeExecutor(ctx)
+      expect(result.get('result')).toBe(5)
+    })
+
+    it('quantizes to larger step', () => {
+      const ctx = createContext({ value: 23 }, { step: 10 })
+      const result = quantizeExecutor(ctx)
+      expect(result.get('result')).toBe(20)
+    })
+
+    it('quantizes to fractional step', () => {
+      const ctx = createContext({ value: 0.33 }, { step: 0.25 })
+      const result = quantizeExecutor(ctx)
+      expect(result.get('result')).toBeCloseTo(0.25, 5)
+    })
+
+    it('handles negative values', () => {
+      const ctx = createContext({ value: -4.7 }, { step: 1 })
+      const result = quantizeExecutor(ctx)
+      expect(result.get('result')).toBe(-5)
+    })
+
+    it('handles step of 0 (returns original value)', () => {
+      const ctx = createContext({ value: 4.7 }, { step: 0 })
+      const result = quantizeExecutor(ctx)
+      expect(result.get('result')).toBe(4.7)
+    })
+
+    it('uses default step of 1', () => {
+      const ctx = createContext({ value: 2.3 })
+      const result = quantizeExecutor(ctx)
+      expect(result.get('result')).toBe(2)
+    })
+  })
+
+  // ============================================================================
+  // Wrap
+  // ============================================================================
+  describe('wrapExecutor', () => {
+    it('wraps value above max', () => {
+      const ctx = createContext({ value: 1.3 }, { min: 0, max: 1 })
+      const result = wrapExecutor(ctx)
+      expect(result.get('result')).toBeCloseTo(0.3, 5)
+    })
+
+    it('wraps value below min', () => {
+      const ctx = createContext({ value: -0.3 }, { min: 0, max: 1 })
+      const result = wrapExecutor(ctx)
+      expect(result.get('result')).toBeCloseTo(0.7, 5)
+    })
+
+    it('keeps value in range unchanged', () => {
+      const ctx = createContext({ value: 0.5 }, { min: 0, max: 1 })
+      const result = wrapExecutor(ctx)
+      expect(result.get('result')).toBe(0.5)
+    })
+
+    it('wraps multiple times', () => {
+      const ctx = createContext({ value: 3.7 }, { min: 0, max: 1 })
+      const result = wrapExecutor(ctx)
+      expect(result.get('result')).toBeCloseTo(0.7, 5)
+    })
+
+    it('handles custom range', () => {
+      const ctx = createContext({ value: 370 }, { min: 0, max: 360 })
+      const result = wrapExecutor(ctx)
+      expect(result.get('result')).toBeCloseTo(10, 5)
+    })
+
+    it('handles negative wrap in custom range', () => {
+      const ctx = createContext({ value: -10 }, { min: 0, max: 360 })
+      const result = wrapExecutor(ctx)
+      expect(result.get('result')).toBeCloseTo(350, 5)
+    })
+
+    it('uses default range of 0 to 1', () => {
+      const ctx = createContext({ value: 1.5 })
+      const result = wrapExecutor(ctx)
+      expect(result.get('result')).toBeCloseTo(0.5, 5)
     })
   })
 })

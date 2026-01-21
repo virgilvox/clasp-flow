@@ -11,6 +11,13 @@ import {
   stringReplaceExecutor,
   stringSliceExecutor,
   stringCaseExecutor,
+  stringLengthExecutor,
+  stringContainsExecutor,
+  stringStartsEndsExecutor,
+  stringTrimExecutor,
+  stringPadExecutor,
+  stringTemplateExecutor,
+  stringMatchExecutor,
 } from '@/engine/executors/string'
 import type { ExecutionContext } from '@/engine/ExecutionEngine'
 
@@ -584,6 +591,312 @@ describe('String Executors', () => {
         const result = stringCaseExecutor(ctx)
         expect(result.get('result')).toBe('')
       })
+    })
+  })
+
+  // ============================================================================
+  // String Length
+  // ============================================================================
+  describe('stringLengthExecutor', () => {
+    it('returns length of string', () => {
+      const ctx = createContext({ input: 'hello' })
+      const result = stringLengthExecutor(ctx)
+      expect(result.get('length')).toBe(5)
+      expect(result.get('isEmpty')).toBe(0)
+    })
+
+    it('returns 0 for empty string', () => {
+      const ctx = createContext({ input: '' })
+      const result = stringLengthExecutor(ctx)
+      expect(result.get('length')).toBe(0)
+      expect(result.get('isEmpty')).toBe(1)
+    })
+
+    it('handles null input', () => {
+      const ctx = createContext({ input: null })
+      const result = stringLengthExecutor(ctx)
+      expect(result.get('length')).toBe(0)
+      expect(result.get('isEmpty')).toBe(1)
+    })
+
+    it('handles unicode correctly', () => {
+      const ctx = createContext({ input: '你好🌍' })
+      const result = stringLengthExecutor(ctx)
+      expect(result.get('length')).toBe(4) // 2 chinese chars + 1 emoji (2 code units)
+    })
+  })
+
+  // ============================================================================
+  // String Contains
+  // ============================================================================
+  describe('stringContainsExecutor', () => {
+    it('finds substring', () => {
+      const ctx = createContext({ input: 'hello world', search: 'world' })
+      const result = stringContainsExecutor(ctx)
+      expect(result.get('result')).toBe(1)
+      expect(result.get('index')).toBe(6)
+    })
+
+    it('returns 0 when not found', () => {
+      const ctx = createContext({ input: 'hello world', search: 'foo' })
+      const result = stringContainsExecutor(ctx)
+      expect(result.get('result')).toBe(0)
+      expect(result.get('index')).toBe(-1)
+    })
+
+    it('is case sensitive by default', () => {
+      const ctx = createContext({ input: 'Hello World', search: 'hello' }, { caseSensitive: true })
+      const result = stringContainsExecutor(ctx)
+      expect(result.get('result')).toBe(0)
+    })
+
+    it('can be case insensitive', () => {
+      const ctx = createContext({ input: 'Hello World', search: 'hello' }, { caseSensitive: false })
+      const result = stringContainsExecutor(ctx)
+      expect(result.get('result')).toBe(1)
+      expect(result.get('index')).toBe(0)
+    })
+
+    it('handles empty search', () => {
+      const ctx = createContext({ input: 'hello', search: '' })
+      const result = stringContainsExecutor(ctx)
+      expect(result.get('result')).toBe(0)
+    })
+
+    it('handles empty input', () => {
+      const ctx = createContext({ input: '', search: 'test' })
+      const result = stringContainsExecutor(ctx)
+      expect(result.get('result')).toBe(0)
+    })
+  })
+
+  // ============================================================================
+  // String Starts/Ends With
+  // ============================================================================
+  describe('stringStartsEndsExecutor', () => {
+    it('detects starts with', () => {
+      const ctx = createContext({ input: 'hello world', search: 'hello' })
+      const result = stringStartsEndsExecutor(ctx)
+      expect(result.get('startsWith')).toBe(1)
+      expect(result.get('endsWith')).toBe(0)
+    })
+
+    it('detects ends with', () => {
+      const ctx = createContext({ input: 'hello world', search: 'world' })
+      const result = stringStartsEndsExecutor(ctx)
+      expect(result.get('startsWith')).toBe(0)
+      expect(result.get('endsWith')).toBe(1)
+    })
+
+    it('detects both when same', () => {
+      const ctx = createContext({ input: 'hello', search: 'hello' })
+      const result = stringStartsEndsExecutor(ctx)
+      expect(result.get('startsWith')).toBe(1)
+      expect(result.get('endsWith')).toBe(1)
+    })
+
+    it('is case sensitive by default', () => {
+      const ctx = createContext({ input: 'Hello World', search: 'hello' }, { caseSensitive: true })
+      const result = stringStartsEndsExecutor(ctx)
+      expect(result.get('startsWith')).toBe(0)
+    })
+
+    it('can be case insensitive', () => {
+      const ctx = createContext({ input: 'Hello World', search: 'hello' }, { caseSensitive: false })
+      const result = stringStartsEndsExecutor(ctx)
+      expect(result.get('startsWith')).toBe(1)
+    })
+
+    it('handles empty input', () => {
+      const ctx = createContext({ input: '', search: 'test' })
+      const result = stringStartsEndsExecutor(ctx)
+      expect(result.get('startsWith')).toBe(0)
+      expect(result.get('endsWith')).toBe(0)
+    })
+  })
+
+  // ============================================================================
+  // String Trim
+  // ============================================================================
+  describe('stringTrimExecutor', () => {
+    it('trims both ends by default', () => {
+      const ctx = createContext({ input: '  hello  ' }, { mode: 'both' })
+      const result = stringTrimExecutor(ctx)
+      expect(result.get('result')).toBe('hello')
+    })
+
+    it('trims start only', () => {
+      const ctx = createContext({ input: '  hello  ' }, { mode: 'start' })
+      const result = stringTrimExecutor(ctx)
+      expect(result.get('result')).toBe('hello  ')
+    })
+
+    it('trims end only', () => {
+      const ctx = createContext({ input: '  hello  ' }, { mode: 'end' })
+      const result = stringTrimExecutor(ctx)
+      expect(result.get('result')).toBe('  hello')
+    })
+
+    it('handles tabs and newlines', () => {
+      const ctx = createContext({ input: '\t\nhello\n\t' }, { mode: 'both' })
+      const result = stringTrimExecutor(ctx)
+      expect(result.get('result')).toBe('hello')
+    })
+
+    it('handles already trimmed string', () => {
+      const ctx = createContext({ input: 'hello' }, { mode: 'both' })
+      const result = stringTrimExecutor(ctx)
+      expect(result.get('result')).toBe('hello')
+    })
+
+    it('handles empty string', () => {
+      const ctx = createContext({ input: '' })
+      const result = stringTrimExecutor(ctx)
+      expect(result.get('result')).toBe('')
+    })
+  })
+
+  // ============================================================================
+  // String Pad
+  // ============================================================================
+  describe('stringPadExecutor', () => {
+    it('pads start by default', () => {
+      const ctx = createContext({ input: '5' }, { length: 3, char: '0', mode: 'start' })
+      const result = stringPadExecutor(ctx)
+      expect(result.get('result')).toBe('005')
+    })
+
+    it('pads end', () => {
+      const ctx = createContext({ input: 'hi' }, { length: 5, char: '-', mode: 'end' })
+      const result = stringPadExecutor(ctx)
+      expect(result.get('result')).toBe('hi---')
+    })
+
+    it('uses space as default char', () => {
+      const ctx = createContext({ input: 'x' }, { length: 3, mode: 'start' })
+      const result = stringPadExecutor(ctx)
+      expect(result.get('result')).toBe('  x')
+    })
+
+    it('handles string already at target length', () => {
+      const ctx = createContext({ input: 'hello' }, { length: 5, mode: 'start' })
+      const result = stringPadExecutor(ctx)
+      expect(result.get('result')).toBe('hello')
+    })
+
+    it('handles string longer than target', () => {
+      const ctx = createContext({ input: 'hello world' }, { length: 5, mode: 'start' })
+      const result = stringPadExecutor(ctx)
+      expect(result.get('result')).toBe('hello world')
+    })
+
+    it('handles empty input', () => {
+      const ctx = createContext({ input: '' }, { length: 3, char: 'x', mode: 'start' })
+      const result = stringPadExecutor(ctx)
+      expect(result.get('result')).toBe('xxx')
+    })
+  })
+
+  // ============================================================================
+  // String Template
+  // ============================================================================
+  describe('stringTemplateExecutor', () => {
+    it('replaces placeholders', () => {
+      const ctx = createContext(
+        { a: 'World', b: 42 },
+        { template: 'Hello {a}! The answer is {b}.' }
+      )
+      const result = stringTemplateExecutor(ctx)
+      expect(result.get('result')).toBe('Hello World! The answer is 42.')
+    })
+
+    it('replaces all occurrences of same placeholder', () => {
+      const ctx = createContext(
+        { a: 'x' },
+        { template: '{a} and {a} and {a}' }
+      )
+      const result = stringTemplateExecutor(ctx)
+      expect(result.get('result')).toBe('x and x and x')
+    })
+
+    it('handles missing placeholders', () => {
+      const ctx = createContext(
+        { a: 'value' },
+        { template: '{a} {b} {c} {d}' }
+      )
+      const result = stringTemplateExecutor(ctx)
+      expect(result.get('result')).toBe('value   ')
+    })
+
+    it('handles null values', () => {
+      const ctx = createContext(
+        { a: null, b: undefined },
+        { template: '{a} and {b}' }
+      )
+      const result = stringTemplateExecutor(ctx)
+      expect(result.get('result')).toBe(' and ')
+    })
+
+    it('handles empty template', () => {
+      const ctx = createContext({ a: 'test' }, { template: '' })
+      const result = stringTemplateExecutor(ctx)
+      expect(result.get('result')).toBe('')
+    })
+
+    it('handles template without placeholders', () => {
+      const ctx = createContext({ a: 'test' }, { template: 'no placeholders here' })
+      const result = stringTemplateExecutor(ctx)
+      expect(result.get('result')).toBe('no placeholders here')
+    })
+  })
+
+  // ============================================================================
+  // String Match (Regex)
+  // ============================================================================
+  describe('stringMatchExecutor', () => {
+    it('matches simple pattern', () => {
+      const ctx = createContext({ input: 'hello123world' }, { pattern: '\\d+', flags: '' })
+      const result = stringMatchExecutor(ctx)
+      expect(result.get('match')).toBe(1)
+      expect(result.get('fullMatch')).toBe('123')
+    })
+
+    it('returns capture groups', () => {
+      const ctx = createContext(
+        { input: 'John Smith' },
+        { pattern: '(\\w+) (\\w+)', flags: '' }
+      )
+      const result = stringMatchExecutor(ctx)
+      expect(result.get('match')).toBe(1)
+      expect(result.get('groups')).toEqual(['John', 'Smith'])
+      expect(result.get('fullMatch')).toBe('John Smith')
+    })
+
+    it('returns no match', () => {
+      const ctx = createContext({ input: 'hello' }, { pattern: '\\d+', flags: '' })
+      const result = stringMatchExecutor(ctx)
+      expect(result.get('match')).toBe(0)
+      expect(result.get('groups')).toEqual([])
+      expect(result.get('fullMatch')).toBe('')
+    })
+
+    it('handles flags', () => {
+      const ctx = createContext({ input: 'HELLO' }, { pattern: 'hello', flags: 'i' })
+      const result = stringMatchExecutor(ctx)
+      expect(result.get('match')).toBe(1)
+    })
+
+    it('handles invalid regex', () => {
+      const ctx = createContext({ input: 'test' }, { pattern: '[invalid', flags: '' })
+      const result = stringMatchExecutor(ctx)
+      expect(result.get('match')).toBe(0)
+      expect(result.get('_error')).toBe('Invalid regex pattern')
+    })
+
+    it('handles empty input', () => {
+      const ctx = createContext({ input: '' }, { pattern: '.*', flags: '' })
+      const result = stringMatchExecutor(ctx)
+      expect(result.get('match')).toBe(1) // .* matches empty string
     })
   })
 })
