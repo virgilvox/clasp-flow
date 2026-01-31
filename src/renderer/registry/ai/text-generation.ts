@@ -21,4 +21,12 @@ export const textGenerationNode: NodeDefinition = {
     { id: 'maxTokens', type: 'number', label: 'Max Tokens', default: 50, props: { min: 10, max: 200 } },
     { id: 'temperature', type: 'slider', label: 'Temperature', default: 0.7, props: { min: 0.1, max: 2, step: 0.1 } },
   ],
+  info: {
+    overview: 'Generates text using a local language model running in the browser. Takes a prompt and produces a completion with configurable length and temperature. Good for creative text, dialogue, or data augmentation tasks.',
+    tips: [
+      'Lower the temperature toward 0.1 for more predictable, deterministic outputs.',
+      'Use String Template to build structured prompts from multiple inputs before feeding them in.',
+    ],
+    pairsWith: ['string-template', 'sentiment-analysis', 'speech-recognition', 'monitor'],
+  },
 }

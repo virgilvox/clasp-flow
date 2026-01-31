@@ -14,4 +14,12 @@ export const arrayJoinNode: NodeDefinition = {
     { id: 'separator', type: 'text', label: 'Separator', default: ',' },
   ],
   tags: ['array', 'join', 'concat', 'string'],
+  info: {
+    overview: 'Joins all elements of an array into a single string using a configurable separator. This is the inverse of splitting a string into an array. Useful for building comma-separated lists, paths, or display text from array data.',
+    tips: [
+      'Use a newline character in the separator field to produce multi-line output.',
+      'Filter nulls before joining to avoid "null" or "undefined" appearing in the result string.',
+    ],
+    pairsWith: ['to-array', 'array-filter-nulls', 'to-string', 'json-stringify'],
+  },
 }

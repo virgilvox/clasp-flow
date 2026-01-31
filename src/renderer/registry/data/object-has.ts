@@ -17,4 +17,12 @@ export const objectHasNode: NodeDefinition = {
     { id: 'defaultPath', type: 'text', label: 'Path', default: '', props: { placeholder: 'data.name' } },
   ],
   tags: ['object', 'has', 'property', 'exists', 'check'],
+  info: {
+    overview: 'Checks whether an object contains a property at a given dot-notation path. Returns true if the path exists, false otherwise. Useful for validating data shape before accessing values.',
+    tips: [
+      'Use this before Object Get to avoid passing undefined into downstream nodes.',
+      'Connect the result to a Gate to conditionally route data based on property existence.',
+    ],
+    pairsWith: ['object-get', 'gate', 'compare', 'json-parse'],
+  },
 }

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, inject, ref, onMounted, onUnmounted } from 'vue'
+import { isElectron } from '@/utils/platform'
 import { useRoute, useRouter } from 'vue-router'
 import { useFlowsStore } from '@/stores/flows'
 import { useRuntimeStore } from '@/stores/runtime'
@@ -140,10 +141,15 @@ function saveProject() {
 function openGitHub() {
   window.open('https://github.com/lumencanvas/latch', '_blank')
 }
+
+// Detect macOS Electron for traffic light padding
+const isMacElectron = computed(() => {
+  return isElectron() && window.electronAPI?.platform === 'darwin'
+})
 </script>
 
 <template>
-  <header class="app-header">
+  <header class="app-header" :class="{ 'mac-electron': isMacElectron }">
     <div class="header-left">
       <button
         class="btn btn-icon btn-ghost header-sidebar-toggle"
@@ -339,6 +345,18 @@ function openGitHub() {
   color: var(--color-neutral-0);
   gap: var(--space-4);
   flex-shrink: 0;
+  -webkit-app-region: drag;
+}
+
+.app-header :deep(button),
+.app-header :deep(a),
+.app-header :deep(input),
+.app-header :deep(select) {
+  -webkit-app-region: no-drag;
+}
+
+.app-header.mac-electron {
+  padding-left: 80px;
 }
 
 .header-left,

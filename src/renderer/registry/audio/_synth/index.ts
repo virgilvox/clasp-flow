@@ -31,7 +31,7 @@ export const synthNode: NodeDefinition = {
     // Envelope (shared)
     { id: 'attack', type: 'number', label: 'Attack', default: 0.01, props: { min: 0.001, max: 2, step: 0.001 } },
     { id: 'decay', type: 'number', label: 'Decay', default: 0.1, props: { min: 0.001, max: 2, step: 0.001 } },
-    { id: 'sustain', type: 'number', label: 'Sustain', default: 0.7, props: { min: 0, max: 1, step: 0.01 } },
+    { id: 'sustain', type: 'number', label: 'Sustain', default: 0.01, props: { min: 0, max: 1, step: 0.01 } },
     { id: 'release', type: 'number', label: 'Release', default: 0.3, props: { min: 0.001, max: 5, step: 0.001 } },
     // Moog-specific
     { id: 'cutoff', type: 'number', label: 'Cutoff', default: 2000, props: { min: 20, max: 20000, step: 1 } },
@@ -44,6 +44,15 @@ export const synthNode: NodeDefinition = {
     { id: 'detune', type: 'number', label: 'Detune', default: 10, props: { min: 0, max: 50, step: 1 } },
     { id: 'voices', type: 'number', label: 'Voices', default: 3, props: { min: 1, max: 8, step: 1 } },
   ],
+  info: {
+    overview: 'An all-in-one synthesizer that responds to MIDI note, velocity, and gate inputs. Includes six instrument presets ranging from simple sine to moog bass, piano, organ, pluck, and pad. Each preset exposes relevant parameters like filter cutoff, brightness, and voice count.',
+    tips: [
+      'Use the gate input for held notes and the trigger input for one-shot percussive hits.',
+      'Switch to the moog preset and lower the cutoff for classic acid bass lines.',
+      'Increase voices and detune on the pad preset for wide, lush chord textures.',
+    ],
+    pairsWith: ['midi-input', 'envelope', 'audio-output', 'reverb', 'gain'],
+  },
 }
 
 // Export the custom node component

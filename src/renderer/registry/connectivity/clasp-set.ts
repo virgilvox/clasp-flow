@@ -24,4 +24,13 @@ export const claspSetNode: NodeDefinition = {
     { id: 'address', type: 'text', label: 'Address', default: '/param', props: { placeholder: '/lights/strip1/brightness' } },
   ],
   tags: ['clasp', 'set', 'parameter', 'send'],
+  info: {
+    overview: 'Writes a value to a CLASP parameter address. The value persists on the server until changed again, making this the right choice for durable state like brightness levels or configuration values. Pair with CLASP Subscribe on other clients to observe the change.',
+    tips: [
+      'Use the trigger input to control exactly when the value is written.',
+      'Combine with an expression node to transform values before sending.',
+      'Use CLASP Emit instead when you need a fire-and-forget event that does not persist.',
+    ],
+    pairsWith: ['clasp-connection', 'clasp-get', 'clasp-subscribe', 'expression'],
+  },
 }

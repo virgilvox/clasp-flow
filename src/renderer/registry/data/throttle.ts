@@ -14,4 +14,12 @@ export const throttleNode: NodeDefinition = {
     { id: 'interval', type: 'number', label: 'Interval (ms)', default: 100 },
   ],
   tags: ['throttle', 'limit', 'rate', 'frequency'],
+  info: {
+    overview: 'Limits how frequently a value passes through by enforcing a minimum time interval between outputs. Unlike debounce, throttle emits at regular intervals even while the input keeps changing. Good for rate-limiting high-frequency data.',
+    tips: [
+      'Set the interval to match your target frame rate when throttling visual updates.',
+      'Use Debounce instead if you only care about the final settled value after input stops.',
+    ],
+    pairsWith: ['debounce', 'counter', 'expression', 'monitor'],
+  },
 }

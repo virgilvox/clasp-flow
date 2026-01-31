@@ -11,6 +11,16 @@
 
 Output a constant numeric value.
 
+### Info
+
+Outputs a single fixed numeric value that does not change over time. It is the simplest way to feed a known number into other nodes. The value control can be exposed for quick adjustment without opening the node.
+
+**Tips:**
+- Use constants for thresholds or multipliers that you want to label clearly in the flow.
+- Prefer a slider or knob instead when you need to tweak a value interactively during playback.
+
+**Works well with:** Multiply, Add, Expression, Map Range
+
 | Property | Value |
 |----------|-------|
 | **ID** | `constant` |
@@ -39,6 +49,17 @@ Simply outputs the control value on every frame.
 
 Slider control that outputs a value between 0 and 1.
 
+### Info
+
+A horizontal slider that outputs a normalized 0-to-1 value. It provides fine-grained control with a step size of 0.01 by default. The value can be exposed on the node surface for quick access.
+
+**Tips:**
+- Feed the slider into a map-range node to rescale the 0-1 output to any target range.
+- Expose the slider value to adjust it without opening the node, which speeds up live tweaking.
+- Connect to a smooth node to filter out abrupt jumps when dragging quickly.
+
+**Works well with:** Map Range, Smooth, Gain, Lerp
+
 | Property | Value |
 |----------|-------|
 | **ID** | `slider` |
@@ -66,6 +87,17 @@ Outputs the slider value on every frame. Commonly used for real-time parameter c
 ## Knob
 
 Rotary knob control with configurable range.
+
+### Info
+
+A rotary knob that outputs a numeric value within a configurable range. The default range is 0 to 1 but can be adjusted with the min and max controls. The knob value can be exposed for direct manipulation on the node surface.
+
+**Tips:**
+- Set custom min/max to output frequency or gain values directly without a downstream map-range.
+- Use the exposable option to adjust the knob without opening the node inspector.
+- Knobs work well for parameters you rotate slowly, while sliders suit fast sweeps.
+
+**Works well with:** Gain, Filter, Oscillator, Map Range
 
 | Property | Value |
 |----------|-------|
@@ -97,6 +129,17 @@ Uses a custom Vue component with rotary knob UI. Value is internally 0-1 but map
 ## Trigger
 
 Manual trigger button with configurable output types.
+
+### Info
+
+A manual button that fires a trigger signal when clicked. It supports multiple output types including boolean, number, string, JSON, and timestamp. This makes it useful for both simple fire-and-forget pulses and sending specific data payloads on demand.
+
+**Tips:**
+- Use timestamp mode to tag events with the exact time they were triggered.
+- Set the type to JSON and provide a payload to send structured data to downstream nodes with one click.
+- Connect multiple trigger nodes to a counter for a manual step-through interface.
+
+**Works well with:** Counter, Toggle, Sample & Hold, Gate
 
 | Property | Value |
 |----------|-------|
@@ -135,6 +178,17 @@ Custom UI with a prominent button. When clicked, emits a trigger signal followed
 
 2D position controller with X/Y outputs.
 
+### Info
+
+A two-dimensional pad that outputs X and Y positions in both raw and normalized forms. The raw outputs use the configured min/max ranges while the normalized outputs always produce 0-to-1 values. This is ideal for controlling two parameters simultaneously with a single gesture.
+
+**Tips:**
+- Map normalized X and Y to different shader uniforms for interactive 2D visual control.
+- Set asymmetric min/max ranges to bias the raw output toward a useful operating region.
+- Connect each axis to a smooth node independently to get different smoothing rates for X and Y.
+
+**Works well with:** Smooth, Shader, Map Range, Oscillator
+
 | Property | Value |
 |----------|-------|
 | **ID** | `xy-pad` |
@@ -172,6 +226,17 @@ Custom UI with a 2D pad that can be dragged. Outputs both raw (mapped to range) 
 
 Resizable text input that outputs a string.
 
+### Info
+
+A resizable text input area that outputs its contents as a string. The optional trigger input lets you control when the text value updates downstream. The height control adjusts the visible editing area without affecting output.
+
+**Tips:**
+- Use the trigger input to send text only on demand rather than on every keystroke.
+- Pair with a template node to insert the text output into a larger formatted string.
+- Set a tall height for multi-line content like JSON payloads or code snippets.
+
+**Works well with:** Template, JSON Parse, Console, Concat
+
 | Property | Value |
 |----------|-------|
 | **ID** | `textbox` |
@@ -203,6 +268,17 @@ Custom UI with a resizable textarea. Can be triggered to emit text or emits on c
 ## Audio Input
 
 Capture audio from microphone or system audio.
+
+### Info
+
+Captures live audio from a microphone or other system input device. It provides a raw audio stream, a level envelope, and a beat trigger. The source selector lets you pick which input device to use when multiple are available.
+
+**Tips:**
+- Connect the beat output to a counter or toggle for rhythm-reactive patches.
+- Use the level output with a map-range node to scale microphone loudness to a useful parameter range.
+- Grant microphone permissions before adding this node to avoid silent failures.
+
+**Works well with:** Audio Analyzer, Beat Detect, Gain, Filter
 
 | Property | Value |
 |----------|-------|
@@ -238,6 +314,17 @@ The device selector is dynamically populated with available audio input devices 
 ## Keyboard
 
 Virtual piano keyboard for MIDI note input.
+
+### Info
+
+Provides an on-screen piano keyboard that outputs MIDI note numbers, velocity, note-on triggers, and a gate signal. You can configure the key range, starting octave, and whether black keys are visible. It works standalone or alongside a physical MIDI controller.
+
+**Tips:**
+- Use the gate output to control an envelope node for shaping audio amplitude.
+- Set velocity sensitivity to false for uniform note-on values when precision is not needed.
+- Connect the note output to an oscillator frequency input through a MIDI-to-frequency expression.
+
+**Works well with:** Oscillator, Envelope, MIDI Input, Gate
 
 | Property | Value |
 |----------|-------|

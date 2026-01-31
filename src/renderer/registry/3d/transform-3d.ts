@@ -35,4 +35,13 @@ export const transform3dNode: NodeDefinition = {
     { id: 'scaleY', type: 'number', label: 'Scale Y', default: 1 },
     { id: 'scaleZ', type: 'number', label: 'Scale Z', default: 1 },
   ],
+  info: {
+    overview: 'Applies position, rotation, and scale to any 3D object without modifying the original geometry. Chain multiple transforms or drive inputs with animated values for motion. The transform output can also be reused by other nodes.',
+    tips: [
+      'Connect an LFO or time node to rotation inputs for continuous spinning animations.',
+      'Stack transforms by feeding one transform output into the next for complex motion.',
+      'Use non-uniform scale (different X, Y, Z) to stretch primitives into new shapes.',
+    ],
+    pairsWith: ['box-3d', 'sphere-3d', 'group-3d', 'gltf-loader', 'scene-3d'],
+  },
 }

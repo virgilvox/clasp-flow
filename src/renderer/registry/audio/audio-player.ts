@@ -27,4 +27,13 @@ export const audioPlayerNode: NodeDefinition = {
     { id: 'volume', type: 'slider', label: 'Volume (dB)', default: 0, props: { min: -40, max: 6, step: 1 } },
     { id: 'playbackRate', type: 'slider', label: 'Speed', default: 1, props: { min: 0.5, max: 2, step: 0.1 } },
   ],
+  info: {
+    overview: 'Loads and plays audio files from a URL. Supports looping, autoplay, volume, and playback speed controls. Outputs the audio signal along with playback state information like duration and loading status.',
+    tips: [
+      'Enable loop for continuous background music or ambient sound beds.',
+      'Use the playing and duration outputs to synchronize other nodes with the audio timeline.',
+      'Check the error output to detect broken URLs or unsupported formats.',
+    ],
+    pairsWith: ['audio-output', 'gain', 'audio-analyzer', 'reverb', 'beat-detect'],
+  },
 }

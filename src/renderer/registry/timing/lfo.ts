@@ -16,4 +16,13 @@ export const lfoNode: NodeDefinition = {
     { id: 'offset', type: 'number', label: 'Offset', default: 0 },
     { id: 'waveform', type: 'select', label: 'Waveform', default: 'sine', props: { options: ['sine', 'square', 'triangle', 'sawtooth'] } },
   ],
+  info: {
+    overview: 'Generates a continuous oscillating value at a given frequency, amplitude, and offset. Supports sine, square, triangle, and sawtooth waveforms. Commonly used to animate parameters like color, position, or shader uniforms over time.',
+    tips: [
+      'Use the offset control to shift the output range so it stays positive when feeding into parameters that do not accept negative values.',
+      'Square waveform at low frequency works well as an on/off toggle signal.',
+      'Connect the output to a map-range node to rescale the LFO to any arbitrary range.',
+    ],
+    pairsWith: ['map-range', 'shader', 'smooth', 'blend', 'color-correction'],
+  },
 }

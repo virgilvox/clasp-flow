@@ -16,4 +16,12 @@ export const arrayFirstLastNode: NodeDefinition = {
   ],
   controls: [],
   tags: ['array', 'first', 'last', 'head', 'tail'],
+  info: {
+    overview: 'Extracts the first and last elements from an array and outputs them individually. Also provides the array length. This is a quick way to peek at the boundaries of a list without indexing manually.',
+    tips: [
+      'Use this after Array Sort to grab the minimum and maximum values in one step.',
+      'Check the length output to guard against empty arrays before using the element values.',
+    ],
+    pairsWith: ['array-sort', 'array-reverse', 'array-length', 'compare'],
+  },
 }

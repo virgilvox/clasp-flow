@@ -18,4 +18,12 @@ export const parseIntNode: NodeDefinition = {
     { id: 'default', type: 'number', label: 'Default', default: 0 },
   ],
   tags: ['parse', 'integer', 'hex', 'binary', 'convert'],
+  info: {
+    overview: 'Parses a string into an integer with configurable radix (base). Supports decimal, hexadecimal, binary, and other bases. Returns the parsed integer and a validity flag.',
+    tips: [
+      'Set the radix to 16 to parse hexadecimal color codes or other hex strings.',
+      'Use the valid output to catch and handle non-numeric input before it reaches downstream nodes.',
+    ],
+    pairsWith: ['parse-float', 'to-number', 'format-number', 'expression'],
+  },
 }

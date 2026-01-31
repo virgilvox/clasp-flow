@@ -15,6 +15,15 @@ export const knobNode: NodeDefinition = {
     { id: 'min', type: 'number', label: 'Min', default: 0 },
     { id: 'max', type: 'number', label: 'Max', default: 1 },
   ],
+  info: {
+    overview: 'A rotary knob that outputs a numeric value within a configurable range. The default range is 0 to 1 but can be adjusted with the min and max controls. The knob value can be exposed for direct manipulation on the node surface.',
+    tips: [
+      'Set custom min/max to output frequency or gain values directly without a downstream map-range.',
+      'Use the exposable option to adjust the knob without opening the node inspector.',
+      'Knobs work well for parameters you rotate slowly, while sliders suit fast sweeps.',
+    ],
+    pairsWith: ['gain', 'filter', 'oscillator', 'map-range'],
+  },
 }
 
 // Export the custom node component

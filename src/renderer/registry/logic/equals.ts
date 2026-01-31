@@ -17,4 +17,12 @@ export const equalsNode: NodeDefinition = {
     { id: 'strict', type: 'toggle', label: 'Strict (===)', default: true },
   ],
   tags: ['compare', 'equal', 'match', 'same'],
+  info: {
+    overview: 'Checks whether two values of any type are equal and outputs a boolean. Supports both strict (===) and loose (==) comparison modes. Unlike Compare, this works with strings, booleans, and other non-numeric types.',
+    tips: [
+      'Use strict mode to avoid unexpected type coercion.',
+      'Pair with switch to branch on exact value matches.',
+    ],
+    pairsWith: ['compare', 'switch', 'gate', 'not', 'pass-if'],
+  },
 }

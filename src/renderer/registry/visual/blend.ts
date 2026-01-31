@@ -18,4 +18,13 @@ export const blendNode: NodeDefinition = {
     { id: 'mix', type: 'slider', label: 'Mix', default: 0.5, props: { min: 0, max: 1, step: 0.01 } },
     { id: 'mode', type: 'select', label: 'Mode', default: 'normal', props: { options: ['normal', 'add', 'multiply', 'screen', 'overlay'] } },
   ],
+  info: {
+    overview: 'Combines two texture inputs into a single output using a selectable blend mode and a mix slider. Supports normal, add, multiply, screen, and overlay modes. This is the standard way to layer visuals together.',
+    tips: [
+      'Animate the mix value with an LFO to crossfade between two sources rhythmically.',
+      'Add mode is useful for combining bright elements on dark backgrounds without washing out the image.',
+      'Chain multiple blend nodes to composite more than two layers together.',
+    ],
+    pairsWith: ['shader', 'webcam', 'color-correction', 'lfo', 'image-loader'],
+  },
 }

@@ -17,4 +17,12 @@ export const jsonStringifyNode: NodeDefinition = {
   controls: [
     { id: 'pretty', type: 'toggle', label: 'Pretty Print', default: false },
   ],
+  info: {
+    overview: 'Converts a JavaScript object into a JSON string. Supports pretty-printed output with indentation for readability. Useful for preparing data to send over HTTP, WebSocket, or MQTT connections.',
+    tips: [
+      'Enable pretty print when sending output to a Monitor or Console for easier debugging.',
+      'Pair with HTTP Request to serialize request bodies as JSON.',
+    ],
+    pairsWith: ['json-parse', 'http-request', 'websocket', 'mqtt'],
+  },
 }

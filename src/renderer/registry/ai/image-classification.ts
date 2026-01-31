@@ -22,4 +22,12 @@ export const imageClassificationNode: NodeDefinition = {
     { id: 'topK', type: 'number', label: 'Top K', default: 5, props: { min: 1, max: 10 } },
     { id: 'interval', type: 'number', label: 'Frame Interval', default: 30, props: { min: 1, max: 120 } },
   ],
+  info: {
+    overview: 'Classifies images using a Vision Transformer model and returns ranked labels with confidence scores. Outputs the top K predictions along with the highest-scoring label and its score. Useful for sorting, filtering, or reacting to visual content.',
+    tips: [
+      'Lower the Top K value to reduce noise when you only care about the most likely class.',
+      'Connect the topLabel output to a Gate node to trigger actions only when a specific class is detected.',
+    ],
+    pairsWith: ['webcam', 'object-detection', 'image-captioning', 'gate'],
+  },
 }

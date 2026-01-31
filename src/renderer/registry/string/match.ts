@@ -19,4 +19,12 @@ export const stringMatchNode: NodeDefinition = {
     { id: 'flags', type: 'text', label: 'Flags', default: '' },
   ],
   tags: ['regex', 'pattern', 'match', 'extract'],
+  info: {
+    overview: 'Tests a string against a regular expression pattern and outputs whether it matched, the full match text, and any captured groups. Supports standard JavaScript regex flags like g, i, and m.',
+    tips: [
+      'Use capture groups in your pattern to extract specific parts of the input via the groups output.',
+      'Add the "i" flag for case-insensitive matching.',
+    ],
+    pairsWith: ['string-replace', 'string-contains', 'string-split', 'gate'],
+  },
 }

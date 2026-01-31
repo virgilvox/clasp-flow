@@ -956,22 +956,13 @@ export const useFlowsStore = defineStore('flows', {
     },
 
     /**
-     * Load sample flow from public folder for first-time users
-     * Only loads if this is the first visit (checks localStorage)
+     * Load sample flow from public folder
      */
-    async loadSampleFlowIfFirstVisit(): Promise<boolean> {
-      const FIRST_VISIT_KEY = 'latch_has_visited'
-
-      // Check if user has visited before
-      if (localStorage.getItem(FIRST_VISIT_KEY)) {
-        return false
-      }
-
+    async loadSampleFlow(): Promise<boolean> {
       try {
-        // Fetch the sample flow from public folder
-        const response = await fetch('/sample-flow.json')
+        const response = await fetch('./sample-flow.json')
         if (!response.ok) {
-          console.warn('[Flows] Sample flow not found, creating empty flow')
+          console.warn('[Flows] Sample flow not found')
           return false
         }
 
@@ -979,15 +970,10 @@ export const useFlowsStore = defineStore('flows', {
         const result = this.importFlows(text, { replace: true })
 
         if (result.success) {
-          console.log('[Flows] Loaded sample flow for first-time user')
-          // Mark as visited so we don't load it again
-          localStorage.setItem(FIRST_VISIT_KEY, 'true')
-
-          // Mark all flows as dirty so they get auto-saved to IndexedDB
+          console.log('[Flows] Loaded sample flow')
           for (const flow of this.flows) {
             flow.dirty = true
           }
-
           return true
         }
 
@@ -996,6 +982,25 @@ export const useFlowsStore = defineStore('flows', {
         console.warn('[Flows] Failed to load sample flow:', error)
         return false
       }
+    },
+
+    /**
+     * Load sample flow from public folder for first-time users
+     * Only loads if this is the first visit (checks localStorage)
+     */
+    async loadSampleFlowIfFirstVisit(): Promise<boolean> {
+      const FIRST_VISIT_KEY = 'latch_has_visited'
+
+      if (localStorage.getItem(FIRST_VISIT_KEY)) {
+        return false
+      }
+
+      const loaded = await this.loadSampleFlow()
+      if (loaded) {
+        localStorage.setItem(FIRST_VISIT_KEY, 'true')
+        console.log('[Flows] Loaded sample flow for first-time user')
+      }
+      return loaded
     },
 
     /**

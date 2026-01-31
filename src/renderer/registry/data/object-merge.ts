@@ -15,4 +15,12 @@ export const objectMergeNode: NodeDefinition = {
   outputs: [{ id: 'result', type: 'data', label: 'Result' }],
   controls: [],
   tags: ['object', 'merge', 'combine', 'spread'],
+  info: {
+    overview: 'Performs a shallow merge of two objects, with properties from object B overriding those in object A when keys collide. Returns a new merged object. This is equivalent to a JavaScript spread operation.',
+    tips: [
+      'Use Object Create to build partial objects, then merge them together.',
+      'Chain multiple Object Merge nodes to combine more than two objects.',
+    ],
+    pairsWith: ['object-create', 'object-set', 'object-keys', 'json-stringify'],
+  },
 }

@@ -11,6 +11,17 @@
 
 Generate audio waveforms at specified frequencies.
 
+### Info
+
+Generates a continuous audio waveform at a specified frequency. Supports sine, square, triangle, and sawtooth shapes. This is a fundamental building block for synthesis, test tones, and modulation sources.
+
+**Tips:**
+- Use sine for pure tones and sub-bass; use sawtooth for harmonically rich leads and basses.
+- Connect the frequency input from a MIDI node or envelope to play melodic pitches.
+- Detune two oscillators slightly against each other for a thick, chorused sound.
+
+**Works well with:** Gain, Filter, Envelope (ADSR), Audio Output, Audio Analyzer
+
 | Property | Value |
 |----------|-------|
 | **ID** | `oscillator` |
@@ -46,6 +57,17 @@ Creates a Web Audio `OscillatorNode` connected to a `GainNode` for volume contro
 
 Output audio to speakers/headphones.
 
+### Info
+
+Routes audio to the system speakers or headphones. This is the final destination node in any audio chain. Volume is set in decibels and a mute toggle silences output without disconnecting the graph.
+
+**Tips:**
+- Start with the volume at -12 dB or lower to avoid unexpected loud output.
+- Use the mute toggle for quick A/B testing without tearing down connections.
+- Only one audio output node is needed per patch; connect a gain node before it for master volume control.
+
+**Works well with:** Gain, Reverb, Filter, Audio Player
+
 | Property | Value |
 |----------|-------|
 | **ID** | `audio-output` |
@@ -74,6 +96,17 @@ Connects input audio node to the Web Audio `AudioContext.destination` through a 
 ## Audio Analyzer
 
 Analyze audio levels and frequency bands.
+
+### Info
+
+Splits an incoming audio signal into level, bass, mid, and high frequency bands as numeric outputs. Use it to drive visuals, animations, or any parameter that should react to sound.
+
+**Tips:**
+- Increase smoothing (closer to 1) for slower, more stable readings; decrease it for snappier response.
+- Map the bass output to scale or brightness for kick-driven visual effects.
+- Place this after a gain node to control the analysis input level independently of the output volume.
+
+**Works well with:** Audio Player, Gain, Oscillator, Beat Detect
 
 | Property | Value |
 |----------|-------|
@@ -112,6 +145,17 @@ Uses Web Audio `AnalyserNode.getByteFrequencyData()`:
 
 Adjust audio volume/amplitude.
 
+### Info
+
+Multiplies the audio signal amplitude by a gain factor. A value of 1 passes audio unchanged, values below 1 attenuate, and values above 1 amplify. This is the primary volume control node in any audio chain.
+
+**Tips:**
+- Connect an envelope output to the gain input for amplitude modulation.
+- Place a gain node right before audio output as a master volume control.
+- Use a gain of 0 as a quick mute, or connect an LFO for tremolo effects.
+
+**Works well with:** Audio Output, Oscillator, Filter, Envelope (ADSR), Audio Player
+
 | Property | Value |
 |----------|-------|
 | **ID** | `gain` |
@@ -142,6 +186,17 @@ Creates a Web Audio `GainNode`. Gain of 0 = silence, 1 = unity, 2 = double ampli
 ## Filter
 
 Filter audio frequencies using biquad filters.
+
+### Info
+
+A standard biquad filter that removes or emphasizes frequencies in the audio signal. Supports lowpass, highpass, bandpass, and notch modes. The Q parameter controls the sharpness of the filter curve around the cutoff frequency.
+
+**Tips:**
+- Automate the frequency input with an envelope or LFO for classic filter sweep effects.
+- Use bandpass mode with a high Q to isolate a narrow frequency band.
+- Chain two filters in series for a steeper rolloff (24 dB/octave instead of 12).
+
+**Works well with:** Oscillator, Gain, Envelope (ADSR), Audio Output, SVF Filter
 
 | Property | Value |
 |----------|-------|
@@ -175,6 +230,17 @@ Creates a Web Audio `BiquadFilterNode` with the specified type and parameters.
 ## SVF Filter
 
 State Variable Filter with multiple simultaneous outputs.
+
+### Info
+
+A state variable filter that provides simultaneous lowpass, highpass, bandpass, and notch outputs from a single input. This lets you tap multiple filter shapes at once without duplicating nodes. Includes a drive control for mild saturation.
+
+**Tips:**
+- Use the bandpass output for vocal or instrument isolation in a specific frequency range.
+- Increase drive for warm saturation before the filter stage.
+- Modulate the cutoff input with an LFO or envelope for evolving timbral movement.
+
+**Works well with:** Oscillator, Gain, Envelope (ADSR), Filter, Audio Output
 
 | Property | Value |
 |----------|-------|
@@ -213,6 +279,17 @@ Implements a state variable filter topology using Web Audio API, providing all f
 
 Add delay/echo effect to audio.
 
+### Info
+
+Adds a delay or echo effect to the audio signal. The feedback control determines how many times the delayed signal repeats, and the wet control blends between dry and delayed audio.
+
+**Tips:**
+- Set feedback below 0.5 for a clean slapback echo, or above 0.7 for long, building repeats.
+- Automate the delay time input for tape-style pitch warble effects.
+- Use a short delay (under 30ms) with no feedback to create a simple doubling or comb filter effect.
+
+**Works well with:** Reverb, Gain, Filter, Audio Output
+
 | Property | Value |
 |----------|-------|
 | **ID** | `audio-delay` |
@@ -246,6 +323,17 @@ Creates a feedback delay using `DelayNode` and `GainNode` for feedback routing. 
 
 Add reverb effect using convolution.
 
+### Info
+
+Simulates the reflections of a physical space by applying a reverb tail to the audio signal. The decay control sets how long the reverb rings out, and the wet control blends between dry and reverberant audio.
+
+**Tips:**
+- Keep wet below 0.3 for subtle room ambience, or push above 0.7 for atmospheric wash effects.
+- Increase pre-delay slightly to preserve transient clarity before the reverb tail begins.
+- Place reverb after delay in the signal chain for a cleaner echo-into-space effect.
+
+**Works well with:** Delay, Gain, Audio Output, Filter
+
 | Property | Value |
 |----------|-------|
 | **ID** | `reverb` |
@@ -277,6 +365,17 @@ Generates impulse response programmatically or uses `ConvolverNode` with a synth
 ## Beat Detect
 
 Detect beats and estimate BPM from audio.
+
+### Info
+
+Analyzes an audio signal to detect rhythmic beats and estimate the tempo in BPM. Outputs a trigger on each detected beat, the current BPM estimate, and the instantaneous energy level.
+
+**Tips:**
+- Lower sensitivity to reduce false triggers on complex, busy audio material.
+- Increase min interval to reject double-triggers on fast transients.
+- Connect the beat trigger to an envelope or visual parameter for beat-synced animations.
+
+**Works well with:** Audio Player, Audio Analyzer, Envelope (ADSR), Gain
 
 | Property | Value |
 |----------|-------|
@@ -316,6 +415,17 @@ Uses energy-based beat detection:
 
 Detect pitch from audio signal.
 
+### Info
+
+Analyzes an audio signal to estimate its fundamental pitch. Outputs the detected frequency in Hz, the musical note name, octave number, MIDI note value, and a confidence score indicating detection reliability.
+
+**Tips:**
+- Narrow the min/max frequency range to improve accuracy for a known instrument or voice.
+- Use the confidence output to gate downstream processing so only strong detections pass through.
+- Feed the MIDI output into a synth node to create a pitch-following harmonizer.
+
+**Works well with:** Audio Player, Audio Analyzer, Synth, Oscillator
+
 | Property | Value |
 |----------|-------|
 | **ID** | `pitch-detect` |
@@ -350,6 +460,17 @@ Uses autocorrelation-based pitch detection (YIN algorithm or similar) on the aud
 ## Envelope (ADSR)
 
 ADSR amplitude envelope generator.
+
+### Info
+
+Generates a standard ADSR (Attack, Decay, Sustain, Release) amplitude envelope. When triggered, it ramps up through attack and decay to the sustain level, then ramps down on release. The envelope output can modulate volume, filter cutoff, or any other parameter.
+
+**Tips:**
+- Use a very short attack (under 5ms) for percussive sounds and longer values (50ms+) for pads.
+- Connect the value output to non-audio parameters like visual brightness for synced animations.
+- Pair with an oscillator and gain to build a basic subtractive synth voice from scratch.
+
+**Works well with:** Oscillator, Gain, Filter, Synth, Beat Detect
 
 | Property | Value |
 |----------|-------|
@@ -386,6 +507,17 @@ Uses Web Audio `GainNode` with scheduled parameter automation for precise envelo
 
 Visual ADSR envelope with draggable control points.
 
+### Info
+
+A visual ADSR envelope editor with draggable control points for shaping attack, decay, sustain, and release curves. Functions identically to the standard Envelope node but adds an interactive graphical display for intuitive editing.
+
+**Tips:**
+- Drag the control points directly on the curve for faster, more intuitive shaping than typing numbers.
+- Use this node in place of the plain Envelope when you want visual feedback during design.
+- Connect the value output to visual parameters for real-time envelope monitoring.
+
+**Works well with:** Oscillator, Gain, Filter, Synth, Beat Detect
+
 | Property | Value |
 |----------|-------|
 | **ID** | `envelope-visual` |
@@ -400,6 +532,17 @@ Same functionality as Envelope but with visual editing UI showing the envelope c
 ## Parametric EQ
 
 3-band parametric equalizer with visual frequency response.
+
+### Info
+
+A 3-band parametric equalizer with a visual frequency response display and draggable band controls. Each band has independent frequency, gain, and Q settings for precise tonal shaping across the low, mid, and high ranges.
+
+**Tips:**
+- Drag the band handles in the visual display for quick, intuitive adjustments.
+- Cut narrow bands (high Q, negative gain) to remove problem frequencies rather than boosting others.
+- Use gentle broad boosts (low Q, small positive gain) for overall tonal warmth or brightness.
+
+**Works well with:** Audio Player, Gain, Audio Output, Reverb, Filter
 
 | Property | Value |
 |----------|-------|
@@ -434,6 +577,17 @@ Custom UI with visual frequency response curve and draggable band markers. Uses 
 
 Wavetable oscillator with drawable waveform.
 
+### Info
+
+A wavetable oscillator that lets you select from preset waveforms or draw a custom waveshape. The drawn waveform is stored as a wavetable and played back at the specified frequency, giving you full control over the harmonic content.
+
+**Tips:**
+- Select the custom preset and draw directly on the waveform display to create unique timbres.
+- Start from a preset waveform and modify it slightly for variations on familiar sounds.
+- Modulate the frequency input with an LFO for vibrato or with a MIDI source for melodic play.
+
+**Works well with:** Gain, Filter, Envelope (ADSR), Audio Output, SVF Filter
+
 | Property | Value |
 |----------|-------|
 | **ID** | `wavetable` |
@@ -466,6 +620,17 @@ Custom UI allows drawing custom waveforms. Uses `PeriodicWave` API to create cus
 ## Audio Player
 
 Play audio files from URL.
+
+### Info
+
+Loads and plays audio files from a URL. Supports looping, autoplay, volume, and playback speed controls. Outputs the audio signal along with playback state information like duration and loading status.
+
+**Tips:**
+- Enable loop for continuous background music or ambient sound beds.
+- Use the playing and duration outputs to synchronize other nodes with the audio timeline.
+- Check the error output to detect broken URLs or unsupported formats.
+
+**Works well with:** Audio Output, Gain, Audio Analyzer, Reverb, Beat Detect
 
 | Property | Value |
 |----------|-------|
@@ -506,6 +671,17 @@ Uses `fetch()` to load audio, `AudioContext.decodeAudioData()` to decode, and `A
 ## Synth
 
 Polyphonic synthesizer with multiple instrument presets.
+
+### Info
+
+An all-in-one synthesizer that responds to MIDI note, velocity, and gate inputs. Includes six instrument presets ranging from simple sine to moog bass, piano, organ, pluck, and pad. Each preset exposes relevant parameters like filter cutoff, brightness, and voice count.
+
+**Tips:**
+- Use the gate input for held notes and the trigger input for one-shot percussive hits.
+- Switch to the moog preset and lower the cutoff for classic acid bass lines.
+- Increase voices and detune on the pad preset for wide, lush chord textures.
+
+**Works well with:** MIDI Input, Envelope (ADSR), Audio Output, Reverb, Gain
 
 | Property | Value |
 |----------|-------|

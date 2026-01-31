@@ -24,4 +24,13 @@ export const transform2dNode: NodeDefinition = {
     { id: 'translateX', type: 'slider', label: 'Translate X', default: 0, props: { min: -1, max: 1, step: 0.01 } },
     { id: 'translateY', type: 'slider', label: 'Translate Y', default: 0, props: { min: -1, max: 1, step: 0.01 } },
   ],
+  info: {
+    overview: 'Applies scale, rotation, and translation transforms to a texture. All parameters accept external inputs so they can be animated. This is the standard way to reposition or resize a texture layer before blending or display.',
+    tips: [
+      'Drive the rotation input with an LFO for a continuously spinning texture effect.',
+      'Scale values below 1.0 shrink the texture, revealing the border; combine with blend to composite over a background.',
+      'Translation values are normalized, so 0.5 moves the texture halfway across the frame.',
+    ],
+    pairsWith: ['blend', 'shader', 'lfo', 'webcam', 'displacement'],
+  },
 }

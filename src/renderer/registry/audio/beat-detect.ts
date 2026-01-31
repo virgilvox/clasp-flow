@@ -21,4 +21,13 @@ export const beatDetectNode: NodeDefinition = {
     { id: 'minInterval', type: 'number', label: 'Min Interval (ms)', default: 200, props: { min: 50, max: 500 } },
     { id: 'decayRate', type: 'slider', label: 'Decay Rate', default: 0.95, props: { min: 0.8, max: 0.99, step: 0.01 } },
   ],
+  info: {
+    overview: 'Analyzes an audio signal to detect rhythmic beats and estimate the tempo in BPM. Outputs a trigger on each detected beat, the current BPM estimate, and the instantaneous energy level.',
+    tips: [
+      'Lower sensitivity to reduce false triggers on complex, busy audio material.',
+      'Increase min interval to reject double-triggers on fast transients.',
+      'Connect the beat trigger to an envelope or visual parameter for beat-synced animations.',
+    ],
+    pairsWith: ['audio-player', 'audio-analyzer', 'envelope', 'gain'],
+  },
 }

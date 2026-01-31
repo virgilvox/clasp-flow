@@ -34,4 +34,13 @@ export const pitchDetectNode: NodeDefinition = {
       props: { min: 100, max: 10000, step: 1 },
     },
   ],
+  info: {
+    overview: 'Analyzes an audio signal to estimate its fundamental pitch. Outputs the detected frequency in Hz, the musical note name, octave number, MIDI note value, and a confidence score indicating detection reliability.',
+    tips: [
+      'Narrow the min/max frequency range to improve accuracy for a known instrument or voice.',
+      'Use the confidence output to gate downstream processing so only strong detections pass through.',
+      'Feed the MIDI output into a synth node to create a pitch-following harmonizer.',
+    ],
+    pairsWith: ['audio-player', 'audio-analyzer', 'synth', 'oscillator'],
+  },
 }

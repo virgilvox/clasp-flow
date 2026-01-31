@@ -27,4 +27,12 @@ export const textTransformationNode: NodeDefinition = {
     }},
     { id: 'maxTokens', type: 'number', label: 'Max Tokens', default: 100, props: { min: 10, max: 500 } },
   ],
+  info: {
+    overview: 'Transforms text using T5/Flan models for summarization, translation, or paraphrasing. Select a task and the model rewrites the input accordingly. Runs locally in the browser with no external API calls.',
+    tips: [
+      'Increase max tokens for longer summaries or translations.',
+      'Chain with String Template to add task-specific prefixes before the input text.',
+    ],
+    pairsWith: ['string-template', 'text-generation', 'sentiment-analysis', 'speech-recognition'],
+  },
 }

@@ -12,22 +12,22 @@ LATCH uses a node-based system where each node represents a discrete operation o
 |----------|-------|-------------|------|
 | [Inputs](#inputs) | 8 | Input controls and data sources | [inputs.md](./inputs.md) |
 | [Debug](#debug) | 5 | Visualization and debugging tools | [debug.md](./debug.md) |
-| [Math](#math) | 13 | Mathematical operations | [math.md](./math.md) |
-| [Logic](#logic) | 7 | Boolean and conditional logic | [logic.md](./logic.md) |
+| [Math](#math) | 19 | Mathematical operations | [math.md](./math.md) |
+| [Logic](#logic) | 18 | Boolean and conditional logic | [logic.md](./logic.md) |
 | [Timing](#timing) | 8 | Time-based nodes and clocks | [timing.md](./timing.md) |
 | [Audio](#audio) | 16 | Audio synthesis and processing | [audio.md](./audio.md) |
 | [Visual](#visual) | 12 | Image/texture processing and shaders | [visual.md](./visual.md) |
 | [3D](#3d) | 16 | 3D geometry, materials, and rendering | [3d.md](./3d.md) |
-| [Connectivity](#connectivity) | 18 | Network and device communication | [connectivity.md](./connectivity.md) |
+| [Connectivity](#connectivity) | 21 | Network and device communication | [connectivity.md](./connectivity.md) |
 | [Code](#code) | 7 | Custom code execution | [code.md](./code.md) |
 | [AI](#ai) | 15 | Local machine learning models | [ai.md](./ai.md) |
-| [Data](#data) | 3 | Data manipulation and conversion | [data.md](./data.md) |
-| [String](#string) | 5 | String manipulation | [string.md](./string.md) |
+| [Data](#data) | 34 | Data manipulation and conversion | [data.md](./data.md) |
+| [String](#string) | 12 | String manipulation | [string.md](./string.md) |
 | [Messaging](#messaging) | 2 | Internal message passing | [messaging.md](./messaging.md) |
 | [Subflows](#subflows) | 2 | Flow composition | [subflows.md](./subflows.md) |
 | [Outputs](#outputs) | 1 | Final output destinations | [outputs.md](./outputs.md) |
 
-**Total: 138 nodes**
+**Total: 196 nodes**
 
 ---
 
@@ -74,21 +74,38 @@ Mathematical operations on numbers.
 | Map Range | Remap value between ranges |
 | Smooth | Smooth value changes over time |
 | Trig | Trigonometric functions |
+| Lerp | Linear interpolation between two values |
 | Power/Root | Power, root, and log functions |
+| Quantize | Round value to nearest step |
+| Remap | Remap value with clamping and easing |
+| Smoothstep | Hermite interpolation between 0 and 1 |
+| Step | Returns 0 if value < edge, otherwise 1 |
 | Vector Math | 3D vector operations |
+| Wrap | Wrap value to stay within range |
 
 ### Logic
 Boolean and conditional operations.
 
 | Node | Description |
 |------|-------------|
-| Compare | Compare two values |
 | And | Logical AND |
-| Or | Logical OR |
-| Not | Logical NOT |
+| Changed | Only output when value changes from previous |
+| Coalesce | Return first non-null/undefined value |
+| Compare | Compare two values |
+| Default | Return input value, or default if null/undefined/empty |
+| Equals | Type-agnostic equality comparison |
 | Gate | Pass or block values |
-| Switch | Select between two values |
+| In Range | Check if number is within a range |
+| Is Empty | Check if value is null, undefined, empty string, or empty array |
+| Is Null | Check if value is null or undefined |
+| Latch | Flip-flop style latch with set and reset inputs |
+| Not | Logical NOT |
+| Or | Logical OR |
+| Pass If | Pass value through only if condition is met |
+| Sample & Hold | Sample value when triggered, hold until next trigger |
 | Select | Select from multiple inputs by index |
+| Switch | Select between two values |
+| Type Of | Get the type of a value |
 
 ### Timing
 Time-based nodes and oscillators.
@@ -183,12 +200,15 @@ Network and device communication.
 | BLE Device | Connect to BLE device, enumerate services |
 | BLE Characteristic | Read/write/subscribe to BLE characteristics |
 | CLASP Connection | Manage CLASP connections |
+| CLASP Gesture | Receive gesture signals (touch/pen/motion) from CLASP |
 | CLASP Subscribe | Subscribe to CLASP patterns |
 | CLASP Set | Set CLASP parameter values |
 | CLASP Emit | Emit CLASP events |
 | CLASP Get | Get CLASP parameter values |
 | CLASP Stream | Stream high-rate data |
 | CLASP Bundle | Send atomic bundles |
+| CLASP Video Receive | Receive video stream from a CLASP relay room |
+| CLASP Video Send | Send video stream to a CLASP relay room |
 
 ### Code
 Custom code execution and utilities.
@@ -229,20 +249,58 @@ Data manipulation and conversion.
 
 | Node | Description |
 |------|-------------|
+| Array Contains | Check if array contains a value |
+| Array First/Last | Get first and last elements |
+| Array Get | Get element at index |
+| Array Join | Join array elements into string |
+| Array Length | Get length of array |
+| Array Push | Add element(s) to array |
+| Array Range | Generate an array of sequential numbers |
+| Array Reverse | Reverse array order |
+| Array Slice | Get subset of array |
+| Array Sort | Sort array values |
+| Array Unique | Remove duplicate values |
+| Counter | Count triggers with optional min/max bounds |
+| Debounce | Only output value after it stops changing for a period |
+| Filter Nulls | Remove null/undefined/empty values from array |
+| Format Number | Format number with locale and options |
 | JSON Parse | Parse JSON string to object |
 | JSON Stringify | Convert object to JSON string |
-| Texture to Data | Convert texture for AI processing |
+| Object Create | Create object from key/value pairs |
+| Object Entries | Get array of [key, value] pairs |
+| Object Get | Get property from object by path |
+| Object Has | Check if object has property |
+| Object Keys | Get array of object keys |
+| Object Merge | Merge two objects (shallow merge) |
+| Object Set | Set property on object (returns new object) |
+| Object Values | Get array of object values |
+| Parse Float | Parse string to floating point number |
+| Parse Int | Parse string to integer with radix support |
+| Router | Route value to one of multiple outputs based on index |
+| Texture to Data | Convert texture to image data for AI processing |
+| Throttle | Limit how often value is output |
+| To Array | Wrap value in array, or split string to array |
+| To Boolean | Convert value to boolean (truthy/falsy) |
+| To Number | Convert value to number |
+| To String | Convert any value to string |
 
 ### String
 String manipulation operations.
 
 | Node | Description |
 |------|-------------|
-| String Concat | Concatenate strings |
-| String Split | Split string into parts |
-| String Replace | Replace text in string |
-| String Slice | Extract portion of string |
 | String Case | Convert string case |
+| String Concat | Concatenate multiple strings |
+| String Contains | Check if string contains a substring |
+| String Length | Get length of a string |
+| String Pad | Pad string to target length |
+| String Replace | Replace text in a string |
+| String Slice | Extract a portion of a string |
+| String Split | Split string into parts |
+| String Template | String interpolation with placeholders |
+| String Trim | Remove whitespace from string |
+| Starts/Ends With | Check if string starts or ends with substring |
+| Regex Match | Match string against regex pattern |
 
 ### Messaging
 Internal message passing between nodes.

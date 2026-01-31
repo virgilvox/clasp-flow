@@ -16,4 +16,12 @@ export const mapRangeNode: NodeDefinition = {
     { id: 'outMin', type: 'number', label: 'Out Min', default: 0 },
     { id: 'outMax', type: 'number', label: 'Out Max', default: 100 },
   ],
+  info: {
+    overview: 'Rescales a value from one numeric range to another. For example, an input in the 0-1 range can be mapped to 0-100. The mapping is linear and does not clamp, so values outside the input range will extrapolate.',
+    tips: [
+      'Follow with a clamp node if you need to prevent extrapolation beyond the output range.',
+      'Use remap instead if you need built-in clamping and easing options.',
+    ],
+    pairsWith: ['clamp', 'remap', 'lerp', 'smooth', 'in-range'],
+  },
 }

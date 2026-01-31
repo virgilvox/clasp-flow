@@ -17,4 +17,12 @@ export const latchNode: NodeDefinition = {
     { id: 'initialState', type: 'toggle', label: 'Initial', default: false },
   ],
   tags: ['flip-flop', 'toggle', 'state', 'memory'],
+  info: {
+    overview: 'A flip-flop that holds a boolean state. The Set trigger turns the output to true, and the Reset trigger turns it back to false. The state persists between evaluations, making it useful for toggle behavior and stateful control.',
+    tips: [
+      'Use the Initial toggle to choose whether the latch starts in the on or off state.',
+      'Connect the output to a gate to create a controllable on/off valve for data flow.',
+    ],
+    pairsWith: ['gate', 'trigger', 'sample-hold', 'switch'],
+  },
 }

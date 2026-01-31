@@ -27,4 +27,13 @@ export const oscNode: NodeDefinition = {
     { id: 'address', type: 'text', label: 'Address', default: '/clasp', props: { placeholder: '/path/to/param' } },
     { id: 'connect', type: 'toggle', label: 'Connect', default: true },
   ],
+  info: {
+    overview: 'Sends and receives Open Sound Control messages over a WebSocket bridge. You specify a host, port, and OSC address pattern. Incoming messages are split into their address and argument components for easy downstream processing.',
+    tips: [
+      'Make sure an OSC-to-WebSocket bridge is running on the target host and port.',
+      'Use address patterns like /mixer/fader1 to target specific parameters.',
+      'Connect the Value output to a gain or expression node for real-time parameter control.',
+    ],
+    pairsWith: ['midi-input', 'expression', 'gain', 'monitor', 'console'],
+  },
 }

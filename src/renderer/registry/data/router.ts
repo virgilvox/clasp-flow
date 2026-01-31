@@ -20,4 +20,12 @@ export const routerNode: NodeDefinition = {
   ],
   controls: [],
   tags: ['router', 'demux', 'switch', 'route', 'split'],
+  info: {
+    overview: 'Routes an input value to one of four outputs based on a numeric route index. Only the selected output receives the value; all others remain inactive. Useful for demultiplexing data streams or directing flow based on state.',
+    tips: [
+      'Connect a Counter node to the route input to cycle through outputs sequentially.',
+      'Use an Expression node to compute the route index dynamically from input data.',
+    ],
+    pairsWith: ['counter', 'select', 'switch', 'gate'],
+  },
 }

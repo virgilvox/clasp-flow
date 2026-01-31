@@ -21,4 +21,13 @@ export const expressionNode: NodeDefinition = {
   controls: [
     { id: 'expression', type: 'text', label: 'Expression', default: 'a + b', props: { placeholder: 'e.g., sin(t) * a + b' } },
   ],
+  info: {
+    overview: 'Evaluates a single-line math expression using up to four numeric inputs. Standard JavaScript Math functions like sin, cos, abs, and floor are available without the Math prefix. The built-in variable t provides elapsed time in seconds.',
+    tips: [
+      'Use t for time-based expressions without needing an external oscillator.',
+      'Chain multiple expression nodes for staged calculations rather than writing one complicated expression.',
+      'The error output tells you about syntax problems at runtime, so connect it to a console during setup.',
+    ],
+    pairsWith: ['constant', 'slider', 'oscillator', 'map-range'],
+  },
 }

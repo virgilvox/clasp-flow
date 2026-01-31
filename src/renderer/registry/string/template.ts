@@ -25,4 +25,12 @@ export const stringTemplateNode: NodeDefinition = {
     },
   ],
   tags: ['template', 'interpolation', 'format', 'placeholder'],
+  info: {
+    overview: 'Builds a string by inserting input values into a template with {a}, {b}, {c}, and {d} placeholders. Accepts any input type and converts values to strings automatically. Good for composing messages, prompts, or formatted output.',
+    tips: [
+      'Use this to build prompts for the Text Generate node by inserting dynamic values into a base template.',
+      'Placeholders that have no connected input are replaced with an empty string.',
+    ],
+    pairsWith: ['text-generation', 'string-concat', 'string-case', 'string-replace'],
+  },
 }

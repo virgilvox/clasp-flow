@@ -13,4 +13,12 @@ export const constantNode: NodeDefinition = {
   controls: [
     { id: 'value', type: 'number', label: 'Value', default: 0, exposable: true },
   ],
+  info: {
+    overview: 'Outputs a single fixed numeric value that does not change over time. It is the simplest way to feed a known number into other nodes. The value control can be exposed for quick adjustment without opening the node.',
+    tips: [
+      'Use constants for thresholds or multipliers that you want to label clearly in the flow.',
+      'Prefer a slider or knob instead when you need to tweak a value interactively during playback.',
+    ],
+    pairsWith: ['multiply', 'add', 'expression', 'map-range'],
+  },
 }

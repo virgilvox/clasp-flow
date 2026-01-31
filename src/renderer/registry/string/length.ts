@@ -15,4 +15,12 @@ export const stringLengthNode: NodeDefinition = {
   ],
   controls: [],
   tags: ['length', 'count', 'size', 'characters'],
+  info: {
+    overview: 'Returns the character count of a string and a boolean indicating whether the string is empty. Useful for validation, truncation decisions, or conditional branching based on input size.',
+    tips: [
+      'Connect the isEmpty output to a Gate node to skip processing when there is no input.',
+      'Pair with String Slice to truncate strings that exceed a maximum length.',
+    ],
+    pairsWith: ['string-slice', 'gate', 'string-contains', 'expression'],
+  },
 }

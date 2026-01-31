@@ -13,6 +13,17 @@ Subflows allow you to encapsulate groups of nodes into reusable components. Subf
 
 Input port for a subflow.
 
+### Info
+
+Defines an input port on a subflow. When a subflow is used as a node inside another flow, each Subflow Input becomes a visible input on that node. Set the port name and type so the parent flow knows what to connect.
+
+**Tips:**
+- The port name must be unique within the subflow or the inputs will collide.
+- Setting a default value lets the subflow work even when the parent leaves the input disconnected.
+- Change the port type from "any" to a specific type to enforce connection compatibility.
+
+**Works well with:** Subflow Output, Function, Expression, Router
+
 | Property | Value |
 |----------|-------|
 | **ID** | `subflow-input` |
@@ -42,6 +53,16 @@ Exposes an input port on the parent subflow node. When the subflow is used as a 
 ## Subflow Output
 
 Output port for a subflow.
+
+### Info
+
+Defines an output port on a subflow. When a subflow is used as a node inside another flow, each Subflow Output becomes a visible output on that node. Pair it with one or more Subflow Inputs to build reusable processing blocks.
+
+**Tips:**
+- Give each output a descriptive port name so the parent flow is easy to read.
+- You can have multiple outputs to return different signals from the same subflow.
+
+**Works well with:** Subflow Input, Function, Expression, Router
 
 | Property | Value |
 |----------|-------|

@@ -38,6 +38,17 @@ const renameModal = ref<{
   name: '',
 })
 
+// Delete confirmation modal state
+const deleteModal = ref<{
+  visible: boolean
+  flowId: string | null
+  flowName: string
+}>({
+  visible: false,
+  flowId: null,
+  flowName: '',
+})
+
 function selectFlow(flowId: string) {
   flowsStore.setActiveFlow(flowId)
 }
@@ -59,15 +70,14 @@ async function createNewFlow() {
   await saveFlow(flow.id)
 }
 
-async function closeFlow(flowId: string, event: MouseEvent) {
+function closeFlow(flowId: string, event: MouseEvent) {
   event.stopPropagation()
-
-  // Don't close if it's the only flow
-  if (openFlows.value.length <= 1) return
-
-  // Delete from database first, then from store
-  await deleteFlowFromDb(flowId)
-  flowsStore.deleteFlow(flowId)
+  const flow = flowsStore.getFlowById(flowId)
+  deleteModal.value = {
+    visible: true,
+    flowId,
+    flowName: flow?.name ?? 'this flow',
+  }
 }
 
 function showContextMenu(flowId: string, event: MouseEvent) {
@@ -142,12 +152,39 @@ async function duplicateFlow() {
   contextMenu.value.visible = false
 }
 
-async function closeFlowFromMenu() {
-  if (contextMenu.value.flowId && openFlows.value.length > 1) {
-    await deleteFlowFromDb(contextMenu.value.flowId)
-    flowsStore.deleteFlow(contextMenu.value.flowId)
+function closeFlowFromMenu() {
+  if (contextMenu.value.flowId) {
+    const flow = flowsStore.getFlowById(contextMenu.value.flowId)
+    deleteModal.value = {
+      visible: true,
+      flowId: contextMenu.value.flowId,
+      flowName: flow?.name ?? 'this flow',
+    }
   }
   contextMenu.value.visible = false
+}
+
+async function confirmDelete() {
+  if (!deleteModal.value.flowId) return
+
+  const isLastFlow = openFlows.value.length <= 1
+
+  await deleteFlowFromDb(deleteModal.value.flowId)
+  flowsStore.deleteFlow(deleteModal.value.flowId)
+
+  if (isLastFlow) {
+    // Load sample flow when deleting the last flow
+    const loaded = await flowsStore.loadSampleFlow()
+    if (!loaded) {
+      flowsStore.createFlow('Untitled Flow')
+    }
+  }
+
+  deleteModal.value.visible = false
+}
+
+function cancelDelete() {
+  deleteModal.value.visible = false
 }
 
 // Handle keyboard in rename input
@@ -180,9 +217,8 @@ function handleRenameKeydown(event: KeyboardEvent) {
           >*</span>
         </span>
         <button
-          v-if="openFlows.length > 1"
           class="close-btn"
-          title="Close flow"
+          title="Delete flow"
           @click="closeFlow(flow.id, $event)"
         >
           <X :size="12" />
@@ -220,10 +256,9 @@ function handleRenameKeydown(event: KeyboardEvent) {
         <div class="menu-divider" />
         <button
           class="menu-item danger"
-          :disabled="openFlows.length <= 1"
           @click="closeFlowFromMenu"
         >
-          Close
+          Delete
         </button>
       </div>
     </Teleport>
@@ -258,6 +293,37 @@ function handleRenameKeydown(event: KeyboardEvent) {
               @click="confirmRename"
             >
               Rename
+            </button>
+          </div>
+        </div>
+      </div>
+    </Teleport>
+
+    <!-- Delete Confirmation Modal -->
+    <Teleport to="body">
+      <div
+        v-if="deleteModal.visible"
+        class="modal-overlay"
+        @click.self="cancelDelete"
+        @keydown.escape="cancelDelete"
+      >
+        <div class="delete-modal">
+          <h3>Delete Flow</h3>
+          <p class="delete-message">
+            Are you sure you want to delete <strong>{{ deleteModal.flowName }}</strong>? This cannot be undone.
+          </p>
+          <div class="modal-actions">
+            <button
+              class="btn btn-secondary"
+              @click="cancelDelete"
+            >
+              Cancel
+            </button>
+            <button
+              class="btn btn-danger"
+              @click="confirmDelete"
+            >
+              Delete
             </button>
           </div>
         </div>
@@ -495,5 +561,39 @@ function handleRenameKeydown(event: KeyboardEvent) {
 
 .modal-actions .btn-primary:hover {
   background: var(--color-primary-600);
+}
+
+/* Delete Modal */
+.delete-modal {
+  width: 360px;
+  padding: var(--space-4);
+  background: var(--color-neutral-800);
+  border: 1px solid var(--color-neutral-600);
+  border-radius: var(--radius-md);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+.delete-modal h3 {
+  margin: 0 0 var(--space-3) 0;
+  font-size: var(--font-size-base);
+  font-weight: var(--font-weight-semibold);
+  color: var(--color-neutral-100);
+}
+
+.delete-message {
+  margin: 0 0 var(--space-4) 0;
+  font-size: var(--font-size-sm);
+  color: var(--color-neutral-300);
+  line-height: 1.5;
+}
+
+.modal-actions .btn-danger {
+  background: var(--color-error);
+  border: 1px solid var(--color-error);
+  color: white;
+}
+
+.modal-actions .btn-danger:hover {
+  background: #dc2626;
 }
 </style>

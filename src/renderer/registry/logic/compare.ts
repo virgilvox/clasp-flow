@@ -16,4 +16,12 @@ export const compareNode: NodeDefinition = {
   controls: [
     { id: 'operator', type: 'select', label: 'Op', default: '==', props: { options: ['==', '!=', '>', '>=', '<', '<='] } },
   ],
+  info: {
+    overview: 'Compares two numeric values using a selectable operator and outputs a boolean result. Supports equality, inequality, greater-than, and less-than checks. Use this for threshold detection and conditional branching.',
+    tips: [
+      'Feed the boolean result into a gate or switch to route values based on the comparison.',
+      'Use the >= or <= operators for inclusive threshold checks.',
+    ],
+    pairsWith: ['gate', 'switch', 'in-range', 'clamp', 'equals'],
+  },
 }

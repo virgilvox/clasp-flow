@@ -25,4 +25,12 @@ export const remapNode: NodeDefinition = {
     },
   ],
   tags: ['remap', 'map', 'range', 'scale', 'easing'],
+  info: {
+    overview: 'Rescales a value from one range to another with optional clamping and easing. Unlike map-range, this node can clamp the output to the target range and apply ease-in, ease-out, or ease-in-out curves. Good for shaping sensor data or animation curves.',
+    tips: [
+      'Enable Clamp to prevent output from exceeding the target range.',
+      'Use ease-in-out for natural-feeling transitions between value ranges.',
+    ],
+    pairsWith: ['map-range', 'smooth', 'lerp', 'clamp', 'smoothstep'],
+  },
 }

@@ -31,4 +31,13 @@ export const claspVideoSendNode: NodeDefinition = {
     { id: 'autoStart', type: 'toggle', label: 'Auto Start', default: false },
   ],
   tags: ['clasp', 'video', 'send', 'stream', 'relay', 'broadcast'],
+  info: {
+    overview: 'Broadcasts a video or texture source to a CLASP relay room so other clients can receive it. Supports configurable quality presets from 480p to 1080p. You can feed in a texture or a video element as the source.',
+    tips: [
+      'Choose a lower quality preset on constrained networks to maintain a stable frame rate.',
+      'Enable Auto Start to begin broadcasting as soon as the connection is established.',
+      'Use the FPS and Bitrate outputs to monitor stream health in real time.',
+    ],
+    pairsWith: ['clasp-connection', 'clasp-video-receive', 'monitor', 'console'],
+  },
 }

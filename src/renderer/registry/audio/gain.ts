@@ -16,4 +16,13 @@ export const gainNode: NodeDefinition = {
   controls: [
     { id: 'gain', type: 'number', label: 'Gain', default: 1 },
   ],
+  info: {
+    overview: 'Multiplies the audio signal amplitude by a gain factor. A value of 1 passes audio unchanged, values below 1 attenuate, and values above 1 amplify. This is the primary volume control node in any audio chain.',
+    tips: [
+      'Connect an envelope output to the gain input for amplitude modulation.',
+      'Place a gain node right before audio output as a master volume control.',
+      'Use a gain of 0 as a quick mute, or connect an LFO for tremolo effects.',
+    ],
+    pairsWith: ['audio-output', 'oscillator', 'filter', 'envelope', 'audio-player'],
+  },
 }

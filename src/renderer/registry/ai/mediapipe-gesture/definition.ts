@@ -55,4 +55,12 @@ export const mediapipeGestureNode: NodeDefinition = {
       props: { min: 0, max: 1, step: 0.05 },
     },
   ],
+  info: {
+    overview: 'Recognizes hand gestures from a video feed using MediaPipe. Identifies common gestures like thumbs up, open palm, and pointing, and outputs the gesture name, confidence, and hand landmarks. Can track multiple hands simultaneously.',
+    tips: [
+      'Increase the min confidence threshold to reduce false positives in noisy environments.',
+      'Use the gesture string output with a Gate node to trigger different actions for different gestures.',
+    ],
+    pairsWith: ['webcam', 'mediapipe-hand', 'gate', 'monitor'],
+  },
 }

@@ -18,4 +18,13 @@ export const filterNode: NodeDefinition = {
     { id: 'Q', type: 'number', label: 'Q', default: 1 },
     { id: 'type', type: 'select', label: 'Type', default: 'lowpass', props: { options: ['lowpass', 'highpass', 'bandpass', 'notch'] } },
   ],
+  info: {
+    overview: 'A standard biquad filter that removes or emphasizes frequencies in the audio signal. Supports lowpass, highpass, bandpass, and notch modes. The Q parameter controls the sharpness of the filter curve around the cutoff frequency.',
+    tips: [
+      'Automate the frequency input with an envelope or LFO for classic filter sweep effects.',
+      'Use bandpass mode with a high Q to isolate a narrow frequency band.',
+      'Chain two filters in series for a steeper rolloff (24 dB/octave instead of 12).',
+    ],
+    pairsWith: ['oscillator', 'gain', 'envelope', 'audio-output', 'svf-filter'],
+  },
 }

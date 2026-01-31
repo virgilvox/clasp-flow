@@ -75,4 +75,12 @@ export const mediapipeObjectNode: NodeDefinition = {
       default: true,
     },
   ],
+  info: {
+    overview: 'Detects objects in a video stream using the MediaPipe EfficientDet model. Returns bounding boxes, labels, and confidence scores for each detected object. Includes a label filter to focus on specific object categories.',
+    tips: [
+      'Use the label filter to restrict detections to only the categories you care about, like "person" or "car".',
+      'Connect the topBox output to a Shader node to highlight the most confident detection visually.',
+    ],
+    pairsWith: ['webcam', 'object-detection', 'image-classification', 'gate'],
+  },
 }

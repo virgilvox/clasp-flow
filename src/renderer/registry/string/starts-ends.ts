@@ -20,4 +20,12 @@ export const stringStartsEndsNode: NodeDefinition = {
     { id: 'caseSensitive', type: 'toggle', label: 'Case Sensitive', default: true },
   ],
   tags: ['prefix', 'suffix', 'starts', 'ends', 'begins'],
+  info: {
+    overview: 'Tests whether a string starts or ends with a given substring. Outputs separate booleans for each check. Supports case-sensitive and case-insensitive comparison.',
+    tips: [
+      'Use this to detect file extensions by checking if a path ends with ".png" or ".jpg".',
+      'Connect the boolean outputs to a Gate node to route data based on prefix or suffix matches.',
+    ],
+    pairsWith: ['string-contains', 'string-slice', 'gate', 'string-match'],
+  },
 }

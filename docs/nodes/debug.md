@@ -11,6 +11,16 @@
 
 Log values to the browser's developer console.
 
+### Info
+
+Prints the incoming value to the browser developer console. Useful for quick debugging when you need to inspect raw data flowing through a connection. Set a label to distinguish logs from different Console nodes.
+
+**Tips:**
+- Disable "On Change" to stop continuous logging of high-frequency signals like audio or LFOs.
+- Open the browser DevTools console to see the output since it does not display inside the node itself.
+
+**Works well with:** Monitor, JSON Parse, JSON Stringify, Type Of
+
 | Property | Value |
 |----------|-------|
 | **ID** | `console` |
@@ -39,6 +49,16 @@ Logs values using `console.log()` with the configured label prefix. When `logOnC
 ## Monitor
 
 Display input values directly in the node body.
+
+### Info
+
+Displays the current value of any input directly on the node. It also passes the value through to its output, so you can insert it inline without breaking a connection. The simplest way to see what a signal is doing.
+
+**Tips:**
+- Insert a Monitor between two connected nodes to inspect values without rewiring anything.
+- Works with any data type including numbers, strings, booleans, and objects.
+
+**Works well with:** Console, Graph, Oscilloscope, Changed, Type Of
 
 | Property | Value |
 |----------|-------|
@@ -75,6 +95,17 @@ Acts as a pass-through, outputting the same value it receives.
 ## Oscilloscope
 
 Visualize signal waveforms over time.
+
+### Info
+
+Draws a scrolling waveform of a numeric signal or audio input over time. Use it to inspect the shape and timing of any continuous signal. Accepts both plain number values and audio connections.
+
+**Tips:**
+- Increase the time scale to see more of the waveform history in the display.
+- Lower the amplitude if the signal clips beyond the visible area.
+- Connect the audio input for Web Audio signals and the signal input for regular numeric streams.
+
+**Works well with:** LFO, Oscillator, Audio Analyzer, Equalizer, Envelope
 
 | Property | Value |
 |----------|-------|
@@ -114,6 +145,17 @@ Renders a retro-style oscilloscope with:
 ## Graph
 
 Plot X/Y values with multiple data series.
+
+### Info
+
+Plots one or more X/Y data points on a 2D chart. Supports line and scatter modes. Use it to visualize the relationship between two signals or to trace a path over time.
+
+**Tips:**
+- Increase the point count control to add more input pairs for comparing multiple data series.
+- Disable auto scale and set manual axis ranges when you need a fixed reference frame.
+- Feed an LFO into X and another into Y to visualize Lissajous figures.
+
+**Works well with:** Oscillator, LFO, Smooth, Map Range, XY Pad
 
 | Property | Value |
 |----------|-------|
@@ -155,6 +197,16 @@ Features:
 ## Equalizer
 
 Visualize audio frequency spectrum as animated bars.
+
+### Info
+
+Shows the frequency spectrum of an audio signal as animated bars. Connect any audio source to see a real-time breakdown of low, mid, and high frequencies. Helpful for verifying filter or EQ behavior at a glance.
+
+**Tips:**
+- Lower the smoothing value to make the bars react faster to transients.
+- Use "spectrum" color mode to map bar color to frequency, making it easier to spot dominant bands.
+
+**Works well with:** Audio Analyzer, Filter, Parametric EQ, Audio Input, Oscilloscope
 
 | Property | Value |
 |----------|-------|

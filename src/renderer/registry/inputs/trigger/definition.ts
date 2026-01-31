@@ -16,4 +16,13 @@ export const triggerNode: NodeDefinition = {
     { id: 'stringValue', type: 'text', label: 'String Value', default: '' },
     { id: 'jsonValue', type: 'text', label: 'JSON Value', default: '{}' },
   ],
+  info: {
+    overview: 'A manual button that fires a trigger signal when clicked. It supports multiple output types including boolean, number, string, JSON, and timestamp. This makes it useful for both simple fire-and-forget pulses and sending specific data payloads on demand.',
+    tips: [
+      'Use timestamp mode to tag events with the exact time they were triggered.',
+      'Set the type to JSON and provide a payload to send structured data to downstream nodes with one click.',
+      'Connect multiple trigger nodes to a counter for a manual step-through interface.',
+    ],
+    pairsWith: ['counter', 'toggle', 'sample-hold', 'gate'],
+  },
 }

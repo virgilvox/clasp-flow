@@ -24,4 +24,13 @@ export const plane3dNode: NodeDefinition = {
     { id: 'height', type: 'number', label: 'Height', default: 1 },
     { id: 'color', type: 'color', label: 'Color', default: '#808080' },
   ],
+  info: {
+    overview: 'Creates a flat rectangular surface. Planes are useful as ground floors, walls, backgrounds, or shadow-receiving surfaces beneath other objects.',
+    tips: [
+      'Place a large plane at Y=0 to act as a ground that catches shadows from directional lights.',
+      'Set the material side to double so the plane is visible from both sides.',
+      'Scale up width and height rather than using Transform 3D scale to keep UV coordinates consistent.',
+    ],
+    pairsWith: ['material-3d', 'scene-3d', 'directional-light-3d', 'transform-3d'],
+  },
 }

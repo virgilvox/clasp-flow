@@ -14,6 +14,7 @@ jobs:
   build-electron:
     name: Build Electron (${{ matrix.name }})
     runs-on: ${{ matrix.os }}
+    environment: ${{ startsWith(matrix.os, 'macos') && 'Prod' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -48,22 +49,39 @@ jobs:
         run: npm run make -- --arch=${{ matrix.arch }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
-      # macOS arm64: Upload zip
-      - name: Upload macOS arm64 artifact
+      # macOS arm64: Upload zip and dmg
+      - name: Upload macOS arm64 zip
         if: matrix.name == 'mac-arm64'
         uses: actions/upload-artifact@v4
         with:
           name: latch-mac-arm64
           path: out/make/zip/darwin/arm64/*.zip
 
-      # macOS x64: Upload zip
-      - name: Upload macOS x64 artifact
+      - name: Upload macOS arm64 dmg
+        if: matrix.name == 'mac-arm64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: latch-mac-arm64-dmg
+          path: out/make/*.dmg
+
+      # macOS x64: Upload zip and dmg
+      - name: Upload macOS x64 zip
         if: matrix.name == 'mac-x64'
         uses: actions/upload-artifact@v4
         with:
           name: latch-mac-x64
           path: out/make/zip/darwin/x64/*.zip
+
+      - name: Upload macOS x64 dmg
+        if: matrix.name == 'mac-x64'
+        uses: actions/upload-artifact@v4
+        with:
+          name: latch-mac-x64-dmg
+          path: out/make/*.dmg
 
       # Windows: Upload zip
       - name: Upload Windows artifact
@@ -109,10 +127,13 @@ jobs:
           mkdir -p release
           # macOS Apple Silicon (arm64)
           find artifacts/latch-mac-arm64 -name "*.zip" -exec cp {} release/LATCH-mac-arm64.zip \; 2>/dev/null || true
+          find artifacts/latch-mac-arm64-dmg -name "*.dmg" -exec cp {} release/LATCH-mac-arm64.dmg \; 2>/dev/null || true
           # macOS Intel (x64)
           find artifacts/latch-mac-x64 -name "*.zip" -exec cp {} release/LATCH-mac-x64.zip \; 2>/dev/null || true
-          # Universal macOS (copy arm64 as default mac.zip for backwards compat)
+          find artifacts/latch-mac-x64-dmg -name "*.dmg" -exec cp {} release/LATCH-mac-x64.dmg \; 2>/dev/null || true
+          # Universal macOS (copy arm64 as default for backwards compat)
           find artifacts/latch-mac-arm64 -name "*.zip" -exec cp {} release/LATCH-mac.zip \; 2>/dev/null || true
+          find artifacts/latch-mac-arm64-dmg -name "*.dmg" -exec cp {} release/LATCH-mac.dmg \; 2>/dev/null || true
           # Windows
           find artifacts/latch-win -name "*.zip" -exec cp {} release/LATCH-win.zip \; 2>/dev/null || true
           # Linux

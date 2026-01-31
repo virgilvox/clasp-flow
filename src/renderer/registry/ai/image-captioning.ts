@@ -19,4 +19,12 @@ export const imageCaptioningNode: NodeDefinition = {
   controls: [
     { id: 'interval', type: 'number', label: 'Frame Interval', default: 60, props: { min: 1, max: 300 } },
   ],
+  info: {
+    overview: 'Generates a natural language description of an image using a vision-language model. Takes image data as input and produces a text caption. The frame interval control limits how often captioning runs on video streams.',
+    tips: [
+      'Increase the frame interval when processing live video to reduce CPU and memory usage.',
+      'Feed the caption output into Text Generate or Sentiment Analysis for further language processing.',
+    ],
+    pairsWith: ['webcam', 'image-classification', 'text-generation', 'sentiment-analysis'],
+  },
 }

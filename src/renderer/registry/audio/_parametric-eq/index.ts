@@ -28,6 +28,15 @@ export const parametricEqNode: NodeDefinition = {
     { id: 'gain3', type: 'number', label: 'Gain 3', default: 0, props: { min: -24, max: 24, step: 0.1 } },
     { id: 'q3', type: 'number', label: 'Q 3', default: 1, props: { min: 0.1, max: 10, step: 0.1 } },
   ],
+  info: {
+    overview: 'A 3-band parametric equalizer with a visual frequency response display and draggable band controls. Each band has independent frequency, gain, and Q settings for precise tonal shaping across the low, mid, and high ranges.',
+    tips: [
+      'Drag the band handles in the visual display for quick, intuitive adjustments.',
+      'Cut narrow bands (high Q, negative gain) to remove problem frequencies rather than boosting others.',
+      'Use gentle broad boosts (low Q, small positive gain) for overall tonal warmth or brightness.',
+    ],
+    pairsWith: ['audio-player', 'gain', 'audio-output', 'reverb', 'filter'],
+  },
 }
 
 // Export the custom node component

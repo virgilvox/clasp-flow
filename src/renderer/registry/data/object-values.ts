@@ -15,4 +15,12 @@ export const objectValuesNode: NodeDefinition = {
   ],
   controls: [],
   tags: ['object', 'values', 'enumerate'],
+  info: {
+    overview: 'Extracts all property values from an object and returns them as an array. Also outputs the total count of values. Useful when you need the data from an object without its keys.',
+    tips: [
+      'Use this with Array Sort to rank the values extracted from an object.',
+      'Combine with Object Keys to create parallel arrays of keys and values for processing.',
+    ],
+    pairsWith: ['object-keys', 'object-entries', 'array-sort', 'array-length'],
+  },
 }

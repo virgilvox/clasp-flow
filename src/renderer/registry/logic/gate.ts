@@ -16,4 +16,12 @@ export const gateNode: NodeDefinition = {
   controls: [
     { id: 'open', type: 'toggle', label: 'Open', default: true },
   ],
+  info: {
+    overview: 'Passes a value through when the gate is open and blocks it when the gate is closed. The gate state is controlled by the boolean Gate input or the Open toggle. This is the simplest way to conditionally allow or stop data flow.',
+    tips: [
+      'Connect a compare or equals node to the Gate input for dynamic control.',
+      'Use the toggle control to manually override the gate during testing.',
+    ],
+    pairsWith: ['compare', 'and', 'or', 'pass-if', 'latch'],
+  },
 }

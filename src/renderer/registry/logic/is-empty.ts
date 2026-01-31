@@ -15,4 +15,12 @@ export const isEmptyNode: NodeDefinition = {
   ],
   controls: [],
   tags: ['null', 'undefined', 'empty', 'check', 'array', 'string'],
+  info: {
+    overview: 'Checks if a value is null, undefined, an empty string, or an empty array. Outputs a boolean result and also reports the detected type of the value. Broader than is-null because it also catches empty collections and strings.',
+    tips: [
+      'Use the Type output to inspect what kind of value arrived.',
+      'Pair with default-value to replace empty inputs with a fallback.',
+    ],
+    pairsWith: ['is-null', 'default-value', 'coalesce', 'pass-if'],
+  },
 }

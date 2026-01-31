@@ -26,4 +26,13 @@ export const directionalLight3dNode: NodeDefinition = {
     { id: 'posZ', type: 'number', label: 'Position Z', default: 5 },
     { id: 'castShadow', type: 'toggle', label: 'Cast Shadow', default: true },
   ],
+  info: {
+    overview: 'Emits parallel light rays from a given direction, simulating a distant source like the sun. All objects receive the same angle of light regardless of their position. Supports shadow casting for grounded, realistic scenes.',
+    tips: [
+      'Position the light high and to the side (e.g., 5, 5, 5) for classic three-quarter lighting.',
+      'Enable Cast Shadow and add a plane underneath objects to see ground shadows.',
+      'Combine with a low-intensity Ambient Light to fill in shadow areas.',
+    ],
+    pairsWith: ['scene-3d', 'ambient-light-3d', 'material-3d', 'plane-3d'],
+  },
 }

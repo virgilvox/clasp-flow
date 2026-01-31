@@ -44,4 +44,13 @@ export const webcamSnapshotNode: NodeDefinition = {
       default: false,
     },
   ],
+  info: {
+    overview: 'Captures a single still frame from the webcam each time it receives a trigger. Unlike the continuous webcam node, this only updates on demand. Outputs the captured texture, raw image data, and dimensions.',
+    tips: [
+      'Connect an interval node to the trigger input to capture frames at a controlled rate lower than full video.',
+      'Use the captured trigger output to chain actions that should happen only after a new frame is taken.',
+      'The imageData output carries raw pixel data suitable for analysis nodes or the function node.',
+    ],
+    pairsWith: ['interval', 'blend', 'shader', 'start', 'color-correction'],
+  },
 }

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch, nextTick } from 'vue'
-import { X, Code, ChevronRight, Crosshair, Check, Trash2, Pencil, Settings, Bug } from 'lucide-vue-next'
+import { X, Code, ChevronRight, Crosshair, Check, Trash2, Pencil, Settings, Bug, Info } from 'lucide-vue-next'
 import { useUIStore } from '@/stores/ui'
 import { useFlowsStore } from '@/stores/flows'
 import { useNodesStore, categoryMeta, type NodeDefinition } from '@/stores/nodes'
@@ -21,13 +21,17 @@ const nodesStore = useNodesStore()
 const runtimeStore = useRuntimeStore()
 
 // Panel tab state
-type PanelTab = 'properties' | 'debug'
+type PanelTab = 'properties' | 'info' | 'debug'
 const activeTab = ref<PanelTab>('properties')
 
 // Switch to properties when a node is inspected
 watch(() => uiStore.inspectedNode, (nodeId) => {
   if (nodeId) {
     activeTab.value = 'properties'
+  }
+  if (!nodeId && searchSetByInfoTab.value) {
+    nodesStore.setSearchQuery('')
+    searchSetByInfoTab.value = false
   }
 })
 
@@ -326,6 +330,17 @@ function handleTemplateDelete(templateId: string) {
   closeTemplateEditor()
 }
 
+// Navigate to a paired node in the palette
+const searchSetByInfoTab = ref(false)
+
+function searchForNode(nodeId: string) {
+  const def = nodesStore.getDefinition(nodeId)
+  if (def) {
+    nodesStore.setSearchQuery(def.name)
+    searchSetByInfoTab.value = true
+  }
+}
+
 // Check if a control should be shown based on showWhen condition
 function shouldShowControl(control: { props?: Record<string, unknown> }): boolean {
   const showWhen = control.props?.showWhen as Record<string, unknown> | undefined
@@ -362,6 +377,14 @@ function shouldShowControl(control: { props?: Record<string, unknown> }): boolea
           </button>
           <button
             class="panel-tab"
+            :class="{ active: activeTab === 'info' }"
+            @click="activeTab = 'info'"
+          >
+            <Info :size="14" />
+            <span>Info</span>
+          </button>
+          <button
+            class="panel-tab"
             :class="{ active: activeTab === 'debug' }"
             @click="activeTab = 'debug'"
           >
@@ -379,6 +402,82 @@ function shouldShowControl(control: { props?: Record<string, unknown> }): boolea
 
       <!-- Debug Panel Tab -->
       <DebugPanel v-if="activeTab === 'debug'" />
+
+      <!-- Info Tab -->
+      <div
+        v-else-if="activeTab === 'info'"
+        class="info-tab"
+      >
+        <div
+          v-if="!inspectedNode || !nodeDefinition"
+          class="empty-state"
+        >
+          <p>Select a node to view info</p>
+        </div>
+        <div
+          v-else-if="!nodeDefinition.info"
+          class="empty-state"
+        >
+          <p>No additional info available for this node.</p>
+        </div>
+        <div
+          v-else
+          class="info-content"
+        >
+          <!-- Overview -->
+          <div class="info-section">
+            <div class="section-header">
+              <span>Overview</span>
+            </div>
+            <div class="info-body">
+              <p class="info-overview">{{ nodeDefinition.info.overview }}</p>
+            </div>
+          </div>
+
+          <!-- Tips -->
+          <div
+            v-if="nodeDefinition.info.tips && nodeDefinition.info.tips.length > 0"
+            class="info-section"
+          >
+            <div class="section-header">
+              <span>Tips</span>
+            </div>
+            <div class="info-body">
+              <ul class="info-tips">
+                <li
+                  v-for="(tip, i) in nodeDefinition.info.tips"
+                  :key="i"
+                >
+                  {{ tip }}
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          <!-- Works Well With -->
+          <div
+            v-if="nodeDefinition.info.pairsWith && nodeDefinition.info.pairsWith.length > 0"
+            class="info-section"
+          >
+            <div class="section-header">
+              <span>Works Well With</span>
+            </div>
+            <div class="info-body">
+              <div class="info-pairs">
+                <button
+                  v-for="pairedId in nodeDefinition.info.pairsWith"
+                  :key="pairedId"
+                  class="paired-node-chip"
+                  :title="nodesStore.getDefinition(pairedId)?.description"
+                  @click="searchForNode(pairedId)"
+                >
+                  {{ nodesStore.getDefinition(pairedId)?.name ?? pairedId }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
 
       <!-- Properties Tab -->
       <div
@@ -1288,5 +1387,72 @@ function shouldShowControl(control: { props?: Record<string, unknown> }): boolea
   font-size: var(--font-size-xs);
   color: var(--color-warning);
   font-style: italic;
+}
+
+/* Info Tab */
+.info-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.info-content {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.info-section {
+  border-bottom: 1px solid var(--color-neutral-100);
+}
+
+.info-body {
+  padding: var(--space-3) var(--space-4);
+}
+
+.info-overview {
+  font-size: var(--font-size-sm);
+  color: var(--color-neutral-700);
+  line-height: var(--line-height-relaxed);
+  margin: 0;
+}
+
+.info-tips {
+  margin: 0;
+  padding-left: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.info-tips li {
+  font-size: var(--font-size-sm);
+  color: var(--color-neutral-700);
+  line-height: var(--line-height-relaxed);
+}
+
+.info-pairs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.paired-node-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: var(--space-1) var(--space-2);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-medium);
+  color: var(--color-primary-600);
+  background: var(--color-primary-50);
+  border: 1px solid var(--color-primary-200);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.paired-node-chip:hover {
+  background: var(--color-primary-100);
+  border-color: var(--color-primary-300);
 }
 </style>

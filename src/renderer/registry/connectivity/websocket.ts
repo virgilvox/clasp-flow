@@ -27,4 +27,13 @@ export const websocketNode: NodeDefinition = {
       props: { protocol: 'websocket', placeholder: 'Select WebSocket connection...' },
     },
   ],
+  info: {
+    overview: 'Opens a persistent WebSocket connection for real-time bidirectional messaging. Uses a shared connection from the ConnectionManager so multiple nodes can share the same socket. Incoming messages appear on the Message output and you can send data through the Send input.',
+    tips: [
+      'Use a shared connection ID to let multiple WebSocket nodes share a single socket.',
+      'Connect a trigger to the Send Trigger input to control when outgoing messages are dispatched.',
+      'Pair with json-parse to decode structured messages arriving as JSON strings.',
+    ],
+    pairsWith: ['json-parse', 'json-stringify', 'mqtt', 'trigger', 'console'],
+  },
 }

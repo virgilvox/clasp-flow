@@ -20,4 +20,12 @@ export const stringSplitNode: NodeDefinition = {
     { id: 'separator', type: 'text', label: 'Separator', default: ',' },
     { id: 'limit', type: 'number', label: 'Limit', default: 0, props: { min: 0 } },
   ],
+  info: {
+    overview: 'Splits a string into an array of parts using a separator. Outputs the array, the first element, and the total count of parts. An optional limit controls the maximum number of splits.',
+    tips: [
+      'Split by newline to break multi-line text into individual lines.',
+      'Use the count output to determine how many tokens were found before processing the array.',
+    ],
+    pairsWith: ['string-concat', 'string-replace', 'string-contains', 'json-parse'],
+  },
 }

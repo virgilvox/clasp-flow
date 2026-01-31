@@ -16,4 +16,12 @@ export const inRangeNode: NodeDefinition = {
     { id: 'inclusive', type: 'toggle', label: 'Inclusive', default: true },
   ],
   tags: ['range', 'between', 'threshold', 'bounds'],
+  info: {
+    overview: 'Tests whether a number falls within a specified minimum and maximum range. Returns true if the value is inside the range and false otherwise. The inclusive toggle controls whether the boundary values themselves count as in-range.',
+    tips: [
+      'Use with gate to only pass values that fall within acceptable bounds.',
+      'Combine two In Range nodes with Or to check for values in multiple zones.',
+    ],
+    pairsWith: ['compare', 'clamp', 'gate', 'map-range'],
+  },
 }

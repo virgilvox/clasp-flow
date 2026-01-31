@@ -14,4 +14,12 @@ export const andNode: NodeDefinition = {
   ],
   outputs: [{ id: 'result', type: 'boolean', label: 'Result' }],
   controls: [],
+  info: {
+    overview: 'Outputs true only when both inputs are true. This is the standard boolean AND operation used to require multiple conditions to be satisfied simultaneously.',
+    tips: [
+      'Chain multiple And nodes together to require more than two conditions.',
+      'Combine with Not to build NAND logic.',
+    ],
+    pairsWith: ['or', 'not', 'gate', 'compare'],
+  },
 }

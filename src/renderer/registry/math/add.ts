@@ -14,4 +14,12 @@ export const addNode: NodeDefinition = {
   ],
   outputs: [{ id: 'result', type: 'number', label: 'Result' }],
   controls: [],
+  info: {
+    overview: 'Adds two numbers together and outputs the sum. This is one of the core arithmetic operations. Use it to combine values, apply offsets, or accumulate totals.',
+    tips: [
+      'Chain with a constant node to add a fixed offset to a signal.',
+      'Pair with multiply to build linear transformations (multiply then add).',
+    ],
+    pairsWith: ['subtract', 'multiply', 'constant', 'smooth'],
+  },
 }

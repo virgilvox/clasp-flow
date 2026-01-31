@@ -11,6 +11,17 @@
 
 Provides current time, delta time, and frame count.
 
+### Info
+
+Outputs the current elapsed time in seconds, the delta time between frames, and the current frame number. These values update every frame and are the primary way to drive continuous animations.
+
+**Tips:**
+- Use the delta output to make animations frame-rate independent by multiplying movement values by it.
+- The time output grows without bound, so use modulo via an expression node if you need a repeating cycle.
+- Feed the frame output into a modulo expression to trigger something every Nth frame.
+
+**Works well with:** Expression, Shader, LFO, Smooth, Map Range
+
 | Property | Value |
 |----------|-------|
 | **ID** | `time` |
@@ -41,6 +52,17 @@ Uses the execution engine's timing system:
 ## LFO
 
 Low Frequency Oscillator - generates periodic waveforms.
+
+### Info
+
+Generates a continuous oscillating value at a given frequency, amplitude, and offset. Supports sine, square, triangle, and sawtooth waveforms. Commonly used to animate parameters like color, position, or shader uniforms over time.
+
+**Tips:**
+- Use the offset control to shift the output range so it stays positive when feeding into parameters that do not accept negative values.
+- Square waveform at low frequency works well as an on/off toggle signal.
+- Connect the output to a map-range node to rescale the LFO to any arbitrary range.
+
+**Works well with:** Map Range, Shader, Smooth, Blend, Color Correction
 
 | Property | Value |
 |----------|-------|
@@ -85,6 +107,17 @@ Output range: `[-amplitude + offset, amplitude + offset]`
 
 Fires a trigger once when the flow starts running.
 
+### Info
+
+Fires a single trigger when the flow begins running. This is useful for initialization tasks like loading assets, setting default values, or kicking off a sequence that should begin automatically.
+
+**Tips:**
+- Connect to a delay node if you need initialization to happen slightly after startup rather than immediately.
+- Use it to trigger an image-loader or video-player so media is ready as soon as the flow starts.
+- Only fires once per flow start; stopping and restarting the flow will fire it again.
+
+**Works well with:** Delay, Image Loader, Video Player, Toggle, Counter
+
 | Property | Value |
 |----------|-------|
 | **ID** | `start` |
@@ -110,6 +143,17 @@ On the first execution frame, outputs a trigger signal. Subsequent frames output
 ## Interval
 
 Fires triggers at regular time intervals.
+
+### Info
+
+Emits a trigger output repeatedly at a fixed time interval. The interval is adjustable in milliseconds and can be toggled on and off. This is the go-to node for polling, periodic updates, or any repeating action.
+
+**Tips:**
+- Very short intervals (under 50ms) can cause performance issues if the downstream chain is expensive.
+- Use the enabled input to gate the interval from another node rather than removing connections.
+- Pair with counter to build a simple clock that tracks how many ticks have elapsed.
+
+**Works well with:** Counter, Delay, Trigger, Toggle, Expression
 
 | Property | Value |
 |----------|-------|
@@ -142,6 +186,17 @@ Uses `setInterval()` internally or frame-based timing to fire triggers at the sp
 
 Delay a value by a specified time.
 
+### Info
+
+Passes any incoming value through to its output after a configurable delay in milliseconds. Useful for staggering events, creating echo-like timing patterns, or offsetting signals in a chain.
+
+**Tips:**
+- Chain multiple delay nodes with different times to create a spread of staggered triggers from a single source.
+- Set delay to 0 to use it as a simple pass-through for debugging signal flow.
+- Feeding a trigger through delay and back into the same chain can create repeating loops, but watch for runaway feedback.
+
+**Works well with:** Trigger, Interval, LFO, Smooth, Counter
+
 | Property | Value |
 |----------|-------|
 | **ID** | `delay` |
@@ -171,6 +226,17 @@ Maintains a queue of timestamped values. On each frame, outputs values whose del
 ## Timer
 
 Stopwatch timer with start, stop, and reset controls.
+
+### Info
+
+A stopwatch-style timer that counts elapsed seconds when running. It can be started, stopped, and reset via trigger inputs. The running output indicates whether the timer is currently active.
+
+**Tips:**
+- Use the elapsed output with a clamp node to create a one-shot animation that plays for a fixed duration.
+- Send a reset trigger followed by a start trigger to cleanly restart the timer from zero.
+- Combine with an expression node to convert elapsed seconds into a countdown by subtracting from a target duration.
+
+**Works well with:** Clamp, Expression, Start, Trigger, Map Range
 
 | Property | Value |
 |----------|-------|
@@ -207,6 +273,17 @@ Responds to input triggers to control state.
 ## Metronome
 
 Musical tempo source with beat and bar triggers.
+
+### Info
+
+A musical clock that emits beat and bar triggers at a given BPM. It outputs the current beat number, bar number, and a phase value from 0 to 1 within each beat. Subdivision and swing controls let you dial in rhythmic feel.
+
+**Tips:**
+- Use the phase output with a map-range node to create smooth animations that lock to the beat.
+- Swing only affects subdivided beats, so set subdivision to 1/8 or 1/16 to hear its effect.
+- Feed the bar trigger into a step-sequencer reset input to keep patterns aligned across changes.
+
+**Works well with:** Step Sequencer, Beat Detect, Envelope, Counter, LFO
 
 | Property | Value |
 |----------|-------|
@@ -251,6 +328,17 @@ High-precision timing using Web Audio API's clock or `performance.now()`:
 ## Step Sequencer
 
 Step-based pattern sequencer for rhythm and automation.
+
+### Info
+
+A pattern sequencer that advances through a configurable number of steps on each incoming clock trigger. Each step holds a value and a gate state. Supports forward, backward, ping-pong, and random playback modes.
+
+**Tips:**
+- Feed the clock input from a metronome beat output to keep the sequence locked to tempo.
+- Use the value output to drive shader uniforms or color parameters for rhythmic visual changes.
+- Ping-pong mode doubles the effective pattern length without needing twice as many steps.
+
+**Works well with:** Metronome, Shader, Envelope, Counter, LFO
 
 | Property | Value |
 |----------|-------|

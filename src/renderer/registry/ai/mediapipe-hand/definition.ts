@@ -83,4 +83,12 @@ export const mediapipeHandNode: NodeDefinition = {
       default: true,
     },
   ],
+  info: {
+    overview: 'Tracks hand landmarks in real time from a video feed using MediaPipe. Outputs 21 landmark points per hand, world-space coordinates, handedness, and fingertip positions. Supports multiple visualization modes including skeleton, mesh, and bounding box.',
+    tips: [
+      'Use the fingerTips output to get just the five fingertip positions without parsing the full landmark array.',
+      'Enable "Color by Hand" to visually distinguish left and right hands in the overlay.',
+    ],
+    pairsWith: ['webcam', 'mediapipe-gesture', 'mediapipe-pose', 'shader'],
+  },
 }

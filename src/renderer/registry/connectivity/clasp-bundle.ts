@@ -23,4 +23,13 @@ export const claspBundleNode: NodeDefinition = {
     { id: 'connectionId', type: 'connection', label: 'Connection', default: '', props: { protocol: 'clasp', placeholder: 'Select CLASP connection...' } },
   ],
   tags: ['clasp', 'bundle', 'atomic', 'batch'],
+  info: {
+    overview: 'Sends multiple CLASP messages as a single atomic bundle so they are applied together on the server. You can optionally schedule the bundle to execute at a specific timestamp for sample-accurate coordination. This is useful when several parameters must change in lockstep.',
+    tips: [
+      'Use the Schedule At input to synchronize bundle execution with other timed events.',
+      'Build the messages array using upstream nodes before connecting it to the Messages input.',
+      'Pair with a CLASP Connection node to supply the Connection ID.',
+    ],
+    pairsWith: ['clasp-connection', 'clasp-set', 'clasp-emit', 'trigger'],
+  },
 }

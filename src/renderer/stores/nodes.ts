@@ -67,6 +67,15 @@ export interface ControlDefinition {
   props?: Record<string, unknown>
 }
 
+export interface NodeInfo {
+  /** 2-4 sentence explanation of what this node does and when to use it. */
+  overview: string
+  /** Short, actionable tips. One sentence each. */
+  tips?: string[]
+  /** Node IDs of nodes that complement this one. */
+  pairsWith?: string[]
+}
+
 export interface NodeDefinition {
   id: string
   name: string
@@ -83,6 +92,8 @@ export interface NodeDefinition {
   tags?: string[]
   /** Connection requirements for this node (protocols it needs) */
   connections?: NodeConnectionRequirement[]
+  /** Additional info displayed in the Info tab of the properties panel. */
+  info?: NodeInfo
 }
 
 interface NodesStoreState {

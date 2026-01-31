@@ -18,4 +18,12 @@ export const featureExtractionNode: NodeDefinition = {
     { id: 'loading', type: 'boolean', label: 'Loading' },
   ],
   controls: [],
+  info: {
+    overview: 'Converts text into a numeric embedding vector using a transformer model. The resulting high-dimensional vector captures semantic meaning, making it useful for similarity comparisons and clustering. Runs entirely in the browser.',
+    tips: [
+      'Connect the trigger input to control when extraction runs, since it can be computationally expensive.',
+      'Use the dimensions output to verify the embedding size matches what downstream nodes expect.',
+    ],
+    pairsWith: ['sentiment-analysis', 'string-template', 'text-generation', 'monitor'],
+  },
 }

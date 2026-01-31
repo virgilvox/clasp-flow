@@ -15,4 +15,12 @@ export const switchNode: NodeDefinition = {
   ],
   outputs: [{ id: 'result', type: 'any', label: 'Result' }],
   controls: [],
+  info: {
+    overview: 'Outputs one of two values depending on a boolean condition. When the condition is true, the True input is forwarded. When false, the False input is forwarded. This is the basic if/else building block for data flow.',
+    tips: [
+      'Feed the output of compare or equals into the condition input for threshold-based switching.',
+      'Use select instead when you need to choose from more than two options.',
+    ],
+    pairsWith: ['compare', 'equals', 'select', 'gate', 'not'],
+  },
 }

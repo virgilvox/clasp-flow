@@ -23,4 +23,12 @@ export const passIfNode: NodeDefinition = {
     },
   ],
   tags: ['conditional', 'filter', 'gate', 'pass', 'block'],
+  info: {
+    overview: 'Forwards the input value only when a condition is met, blocking it otherwise. Supports multiple modes including when-true, when-false, when-not-null, and when-not-empty. More flexible than a basic gate because it can filter on data presence, not just booleans.',
+    tips: [
+      'Use when-not-null mode to filter out missing values without a separate is-null check.',
+      'Switch to when-false mode to pass values only when a condition fails.',
+    ],
+    pairsWith: ['gate', 'compare', 'is-null', 'is-empty', 'switch'],
+  },
 }

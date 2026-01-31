@@ -34,4 +34,12 @@ export const vectorMathNode: NodeDefinition = {
     },
     { id: 'scalar', type: 'number', label: 'Scalar', default: 1 },
   ],
+  info: {
+    overview: 'Performs 3D vector operations on two input vectors, including addition, subtraction, cross product, normalization, scaling, interpolation, and dot product. Also outputs the magnitude of the result. Select the operation from the dropdown.',
+    tips: [
+      'Use Normalize to get a unit-length direction vector from any input.',
+      'Use Dot to measure the alignment between two direction vectors.',
+    ],
+    pairsWith: ['add', 'multiply', 'lerp', 'trig', 'smooth'],
+  },
 }

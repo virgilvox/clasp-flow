@@ -11,6 +11,16 @@
 
 Parse JSON string to object.
 
+### Info
+
+Parses a JSON string into a structured object. Optionally extracts a nested value using a dot-notation path. If parsing fails, the error output provides the reason.
+
+**Tips:**
+- Use the path field to drill into deeply nested responses without needing separate Object Get nodes.
+- Connect the error output to a Monitor node to debug malformed JSON from external sources.
+
+**Works well with:** JSON Stringify, Object Get, HTTP Request, Monitor
+
 | Property | Value |
 |----------|-------|
 | **ID** | `json-parse` |
@@ -42,6 +52,16 @@ Uses `JSON.parse()` with optional path extraction using dot notation. Supports a
 
 Convert object to JSON string.
 
+### Info
+
+Converts a JavaScript object into a JSON string. Supports pretty-printed output with indentation for readability. Useful for preparing data to send over HTTP, WebSocket, or MQTT connections.
+
+**Tips:**
+- Enable pretty print when sending output to a Monitor or Console for easier debugging.
+- Pair with HTTP Request to serialize request bodies as JSON.
+
+**Works well with:** JSON Parse, HTTP Request, WebSocket, MQTT
+
 | Property | Value |
 |----------|-------|
 | **ID** | `json-stringify` |
@@ -71,6 +91,16 @@ Uses `JSON.stringify()`. Pretty print adds 2-space indentation and newlines for 
 ## Texture to Data
 
 Convert texture to image data for AI processing.
+
+### Info
+
+Converts a GPU texture into CPU-accessible image data in one of several formats: raw ImageData, base64, or blob. Supports both single-shot capture via trigger and continuous frame extraction. Also outputs the image dimensions.
+
+**Tips:**
+- Enable continuous mode for real-time frame analysis, but be mindful of performance costs.
+- Use base64 format when the image data needs to be sent as a string over HTTP or WebSocket.
+
+**Works well with:** HTTP Request, JSON Stringify, WebSocket, Expression
 
 | Property | Value |
 |----------|-------|

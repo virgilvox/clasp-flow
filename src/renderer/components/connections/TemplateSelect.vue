@@ -143,13 +143,14 @@ watch(isOpen, (open) => {
         </span>
         <span class="template-name">{{ template.name }}</span>
         <span class="template-path">{{ template.path }}</span>
-        <button
+        <span
           class="edit-btn"
+          role="button"
           title="Edit template"
-          @click="(e) => handleEdit(e, template.id)"
+          @click.stop="handleEdit($event, template.id)"
         >
           <Pencil :size="12" />
-        </button>
+        </span>
       </button>
 
       <!-- Empty state -->

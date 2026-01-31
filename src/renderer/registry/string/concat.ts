@@ -20,4 +20,12 @@ export const stringConcatNode: NodeDefinition = {
   controls: [
     { id: 'separator', type: 'text', label: 'Separator', default: '' },
   ],
+  info: {
+    overview: 'Joins up to four strings together with an optional separator between them. Empty inputs are skipped. This is the simplest way to combine multiple text values into one output string.',
+    tips: [
+      'Set the separator to a newline character to join lines of text.',
+      'Leave unused inputs disconnected and they will be ignored.',
+    ],
+    pairsWith: ['string-template', 'string-split', 'string-trim', 'string-case'],
+  },
 }

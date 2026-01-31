@@ -60,4 +60,13 @@ export const httpRequestNode: NodeDefinition = {
       props: { min: 1000, max: 120000, step: 1000 },
     },
   ],
+  info: {
+    overview: 'Makes HTTP and REST API requests with support for all standard methods and optional request templates. You can use a shared connection for base URL and authentication, or specify a full URL directly. Responses are output as parsed data along with the status code.',
+    tips: [
+      'Use a connection with templates for APIs you call repeatedly to avoid duplicating URL and header configuration.',
+      'Connect a trigger node to control when the request fires rather than letting it run on every input change.',
+      'Check the Loading output to show a spinner or disable controls while a request is in flight.',
+    ],
+    pairsWith: ['json-parse', 'json-stringify', 'trigger', 'function', 'console'],
+  },
 }

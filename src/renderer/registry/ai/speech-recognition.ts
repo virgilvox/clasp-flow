@@ -61,4 +61,12 @@ export const speechRecognitionNode: NodeDefinition = {
       props: { min: 1000, max: 10000, step: 500 },
     },
   ],
+  info: {
+    overview: 'Transcribes audio to text using the Whisper model. Supports three modes: manual transcription on trigger, continuous auto-chunking, and voice activity detection (VAD) that listens for speech and transcribes automatically. Runs entirely in the browser.',
+    tips: [
+      'Use VAD mode for hands-free transcription that only processes audio when someone is speaking.',
+      'Increase the buffer duration in continuous mode to get longer, more coherent transcription chunks.',
+    ],
+    pairsWith: ['audio-input', 'sentiment-analysis', 'text-generation', 'string-template'],
+  },
 }

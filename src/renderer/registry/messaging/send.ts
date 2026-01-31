@@ -17,4 +17,12 @@ export const sendNode: NodeDefinition = {
     { id: 'channel', type: 'text', label: 'Channel', default: 'default' },
     { id: 'sendOnChange', type: 'toggle', label: 'Send on Change', default: true },
   ],
+  info: {
+    overview: 'Publishes a value to a named channel that any Receive node can pick up. Use it to avoid tangled connections across a large flow. With "Send on Change" enabled, it fires automatically whenever the input value updates.',
+    tips: [
+      'Disable "Send on Change" and use the trigger input when you need precise control over timing.',
+      'Pair with multiple Receive nodes to broadcast one value to many places at once.',
+    ],
+    pairsWith: ['receive', 'trigger', 'changed', 'throttle'],
+  },
 }

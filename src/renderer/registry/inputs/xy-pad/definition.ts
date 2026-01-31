@@ -23,4 +23,13 @@ export const xyPadNode: NodeDefinition = {
     { id: 'minY', type: 'number', label: 'Min Y', default: 0 },
     { id: 'maxY', type: 'number', label: 'Max Y', default: 1 },
   ],
+  info: {
+    overview: 'A two-dimensional pad that outputs X and Y positions in both raw and normalized forms. The raw outputs use the configured min/max ranges while the normalized outputs always produce 0-to-1 values. This is ideal for controlling two parameters simultaneously with a single gesture.',
+    tips: [
+      'Map normalized X and Y to different shader uniforms for interactive 2D visual control.',
+      'Set asymmetric min/max ranges to bias the raw output toward a useful operating region.',
+      'Connect each axis to a smooth node independently to get different smoothing rates for X and Y.',
+    ],
+    pairsWith: ['smooth', 'shader', 'map-range', 'oscillator'],
+  },
 }

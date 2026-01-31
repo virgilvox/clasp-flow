@@ -26,4 +26,13 @@ export const torus3dNode: NodeDefinition = {
     { id: 'tubularSegments', type: 'number', label: 'Tubular Segs', default: 100, props: { min: 3, max: 200 } },
     { id: 'color', type: 'color', label: 'Color', default: '#808080' },
   ],
+  info: {
+    overview: 'Creates a torus (donut-shaped) mesh defined by an outer radius and a tube radius. Segment controls let you balance visual smoothness against performance.',
+    tips: [
+      'Set tube radius close to the main radius for a thick ring, or very small for a thin hoop.',
+      'Reduce radial segments to 6 or 8 for a stylized hexagonal or octagonal ring.',
+      'Apply a Transform 3D to tilt the torus for use as a ring, halo, or orbit path.',
+    ],
+    pairsWith: ['material-3d', 'transform-3d', 'scene-3d', 'group-3d'],
+  },
 }

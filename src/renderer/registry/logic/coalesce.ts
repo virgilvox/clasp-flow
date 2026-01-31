@@ -17,4 +17,12 @@ export const coalesceNode: NodeDefinition = {
   outputs: [{ id: 'result', type: 'any', label: 'Result' }],
   controls: [],
   tags: ['nullish', 'fallback', 'default', 'first'],
+  info: {
+    overview: 'Returns the first input that is not null or undefined, checking inputs A through D in order. This works like the nullish coalescing operator and is useful for building fallback chains where you want the first valid value.',
+    tips: [
+      'Put your preferred source in input A and fallbacks in B, C, D.',
+      'Use with default-value when you also need to handle empty strings.',
+    ],
+    pairsWith: ['default-value', 'is-null', 'switch', 'select'],
+  },
 }

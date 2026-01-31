@@ -27,4 +27,13 @@ export const colorNode: NodeDefinition = {
     { id: 'b', type: 'slider', label: 'B', default: 1, props: { min: 0, max: 1, step: 0.01 } },
     { id: 'a', type: 'slider', label: 'A', default: 1, props: { min: 0, max: 1, step: 0.01 } },
   ],
+  info: {
+    overview: 'Creates an RGBA color value from individual channel sliders or numeric inputs. Outputs both the combined color object and separate R, G, B, A channel values. Useful as a color source for shaders and visual effects.',
+    tips: [
+      'Connect LFO nodes to individual channels to create animated color cycling without writing shader code.',
+      'Use the separate channel outputs to feed different parts of a flow with the same base color values.',
+      'Set alpha below 1.0 when using this as a tint layer through a blend node in normal mode.',
+    ],
+    pairsWith: ['shader', 'blend', 'lfo', 'color-correction', 'map-range'],
+  },
 }

@@ -29,4 +29,13 @@ export const claspVideoReceiveNode: NodeDefinition = {
     { id: 'enabled', type: 'toggle', label: 'Enabled', default: true },
   ],
   tags: ['clasp', 'video', 'receive', 'stream', 'relay'],
+  info: {
+    overview: 'Receives a video stream from a CLASP relay room and outputs it as a texture. The node automatically discovers peers in the room and connects to the first broadcaster unless a specific Peer ID is set. Width, height, and FPS outputs describe the incoming stream.',
+    tips: [
+      'Leave Peer ID blank to auto-select the first available broadcaster.',
+      'Use the Peers output to list all participants in the room.',
+      'Disable the Enabled toggle to stop receiving without leaving the room.',
+    ],
+    pairsWith: ['clasp-connection', 'clasp-video-send', 'monitor', 'console'],
+  },
 }

@@ -20,4 +20,12 @@ export const toBooleanNode: NodeDefinition = {
     },
   ],
   tags: ['convert', 'boolean', 'truthy', 'cast'],
+  info: {
+    overview: 'Converts any value to a boolean. In truthy mode, standard JavaScript truthiness rules apply. In strict mode, only the values true and "true" produce true. Useful for normalizing toggle states from various data sources.',
+    tips: [
+      'Use strict mode when parsing string-based boolean values from JSON or query parameters.',
+      'Connect the output to a Gate node to open or close data flow based on the converted value.',
+    ],
+    pairsWith: ['gate', 'compare', 'to-number', 'select'],
+  },
 }

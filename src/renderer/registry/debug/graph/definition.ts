@@ -19,4 +19,13 @@ export const graphNode: NodeDefinition = {
     { id: 'showGrid', type: 'toggle', label: 'Grid', default: true },
     { id: 'autoScale', type: 'toggle', label: 'Auto Scale', default: true },
   ],
+  info: {
+    overview: 'Plots one or more X/Y data points on a 2D chart. Supports line and scatter modes. Use it to visualize the relationship between two signals or to trace a path over time.',
+    tips: [
+      'Increase the point count control to add more input pairs for comparing multiple data series.',
+      'Disable auto scale and set manual axis ranges when you need a fixed reference frame.',
+      'Feed an LFO into X and another into Y to visualize Lissajous figures.',
+    ],
+    pairsWith: ['oscillator', 'lfo', 'smooth', 'map-range', 'xy-pad'],
+  },
 }

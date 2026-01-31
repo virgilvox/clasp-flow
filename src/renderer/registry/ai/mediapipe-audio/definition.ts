@@ -49,4 +49,12 @@ export const mediapipeAudioNode: NodeDefinition = {
       props: { min: 0, max: 1, step: 0.05 },
     },
   ],
+  info: {
+    overview: 'Classifies audio input using the MediaPipe YamNet model, identifying sounds like speech, music, and environmental noise. Outputs the top category, confidence score, and convenience booleans for speech and music detection.',
+    tips: [
+      'Raise the min score threshold to filter out low-confidence classifications.',
+      'Use the isSpeech output to trigger speech recognition only when someone is actually talking.',
+    ],
+    pairsWith: ['audio-input', 'speech-recognition', 'gate', 'monitor'],
+  },
 }

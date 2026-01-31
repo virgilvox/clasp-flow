@@ -15,4 +15,12 @@ export const changedNode: NodeDefinition = {
   ],
   controls: [],
   tags: ['detect', 'change', 'state', 'difference'],
+  info: {
+    overview: 'Passes the input value through only when it differs from the previous value. Also outputs a boolean indicating whether the value changed. Useful for triggering downstream logic only when data actually updates.',
+    tips: [
+      'Use the Changed boolean output to trigger other nodes selectively.',
+      'Place before expensive operations to avoid redundant processing.',
+    ],
+    pairsWith: ['gate', 'sample-hold', 'pass-if', 'trigger'],
+  },
 }

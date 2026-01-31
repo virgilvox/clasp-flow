@@ -21,4 +21,12 @@ export const objectGetNode: NodeDefinition = {
     { id: 'default', type: 'text', label: 'Default', default: '' },
   ],
   tags: ['object', 'get', 'property', 'path', 'access'],
+  info: {
+    overview: 'Reads a value from an object using a dot-notation path such as "data.items[0].name". Returns the value and a boolean indicating whether the path resolved successfully. A default value can be specified for missing paths.',
+    tips: [
+      'Use bracket notation in the path to access array indices, like "items[2].id".',
+      'Check the found output before using the value to handle missing data gracefully.',
+    ],
+    pairsWith: ['object-set', 'object-has', 'json-parse', 'gate'],
+  },
 }

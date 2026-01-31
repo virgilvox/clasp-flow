@@ -12,4 +12,12 @@ export const typeOfNode: NodeDefinition = {
   outputs: [{ id: 'type', type: 'string', label: 'Type' }],
   controls: [],
   tags: ['type', 'typeof', 'check', 'inspect'],
+  info: {
+    overview: 'Reports the JavaScript type of the input value as a string, such as "number", "string", "boolean", or "object". Useful for debugging flows or for branching logic based on the kind of data arriving at a node.',
+    tips: [
+      'Feed the output into an equals node to branch based on specific types.',
+      'Use during development to verify that connections are carrying the expected data types.',
+    ],
+    pairsWith: ['equals', 'switch', 'is-null', 'is-empty'],
+  },
 }

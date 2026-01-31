@@ -35,4 +35,13 @@ export const imageLoaderNode: NodeDefinition = {
       props: { options: ['anonymous', 'use-credentials', 'none'] },
     },
   ],
+  info: {
+    overview: 'Loads a still image from a URL, local file, or the built-in asset library and outputs it as a texture. Also provides the image dimensions and a loading state. Supports reload via trigger input.',
+    tips: [
+      'Use the reload trigger input to swap images at runtime without rebuilding connections.',
+      'Set cross-origin to none when loading local files to avoid unnecessary CORS restrictions.',
+      'The loading output can gate downstream nodes so they only process after the image is ready.',
+    ],
+    pairsWith: ['blend', 'shader', 'displacement', 'color-correction', 'start'],
+  },
 }

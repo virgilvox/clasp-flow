@@ -11,6 +11,18 @@
 
 Custom GLSL shader with dynamic uniform inputs.
 
+### Info
+
+Runs custom GLSL fragment shaders with automatic uniform detection. Declared uniforms become input ports so other nodes can feed values into the shader. Includes Shadertoy compatibility mode and a library of built-in presets for common effects and generators.
+
+**Tips:**
+- Start with a preset and modify the code to learn how the uniform-to-port system works.
+- Disable Shadertoy mode if you want to write standard WebGL shaders with your own varying setup.
+- Texture inputs iChannel0 through iChannel3 are always available regardless of what uniforms you declare.
+- Connect a time node to a float uniform for animations that stay in sync with the rest of your flow.
+
+**Works well with:** Time, LFO, Webcam, Blend, Texture Display
+
 | Property | Value |
 |----------|-------|
 | **ID** | `shader` |
@@ -69,6 +81,17 @@ uniform sampler2D u_image;   // -> creates texture input
 
 Capture video from camera.
 
+### Info
+
+Streams live video from a camera and outputs it as a continuously updating texture. Also provides a raw video element and the current resolution. This is the primary node for getting real-time camera input into a visual flow.
+
+**Tips:**
+- Disable the node when not in use to release the camera and free system resources.
+- If you have multiple cameras, use the device selector to pick a specific one rather than relying on the default.
+- The video element output can be fed into both shader and blend nodes simultaneously for parallel processing.
+
+**Works well with:** Shader, Blend, Color Correction, Displacement, Texture Display
+
 | Property | Value |
 |----------|-------|
 | **ID** | `webcam` |
@@ -100,6 +123,17 @@ Uses `navigator.mediaDevices.getUserMedia()` to access camera. Creates a `VideoT
 ## Webcam Snapshot
 
 Capture snapshots from webcam on trigger.
+
+### Info
+
+Captures a single still frame from the webcam each time it receives a trigger. Unlike the continuous webcam node, this only updates on demand. Outputs the captured texture, raw image data, and dimensions.
+
+**Tips:**
+- Connect an interval node to the trigger input to capture frames at a controlled rate lower than full video.
+- Use the captured trigger output to chain actions that should happen only after a new frame is taken.
+- The imageData output carries raw pixel data suitable for analysis nodes or the function node.
+
+**Works well with:** Interval, Blend, Shader, Start, Color Correction
 
 | Property | Value |
 |----------|-------|
@@ -136,6 +170,17 @@ Maintains a hidden video stream. On trigger, draws current frame to canvas and c
 ## Color
 
 Create RGBA color values with individual channel control.
+
+### Info
+
+Creates an RGBA color value from individual channel sliders or numeric inputs. Outputs both the combined color object and separate R, G, B, A channel values. Useful as a color source for shaders and visual effects.
+
+**Tips:**
+- Connect LFO nodes to individual channels to create animated color cycling without writing shader code.
+- Use the separate channel outputs to feed different parts of a flow with the same base color values.
+- Set alpha below 1.0 when using this as a tint layer through a blend node in normal mode.
+
+**Works well with:** Shader, Blend, LFO, Color Correction, Map Range
 
 | Property | Value |
 |----------|-------|
@@ -174,6 +219,17 @@ Create RGBA color values with individual channel control.
 
 Display a texture for preview.
 
+### Info
+
+Renders an input texture directly onto a visible canvas in the node. This is the simplest way to preview any texture output without routing it to the main output. It has no controls and no outputs.
+
+**Tips:**
+- Place one after each major processing step to visually debug your texture pipeline.
+- This node does not pass the texture through, so branch the connection if you also need to continue the chain.
+- Use it alongside the main-output node to compare intermediate results with the final render.
+
+**Works well with:** Shader, Blend, Webcam, Main Output, Color Correction
+
 | Property | Value |
 |----------|-------|
 | **ID** | `texture-display` |
@@ -199,6 +255,17 @@ Renders the input texture to the node's preview area. Used for debugging/monitor
 ## Blend
 
 Blend two textures using various blend modes.
+
+### Info
+
+Combines two texture inputs into a single output using a selectable blend mode and a mix slider. Supports normal, add, multiply, screen, and overlay modes. This is the standard way to layer visuals together.
+
+**Tips:**
+- Animate the mix value with an LFO to crossfade between two sources rhythmically.
+- Add mode is useful for combining bright elements on dark backgrounds without washing out the image.
+- Chain multiple blend nodes to composite more than two layers together.
+
+**Works well with:** Shader, Webcam, Color Correction, LFO, Image Loader
 
 | Property | Value |
 |----------|-------|
@@ -238,6 +305,17 @@ Uses a shader that implements blend modes:
 
 Apply Gaussian blur to texture.
 
+### Info
+
+Applies a Gaussian blur to the input texture. The radius controls how far the blur spreads, and the passes control determines quality. More passes produce a smoother result at the cost of performance.
+
+**Tips:**
+- Keep passes at 2 or 3 for a good balance between quality and speed; going above 5 rarely looks different.
+- Animate the radius with an LFO for a pulsing depth-of-field effect.
+- Use a small blur radius as a noise reduction step before feeding into edge detection or color correction.
+
+**Works well with:** Shader, Blend, Color Correction, LFO, Displacement
+
 | Property | Value |
 |----------|-------|
 | **ID** | `blur` |
@@ -269,6 +347,17 @@ Uses separable Gaussian blur (horizontal then vertical passes) for efficiency. M
 ## Color Correction
 
 Adjust brightness, contrast, saturation, hue, and gamma.
+
+### Info
+
+Adjusts brightness, contrast, saturation, hue, and gamma of an input texture. All parameters can be driven by external inputs, making it easy to animate color grading in real time.
+
+**Tips:**
+- Drive the hue input with an LFO for a continuously shifting color palette effect.
+- Set saturation to 0 to convert any texture to grayscale before further processing.
+- Small gamma adjustments (0.8 to 1.2) can significantly improve perceived contrast without clipping highlights.
+
+**Works well with:** Webcam, Blend, Shader, LFO, Image Loader
 
 | Property | Value |
 |----------|-------|
@@ -306,6 +395,17 @@ Adjust brightness, contrast, saturation, hue, and gamma.
 
 Displace texture using a displacement map.
 
+### Info
+
+Warps the input texture by using a second texture as a displacement map. The brightness values of the displacement map shift pixel positions in the source. Strength controls how far pixels are moved, and channel selects which map channels drive the displacement axes.
+
+**Tips:**
+- Feed a noise shader into the displacement map input for organic, fluid-like distortion.
+- Animate the strength value with an LFO to pulse the distortion in and out.
+- The rg channel mode gives independent horizontal and vertical displacement; use r for horizontal only.
+
+**Works well with:** Shader, Blur, Webcam, LFO, Blend
+
 | Property | Value |
 |----------|-------|
 | **ID** | `displacement` |
@@ -335,6 +435,17 @@ Displace texture using a displacement map.
 ## Transform 2D
 
 Apply 2D transforms to texture.
+
+### Info
+
+Applies scale, rotation, and translation transforms to a texture. All parameters accept external inputs so they can be animated. This is the standard way to reposition or resize a texture layer before blending or display.
+
+**Tips:**
+- Drive the rotation input with an LFO for a continuously spinning texture effect.
+- Scale values below 1.0 shrink the texture, revealing the border; combine with blend to composite over a background.
+- Translation values are normalized, so 0.5 moves the texture halfway across the frame.
+
+**Works well with:** Blend, Shader, LFO, Webcam, Displacement
 
 | Property | Value |
 |----------|-------|
@@ -372,6 +483,17 @@ Apply 2D transforms to texture.
 
 Load images from URL, file, or asset library.
 
+### Info
+
+Loads a still image from a URL, local file, or the built-in asset library and outputs it as a texture. Also provides the image dimensions and a loading state. Supports reload via trigger input.
+
+**Tips:**
+- Use the reload trigger input to swap images at runtime without rebuilding connections.
+- Set cross-origin to none when loading local files to avoid unnecessary CORS restrictions.
+- The loading output can gate downstream nodes so they only process after the image is ready.
+
+**Works well with:** Blend, Shader, Displacement, Color Correction, Start
+
 | Property | Value |
 |----------|-------|
 | **ID** | `image-loader` |
@@ -404,6 +526,17 @@ Load images from URL, file, or asset library.
 ## Video Player
 
 Play video from URL.
+
+### Info
+
+Plays a video file from a URL and outputs its frames as a texture. Provides playback controls including play, pause, seek, loop, and playback rate. Also outputs current time, duration, and a normalized progress value.
+
+**Tips:**
+- Use the progress output (0 to 1) with map-range to sync other parameters to the video timeline.
+- Set loop to true and connect a metronome to the seek input to create rhythmic video scrubbing.
+- The video element output can be shared with other nodes that accept raw video for additional processing.
+
+**Works well with:** Blend, Shader, Color Correction, Metronome, Texture Display
 
 | Property | Value |
 |----------|-------|

@@ -20,4 +20,12 @@ export const sentimentAnalysisNode: NodeDefinition = {
     { id: 'loading', type: 'boolean', label: 'Loading' },
   ],
   controls: [],
+  info: {
+    overview: 'Analyzes text and classifies it as positive or negative, outputting both a label and numeric scores. Returns separate positive and negative confidence values. Useful for monitoring tone in chat messages, reviews, or transcribed speech.',
+    tips: [
+      'Connect this after Speech to Text to get real-time sentiment from spoken input.',
+      'Use the score output with an Expression node to create custom thresholds for sentiment-based branching.',
+    ],
+    pairsWith: ['speech-recognition', 'text-generation', 'string-template', 'expression'],
+  },
 }

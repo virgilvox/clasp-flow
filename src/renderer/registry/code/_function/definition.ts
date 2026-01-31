@@ -26,4 +26,13 @@ export const functionNode: NodeDefinition = {
 
 return inputs.a + inputs.b;` },
   ],
+  info: {
+    overview: 'Runs custom JavaScript code in a sandboxed environment with up to four generic inputs. You can maintain state across frames and return values to downstream nodes. The error output fires when your code throws, making it possible to handle failures gracefully.',
+    tips: [
+      'Use getState/setState to persist values between frames instead of relying on closures.',
+      'Return an object with named keys to populate multiple outputs from a single function.',
+      'Connect the error output to a console node during development to surface runtime issues quickly.',
+    ],
+    pairsWith: ['console', 'expression', 'trigger', 'monitor'],
+  },
 }

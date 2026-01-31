@@ -21,4 +21,12 @@ export const textureToDataNode: NodeDefinition = {
     { id: 'format', type: 'select', label: 'Format', default: 'imageData', props: { options: ['imageData', 'base64', 'blob'] } },
     { id: 'continuous', type: 'toggle', label: 'Continuous', default: false },
   ],
+  info: {
+    overview: 'Converts a GPU texture into CPU-accessible image data in one of several formats: raw ImageData, base64, or blob. Supports both single-shot capture via trigger and continuous frame extraction. Also outputs the image dimensions.',
+    tips: [
+      'Enable continuous mode for real-time frame analysis, but be mindful of performance costs.',
+      'Use base64 format when the image data needs to be sent as a string over HTTP or WebSocket.',
+    ],
+    pairsWith: ['http-request', 'json-stringify', 'websocket', 'expression'],
+  },
 }

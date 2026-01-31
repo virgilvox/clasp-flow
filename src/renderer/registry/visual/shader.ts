@@ -91,4 +91,14 @@ void mainImage(out vec4 fragColor, in vec2 fragCoord) {
     // Note: Additional controls for uniforms are dynamically generated
     // and stored in node.data._dynamicControls
   ],
+  info: {
+    overview: 'Runs custom GLSL fragment shaders with automatic uniform detection. Declared uniforms become input ports so other nodes can feed values into the shader. Includes Shadertoy compatibility mode and a library of built-in presets for common effects and generators.',
+    tips: [
+      'Start with a preset and modify the code to learn how the uniform-to-port system works.',
+      'Disable Shadertoy mode if you want to write standard WebGL shaders with your own varying setup.',
+      'Texture inputs iChannel0 through iChannel3 are always available regardless of what uniforms you declare.',
+      'Connect a time node to a float uniform for animations that stay in sync with the rest of your flow.',
+    ],
+    pairsWith: ['time', 'lfo', 'webcam', 'blend', 'texture-display'],
+  },
 }

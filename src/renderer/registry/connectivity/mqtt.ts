@@ -43,4 +43,13 @@ export const mqttNode: NodeDefinition = {
       props: { options: [0, 1, 2] },
     },
   ],
+  info: {
+    overview: 'Publishes and subscribes to MQTT topics using a shared connection. Incoming messages appear on the Message output along with the topic they arrived on. Supports QoS levels 0, 1, and 2 for different delivery guarantees.',
+    tips: [
+      'Use QoS 0 for high-throughput sensor data where occasional lost messages are acceptable.',
+      'Use QoS 2 when every message must be delivered exactly once.',
+      'Connect the Topic output to a monitor node to debug which topics are active.',
+    ],
+    pairsWith: ['json-parse', 'json-stringify', 'monitor', 'console', 'trigger'],
+  },
 }

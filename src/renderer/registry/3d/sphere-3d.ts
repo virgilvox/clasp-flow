@@ -24,4 +24,13 @@ export const sphere3dNode: NodeDefinition = {
     { id: 'heightSegments', type: 'number', label: 'Height Segs', default: 16, props: { min: 2, max: 32 } },
     { id: 'color', type: 'color', label: 'Color', default: '#808080' },
   ],
+  info: {
+    overview: 'Creates a sphere mesh with configurable radius and segment counts. Higher segment values produce smoother surfaces. It is a good primitive for testing materials and lighting setups.',
+    tips: [
+      'Use 32 width segments and 16 height segments as a balanced default for most use cases.',
+      'Lower segment counts intentionally for a faceted, low-poly look.',
+      'Connect a Material 3D with high metalness and low roughness to see clear environment reflections.',
+    ],
+    pairsWith: ['material-3d', 'transform-3d', 'scene-3d', 'point-light-3d'],
+  },
 }

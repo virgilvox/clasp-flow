@@ -24,4 +24,13 @@ export const colorCorrectionNode: NodeDefinition = {
     { id: 'hue', type: 'slider', label: 'Hue', default: 0, props: { min: -180, max: 180, step: 1 } },
     { id: 'gamma', type: 'slider', label: 'Gamma', default: 1, props: { min: 0.1, max: 3, step: 0.01 } },
   ],
+  info: {
+    overview: 'Adjusts brightness, contrast, saturation, hue, and gamma of an input texture. All parameters can be driven by external inputs, making it easy to animate color grading in real time.',
+    tips: [
+      'Drive the hue input with an LFO for a continuously shifting color palette effect.',
+      'Set saturation to 0 to convert any texture to grayscale before further processing.',
+      'Small gamma adjustments (0.8 to 1.2) can significantly improve perceived contrast without clipping highlights.',
+    ],
+    pairsWith: ['webcam', 'blend', 'shader', 'lfo', 'image-loader'],
+  },
 }

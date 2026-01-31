@@ -25,4 +25,12 @@ export const stringCaseNode: NodeDefinition = {
       },
     },
   ],
+  info: {
+    overview: 'Converts a string between different casing conventions. Supports uppercase, lowercase, title case, camelCase, snake_case, and kebab-case. Useful for formatting identifiers, labels, or display text.',
+    tips: [
+      'Use snake_case or kebab-case modes to normalize user input into valid identifiers.',
+      'Chain with String Template to format case-converted values into larger strings.',
+    ],
+    pairsWith: ['string-template', 'string-concat', 'string-replace', 'string-trim'],
+  },
 }

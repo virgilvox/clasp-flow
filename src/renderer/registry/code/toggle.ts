@@ -21,4 +21,13 @@ export const toggleNode: NodeDefinition = {
   controls: [
     { id: 'initial', type: 'toggle', label: 'Initial Value', default: false },
   ],
+  info: {
+    overview: 'A flip-flop that alternates between true and false each time its trigger fires. Separate set and reset inputs allow forcing the state directly. The number output emits 1 or 0, which is convenient for math operations downstream.',
+    tips: [
+      'Use the inverted output to drive two mutually exclusive signal paths without an extra node.',
+      'Wire a beat-detect trigger into the toggle input for rhythm-synced on/off effects.',
+      'Combine with a gate node to let signals through only while the toggle is active.',
+    ],
+    pairsWith: ['trigger', 'gate', 'beat-detect', 'switch'],
+  },
 }

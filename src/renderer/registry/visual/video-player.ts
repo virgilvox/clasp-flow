@@ -41,4 +41,13 @@ export const videoPlayerNode: NodeDefinition = {
       props: { min: 0, max: 1, step: 0.01 },
     },
   ],
+  info: {
+    overview: 'Plays a video file from a URL and outputs its frames as a texture. Provides playback controls including play, pause, seek, loop, and playback rate. Also outputs current time, duration, and a normalized progress value.',
+    tips: [
+      'Use the progress output (0 to 1) with map-range to sync other parameters to the video timeline.',
+      'Set loop to true and connect a metronome to the seek input to create rhythmic video scrubbing.',
+      'The video element output can be shared with other nodes that accept raw video for additional processing.',
+    ],
+    pairsWith: ['blend', 'shader', 'color-correction', 'metronome', 'texture-display'],
+  },
 }

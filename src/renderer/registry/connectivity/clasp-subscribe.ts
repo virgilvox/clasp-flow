@@ -29,4 +29,13 @@ export const claspSubscribeNode: NodeDefinition = {
     { id: 'epsilon', type: 'number', label: 'Change Threshold', default: 0, props: { min: 0, max: 1, step: 0.01 } },
   ],
   tags: ['clasp', 'subscribe', 'listen', 'receive'],
+  info: {
+    overview: 'Subscribes to one or more CLASP addresses using glob-style patterns and outputs values as they change. You can filter by signal type and throttle the update rate. The node stays subscribed for as long as the connection is active.',
+    tips: [
+      'Use wildcard patterns like /lights/** to subscribe to an entire address subtree.',
+      'Set a Max Rate to throttle high-frequency updates and reduce CPU load.',
+      'Use the Change Threshold (epsilon) to ignore updates smaller than a given delta.',
+    ],
+    pairsWith: ['clasp-connection', 'clasp-set', 'clasp-emit', 'monitor', 'json-parse'],
+  },
 }

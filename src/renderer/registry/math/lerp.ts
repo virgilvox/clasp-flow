@@ -16,4 +16,12 @@ export const lerpNode: NodeDefinition = {
   outputs: [{ id: 'result', type: 'number', label: 'Result' }],
   controls: [],
   tags: ['lerp', 'interpolate', 'blend', 'mix'],
+  info: {
+    overview: 'Performs linear interpolation between values A and B using parameter T. When T is 0, the output equals A. When T is 1, the output equals B. Values of T between 0 and 1 produce a proportional blend.',
+    tips: [
+      'Clamp T to the 0-1 range to prevent extrapolation beyond A and B.',
+      'Feed an LFO or time-based signal into T for animated transitions.',
+    ],
+    pairsWith: ['clamp', 'smooth', 'map-range', 'lfo', 'time'],
+  },
 }

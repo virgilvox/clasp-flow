@@ -22,6 +22,15 @@ export const envelopeVisualNode: NodeDefinition = {
     { id: 'sustain', type: 'number', label: 'Sustain', default: 0.5, props: { min: 0, max: 1, step: 0.01 } },
     { id: 'release', type: 'number', label: 'Release', default: 0.3, props: { min: 0.001, max: 5, step: 0.001 } },
   ],
+  info: {
+    overview: 'A visual ADSR envelope editor with draggable control points for shaping attack, decay, sustain, and release curves. Functions identically to the standard Envelope node but adds an interactive graphical display for intuitive editing.',
+    tips: [
+      'Drag the control points directly on the curve for faster, more intuitive shaping than typing numbers.',
+      'Use this node in place of the plain Envelope when you want visual feedback during design.',
+      'Connect the value output to visual parameters for real-time envelope monitoring.',
+    ],
+    pairsWith: ['oscillator', 'gain', 'filter', 'synth', 'beat-detect'],
+  },
 }
 
 // Export the custom node component

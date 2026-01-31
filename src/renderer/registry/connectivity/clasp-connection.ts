@@ -31,4 +31,13 @@ export const claspConnectionNode: NodeDefinition = {
     { id: 'reconnectDelay', type: 'number', label: 'Reconnect Delay (ms)', default: 5000, props: { min: 1000, max: 60000 } },
   ],
   tags: ['clasp', 'protocol', 'connection', 'websocket'],
+  info: {
+    overview: 'Establishes and manages a named CLASP WebSocket connection that other CLASP nodes can share. Each connection has a unique ID so multiple nodes can reference the same session. Supports token-based authentication and automatic reconnection.',
+    tips: [
+      'Give each connection a meaningful ID so other CLASP nodes can find it easily.',
+      'Enable Auto Reconnect for long-running installations that need to survive network interruptions.',
+      'Use the Token field when connecting to a server that requires authentication.',
+    ],
+    pairsWith: ['clasp-subscribe', 'clasp-set', 'clasp-emit', 'clasp-get', 'clasp-stream'],
+  },
 }

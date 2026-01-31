@@ -11,6 +11,16 @@
 
 Concatenate multiple strings.
 
+### Info
+
+Joins up to four strings together with an optional separator between them. Empty inputs are skipped. This is the simplest way to combine multiple text values into one output string.
+
+**Tips:**
+- Set the separator to a newline character to join lines of text.
+- Leave unused inputs disconnected and they will be ignored.
+
+**Works well with:** String Template, String Split, String Trim, String Case
+
 | Property | Value |
 |----------|-------|
 | **ID** | `string-concat` |
@@ -44,6 +54,16 @@ Joins all non-empty input strings with the specified separator. Empty inputs are
 
 Split string into parts.
 
+### Info
+
+Splits a string into an array of parts using a separator. Outputs the array, the first element, and the total count of parts. An optional limit controls the maximum number of splits.
+
+**Tips:**
+- Split by newline to break multi-line text into individual lines.
+- Use the count output to determine how many tokens were found before processing the array.
+
+**Works well with:** String Concat, String Replace, String Contains, JSON Parse
+
 | Property | Value |
 |----------|-------|
 | **ID** | `string-split` |
@@ -76,6 +96,16 @@ Uses `String.split()` with optional limit. Useful for parsing CSV data or extrac
 ## String Replace
 
 Replace text in a string.
+
+### Info
+
+Replaces occurrences of a search string or regex pattern within the input. Can replace the first match or all matches. The search and replace values can come from either the controls or the connected inputs.
+
+**Tips:**
+- Enable the Use Regex toggle to use patterns like \d+ for matching numbers.
+- Connect dynamic search and replace values from other nodes to do data-driven substitution.
+
+**Works well with:** Regex Match, String Contains, String Template, String Concat
 
 | Property | Value |
 |----------|-------|
@@ -113,6 +143,16 @@ Uses `String.replace()` or `String.replaceAll()`. When regex mode enabled, creat
 
 Extract a portion of a string.
 
+### Info
+
+Extracts a substring from the input using start and end indices. Negative indices count from the end of the string. Also outputs the length of the extracted portion.
+
+**Tips:**
+- Set end to -1 to slice from the start index through the rest of the string.
+- Combine with String Length to dynamically calculate slice boundaries.
+
+**Works well with:** String Length, String Contains, String Split, Expression
+
 | Property | Value |
 |----------|-------|
 | **ID** | `string-slice` |
@@ -146,6 +186,16 @@ Uses `String.slice()`. Negative indices count from end of string. End index is e
 ## String Case
 
 Convert string case.
+
+### Info
+
+Converts a string between different casing conventions. Supports uppercase, lowercase, title case, camelCase, snake_case, and kebab-case. Useful for formatting identifiers, labels, or display text.
+
+**Tips:**
+- Use snake_case or kebab-case modes to normalize user input into valid identifiers.
+- Chain with String Template to format case-converted values into larger strings.
+
+**Works well with:** String Template, String Concat, String Replace, String Trim
 
 | Property | Value |
 |----------|-------|

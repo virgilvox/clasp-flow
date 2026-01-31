@@ -13,6 +13,16 @@ Messaging nodes enable wireless connections between nodes using named channels. 
 
 Send values to a named channel.
 
+### Info
+
+Publishes a value to a named channel that any Receive node can pick up. Use it to avoid tangled connections across a large flow. With "Send on Change" enabled, it fires automatically whenever the input value updates.
+
+**Tips:**
+- Disable "Send on Change" and use the trigger input when you need precise control over timing.
+- Pair with multiple Receive nodes to broadcast one value to many places at once.
+
+**Works well with:** Receive, Trigger, Changed, Throttle
+
 | Property | Value |
 |----------|-------|
 | **ID** | `send` |
@@ -47,6 +57,17 @@ Publishes values to an internal message bus. Multiple Send nodes can publish to 
 ## Receive
 
 Receive values from a named channel.
+
+### Info
+
+Listens on a named channel and outputs whatever value a Send node publishes to that channel. This lets you pass data between distant parts of a flow without drawing long connections. The "Changed" trigger fires each time a new value arrives.
+
+**Tips:**
+- The channel name is case-sensitive, so "Volume" and "volume" are different channels.
+- Use descriptive channel names to keep large flows readable.
+- Multiple Receive nodes can listen on the same channel to fan out a value.
+
+**Works well with:** Send, Gate, Monitor, Latch
 
 | Property | Value |
 |----------|-------|

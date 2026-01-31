@@ -14,4 +14,12 @@ export const randomNode: NodeDefinition = {
     { id: 'min', type: 'number', label: 'Min', default: 0 },
     { id: 'max', type: 'number', label: 'Max', default: 1 },
   ],
+  info: {
+    overview: 'Generates a random number within a configurable minimum and maximum range. An optional seed input allows for reproducible random sequences. Each evaluation produces a new random value unless the seed is held constant.',
+    tips: [
+      'Set a fixed seed to get the same random sequence every time for testing.',
+      'Use clamp after this node if downstream logic requires strict bounds.',
+    ],
+    pairsWith: ['clamp', 'quantize', 'map-range', 'trigger'],
+  },
 }

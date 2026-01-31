@@ -12,4 +12,5 @@ export type {
   PortDefinition,
   ControlDefinition,
   NodeDefinition,
+  NodeInfo,
 } from '@/stores/nodes'

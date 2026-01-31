@@ -2693,7 +2693,8 @@
             },
             "instrument": "piano",
             "volume": -3,
-            "attack": 0.5700000000000001
+            "attack": 0.5700000000000001,
+            "sustain": 0.01
           },
           "events": {}
         },
@@ -6814,7 +6815,8 @@
               },
               "instrument": "piano",
               "volume": -3,
-              "attack": 0.5700000000000001
+              "attack": 0.5700000000000001,
+              "sustain": 0.01
             },
             "events": {}
           },
@@ -7267,7 +7269,8 @@
               },
               "instrument": "piano",
               "volume": -3,
-              "attack": 0.5700000000000001
+              "attack": 0.5700000000000001,
+              "sustain": 0.01
             },
             "events": {}
           },
@@ -7720,7 +7723,8 @@
               },
               "instrument": "piano",
               "volume": -3,
-              "attack": 0.5700000000000001
+              "attack": 0.5700000000000001,
+              "sustain": 0.01
             },
             "events": {}
           },
@@ -8173,7 +8177,8 @@
               },
               "instrument": "piano",
               "volume": -3,
-              "attack": 0.5700000000000001
+              "attack": 0.5700000000000001,
+              "sustain": 0.01
             },
             "events": {}
           },
@@ -8465,7 +8470,8 @@
               },
               "instrument": "piano",
               "volume": -3,
-              "attack": 0.5700000000000001
+              "attack": 0.5700000000000001,
+              "sustain": 0.01
             },
             "events": {}
           },

@@ -27,6 +27,17 @@ Some connectivity nodes have browser-specific requirements:
 
 Make HTTP/REST API requests.
 
+### Info
+
+Makes HTTP and REST API requests with support for all standard methods and optional request templates. You can use a shared connection for base URL and authentication, or specify a full URL directly. Responses are output as parsed data along with the status code.
+
+**Tips:**
+- Use a connection with templates for APIs you call repeatedly to avoid duplicating URL and header configuration.
+- Connect a trigger node to control when the request fires rather than letting it run on every input change.
+- Check the Loading output to show a spinner or disable controls while a request is in flight.
+
+**Works well with:** json-parse, json-stringify, trigger, function, console
+
 | Property | Value |
 |----------|-------|
 | **ID** | `http-request` |
@@ -65,6 +76,17 @@ Uses `fetch()` API with AbortController for timeout support. Automatically parse
 
 Real-time bidirectional WebSocket connection.
 
+### Info
+
+Opens a persistent WebSocket connection for real-time bidirectional messaging. Uses a shared connection from the ConnectionManager so multiple nodes can share the same socket. Incoming messages appear on the Message output and you can send data through the Send input.
+
+**Tips:**
+- Use a shared connection ID to let multiple WebSocket nodes share a single socket.
+- Connect a trigger to the Send Trigger input to control when outgoing messages are dispatched.
+- Pair with json-parse to decode structured messages arriving as JSON strings.
+
+**Works well with:** json-parse, json-stringify, mqtt, trigger, console
+
 | Property | Value |
 |----------|-------|
 | **ID** | `websocket` |
@@ -100,6 +122,17 @@ Manages WebSocket lifecycle. Messages are parsed as JSON if possible, otherwise 
 
 Receive MIDI messages from devices.
 
+### Info
+
+Receives MIDI messages from connected hardware or virtual MIDI devices. Outputs include note number, velocity, note on/off state, and control change values. Set the channel to -1 to listen on all channels at once.
+
+**Tips:**
+- Set the channel to -1 to receive messages from all MIDI channels simultaneously.
+- Use the CC Value output to map hardware knobs and faders to parameters in your flow.
+- Pair with a MIDI Output node to build MIDI processing chains.
+
+**Works well with:** midi-output, gain, oscillator, expression, monitor
+
 | Property | Value |
 |----------|-------|
 | **ID** | `midi-input` |
@@ -134,6 +167,17 @@ Uses Web MIDI API (`navigator.requestMIDIAccess()`). Listens to all connected MI
 
 Send MIDI messages to devices.
 
+### Info
+
+Sends MIDI note messages to connected hardware or virtual MIDI devices. Provide a note number and velocity, then trigger the send. Useful for controlling synthesizers, lighting rigs, or any MIDI-compatible equipment from a flow.
+
+**Tips:**
+- Connect a trigger node to control the exact timing of note events.
+- Use velocity values between 0 and 127 to control note dynamics.
+- Combine with a MIDI Input node to create MIDI filtering or remapping flows.
+
+**Works well with:** midi-input, trigger, expression, oscillator, function
+
 | Property | Value |
 |----------|-------|
 | **ID** | `midi-output` |
@@ -165,6 +209,17 @@ Sends MIDI note on/off messages via Web MIDI API.
 ## MQTT
 
 MQTT publish/subscribe messaging via WebSocket.
+
+### Info
+
+Publishes and subscribes to MQTT topics using a shared connection. Incoming messages appear on the Message output along with the topic they arrived on. Supports QoS levels 0, 1, and 2 for different delivery guarantees.
+
+**Tips:**
+- Use QoS 0 for high-throughput sensor data where occasional lost messages are acceptable.
+- Use QoS 2 when every message must be delivered exactly once.
+- Connect the Topic output to a monitor node to debug which topics are active.
+
+**Works well with:** json-parse, json-stringify, monitor, console, trigger
 
 | Property | Value |
 |----------|-------|
@@ -202,6 +257,17 @@ Uses MQTT.js library over WebSocket. Supports topic wildcards (+ and #).
 ## OSC
 
 Open Sound Control protocol over WebSocket.
+
+### Info
+
+Sends and receives Open Sound Control messages over a WebSocket bridge. You specify a host, port, and OSC address pattern. Incoming messages are split into their address and argument components for easy downstream processing.
+
+**Tips:**
+- Make sure an OSC-to-WebSocket bridge is running on the target host and port.
+- Use address patterns like /mixer/fader1 to target specific parameters.
+- Connect the Value output to a gain or expression node for real-time parameter control.
+
+**Works well with:** midi-input, expression, gain, monitor, console
 
 | Property | Value |
 |----------|-------|
@@ -243,6 +309,17 @@ OSC over WebSocket using osc.js library. Address patterns support wildcards.
 
 Serial port communication via Web Serial API.
 
+### Info
+
+Communicates with hardware over a serial port using the Web Serial API. Received data is available as raw bytes, parsed lines, or a numeric value. Common uses include reading from Arduino boards, microcontrollers, and other serial peripherals.
+
+**Tips:**
+- Select 115200 baud when working with modern Arduino boards that default to that speed.
+- Use the Last Line output for line-delimited protocols like those from many sensor boards.
+- Send text commands through the Send input to control serial devices interactively.
+
+**Works well with:** json-parse, expression, monitor, console, trigger
+
 | Property | Value |
 |----------|-------|
 | **ID** | `serial` |
@@ -277,6 +354,16 @@ Uses Web Serial API. User must interact to select port. Buffers incoming data an
 ## Bluetooth LE
 
 Bluetooth Low Energy communication via Web Bluetooth API.
+
+### Info
+
+A simplified all-in-one Bluetooth LE node that handles scanning, connecting, and reading a single characteristic. Good for quick prototyping when you only need one value from one device. For more complex setups with multiple characteristics, use the dedicated BLE Scanner, Device, and Characteristic nodes instead.
+
+**Tips:**
+- Enter both the service UUID and characteristic UUID before toggling Connect.
+- Use the dedicated BLE Scanner and BLE Characteristic nodes for multi-characteristic workflows.
+
+**Works well with:** ble-scanner, ble-device, ble-characteristic, monitor
 
 | Property | Value |
 |----------|-------|
@@ -315,6 +402,17 @@ Uses Web Bluetooth API. User must interact to pair device. Supports notification
 
 Scan for Bluetooth LE devices and select one to connect.
 
+### Info
+
+Scans for nearby Bluetooth LE devices and lets the user select one. You can filter by standard service types, a custom UUID, or a device name prefix. The selected device reference is passed to a BLE Device node for connection.
+
+**Tips:**
+- Use a service filter to narrow results to relevant devices and speed up discovery.
+- Set a name prefix filter when multiple devices of the same type are nearby.
+- Trigger a new scan whenever you need to refresh the list of available devices.
+
+**Works well with:** ble-device, ble-characteristic, trigger, console
+
 | Property | Value |
 |----------|-------|
 | **ID** | `ble-scanner` |
@@ -351,6 +449,17 @@ Initiates Web Bluetooth device picker. Connect the `device` output to BLE Device
 ## BLE Device
 
 Connect to a Bluetooth LE device and enumerate its services.
+
+### Info
+
+Connects to a specific Bluetooth LE device and enumerates its services and characteristics. Pass in a device reference from a BLE Scanner node, and this node manages the connection lifecycle including optional auto-reconnect.
+
+**Tips:**
+- Enable Auto Reconnect to recover from dropped connections without manual intervention.
+- Use the Service UUID filter to limit enumeration to a single service for faster discovery.
+- Check the Connected output to gate downstream logic on active connection state.
+
+**Works well with:** ble-scanner, ble-characteristic, monitor, gate
 
 | Property | Value |
 |----------|-------|
@@ -391,6 +500,17 @@ Manages BLE device connection lifecycle. Enumerates services and characteristics
 ## BLE Characteristic
 
 Read, write, and subscribe to BLE characteristic values.
+
+### Info
+
+Reads, writes, and subscribes to individual BLE characteristic values on a connected device. You specify the service and characteristic UUIDs, pick a data format, and the node handles encoding and decoding automatically. Notifications push updated values as they arrive.
+
+**Tips:**
+- Enable notifications to receive continuous updates without polling.
+- Use the Auto data format when working with standard Bluetooth SIG profiles.
+- Connect a BLE Device node to the Device input before attempting reads or writes.
+
+**Works well with:** ble-device, ble-scanner, monitor, json-parse
 
 | Property | Value |
 |----------|-------|
@@ -435,6 +555,17 @@ Provides full access to BLE characteristic operations. Supports standard GATT pr
 
 Manage a named CLASP protocol connection.
 
+### Info
+
+Establishes and manages a named CLASP WebSocket connection that other CLASP nodes can share. Each connection has a unique ID so multiple nodes can reference the same session. Supports token-based authentication and automatic reconnection.
+
+**Tips:**
+- Give each connection a meaningful ID so other CLASP nodes can find it easily.
+- Enable Auto Reconnect for long-running installations that need to survive network interruptions.
+- Use the Token field when connecting to a server that requires authentication.
+
+**Works well with:** clasp-subscribe, clasp-set, clasp-emit, clasp-get, clasp-stream
+
 | Property | Value |
 |----------|-------|
 | **ID** | `clasp-connection` |
@@ -478,6 +609,17 @@ Manages CLASP WebSocket connection. Connection ID allows sharing across multiple
 
 Subscribe to CLASP address patterns.
 
+### Info
+
+Subscribes to one or more CLASP addresses using glob-style patterns and outputs values as they change. You can filter by signal type and throttle the update rate. The node stays subscribed for as long as the connection is active.
+
+**Tips:**
+- Use wildcard patterns like /lights/** to subscribe to an entire address subtree.
+- Set a Max Rate to throttle high-frequency updates and reduce CPU load.
+- Use the Change Threshold (epsilon) to ignore updates smaller than a given delta.
+
+**Works well with:** clasp-connection, clasp-set, clasp-emit, monitor, json-parse
+
 | Property | Value |
 |----------|-------|
 | **ID** | `clasp-subscribe` |
@@ -516,6 +658,17 @@ Subscribe to CLASP address patterns.
 
 Set a CLASP parameter value.
 
+### Info
+
+Writes a value to a CLASP parameter address. The value persists on the server until changed again, making this the right choice for durable state like brightness levels or configuration values. Pair with CLASP Subscribe on other clients to observe the change.
+
+**Tips:**
+- Use the trigger input to control exactly when the value is written.
+- Combine with an expression node to transform values before sending.
+- Use CLASP Emit instead when you need a fire-and-forget event that does not persist.
+
+**Works well with:** clasp-connection, clasp-get, clasp-subscribe, expression
+
 | Property | Value |
 |----------|-------|
 | **ID** | `clasp-set` |
@@ -548,6 +701,17 @@ Set a CLASP parameter value.
 ## CLASP Emit
 
 Emit a CLASP event (one-time trigger).
+
+### Info
+
+Sends a one-shot CLASP event to a specified address. Events are fire-and-forget signals that do not persist state on the server. Use this for cues, triggers, and other momentary actions.
+
+**Tips:**
+- Connect a trigger input to control exactly when the event fires.
+- Use address patterns like /cue/fire to organize events by category.
+- Attach a payload for events that need to carry data along with the trigger.
+
+**Works well with:** clasp-connection, clasp-subscribe, trigger, function
 
 | Property | Value |
 |----------|-------|
@@ -582,6 +746,17 @@ Emit a CLASP event (one-time trigger).
 
 Get current value of a CLASP parameter.
 
+### Info
+
+Fetches the current value of a single CLASP parameter on demand. Unlike Subscribe, this performs a one-time read each time it is triggered. Use it when you need a snapshot of a parameter rather than continuous updates.
+
+**Tips:**
+- Connect a trigger node to poll the value at specific intervals or on user action.
+- Use CLASP Subscribe instead if you need real-time continuous updates.
+- Check the Error output to handle cases where the address does not exist.
+
+**Works well with:** clasp-connection, clasp-set, clasp-subscribe, trigger
+
 | Property | Value |
 |----------|-------|
 | **ID** | `clasp-get` |
@@ -614,6 +789,17 @@ Get current value of a CLASP parameter.
 
 Stream high-rate continuous data.
 
+### Info
+
+Sends high-rate continuous data to a CLASP address. Unlike Set, stream messages are optimized for throughput and do not guarantee persistence. Use this for sensor feeds, animation data, or any value that updates many times per second.
+
+**Tips:**
+- Disable the Enabled toggle to pause streaming without disconnecting.
+- Use CLASP Set instead when the value needs to persist on the server.
+- Keep the address consistent so subscribers can reliably receive the stream.
+
+**Works well with:** clasp-connection, clasp-subscribe, oscillator, expression
+
 | Property | Value |
 |----------|-------|
 | **ID** | `clasp-stream` |
@@ -645,6 +831,17 @@ Stream high-rate continuous data.
 ## CLASP Bundle
 
 Send atomic bundles of CLASP operations.
+
+### Info
+
+Sends multiple CLASP messages as a single atomic bundle so they are applied together on the server. You can optionally schedule the bundle to execute at a specific timestamp for sample-accurate coordination. This is useful when several parameters must change in lockstep.
+
+**Tips:**
+- Use the Schedule At input to synchronize bundle execution with other timed events.
+- Build the messages array using upstream nodes before connecting it to the Messages input.
+- Pair with a CLASP Connection node to supply the Connection ID.
+
+**Works well with:** clasp-connection, clasp-set, clasp-emit, trigger
 
 | Property | Value |
 |----------|-------|

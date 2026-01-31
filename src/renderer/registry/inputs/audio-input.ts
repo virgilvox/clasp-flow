@@ -23,4 +23,13 @@ export const audioInputNode: NodeDefinition = {
       props: { deviceType: 'audio-input' },
     },
   ],
+  info: {
+    overview: 'Captures live audio from a microphone or other system input device. It provides a raw audio stream, a level envelope, and a beat trigger. The source selector lets you pick which input device to use when multiple are available.',
+    tips: [
+      'Connect the beat output to a counter or toggle for rhythm-reactive patches.',
+      'Use the level output with a map-range node to scale microphone loudness to a useful parameter range.',
+      'Grant microphone permissions before adding this node to avoid silent failures.',
+    ],
+    pairsWith: ['audio-analyzer', 'beat-detect', 'gain', 'filter'],
+  },
 }

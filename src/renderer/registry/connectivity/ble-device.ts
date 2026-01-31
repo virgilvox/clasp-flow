@@ -43,4 +43,13 @@ export const bleDeviceNode: NodeDefinition = {
       props: { placeholder: 'Filter to specific service' },
     },
   ],
+  info: {
+    overview: 'Connects to a specific Bluetooth LE device and enumerates its services and characteristics. Pass in a device reference from a BLE Scanner node, and this node manages the connection lifecycle including optional auto-reconnect.',
+    tips: [
+      'Enable Auto Reconnect to recover from dropped connections without manual intervention.',
+      'Use the Service UUID filter to limit enumeration to a single service for faster discovery.',
+      'Check the Connected output to gate downstream logic on active connection state.',
+    ],
+    pairsWith: ['ble-scanner', 'ble-characteristic', 'monitor', 'gate'],
+  },
 }

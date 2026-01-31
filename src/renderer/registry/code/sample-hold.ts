@@ -16,4 +16,13 @@ export const sampleHoldNode: NodeDefinition = {
     { id: 'output', type: 'any', label: 'Output' },
   ],
   controls: [],
+  info: {
+    overview: 'Captures the current value of its input only when the trigger fires, then holds that value until the next trigger. This is useful for freezing a continuously changing signal at a specific moment. The output stays constant between triggers regardless of input changes.',
+    tips: [
+      'Pair with an interval node to sample a signal at a fixed rate.',
+      'Use with a random or oscillator source to generate stepped random sequences.',
+      'Chain multiple sample-hold nodes with offset triggers for a shift-register effect.',
+    ],
+    pairsWith: ['trigger', 'interval', 'oscillator', 'lfo'],
+  },
 }

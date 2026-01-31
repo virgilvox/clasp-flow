@@ -13,6 +13,16 @@ All AI nodes run models locally in the browser using [Transformers.js](https://h
 
 Generate text using local language models.
 
+### Info
+
+Generates text using a local language model running in the browser. Takes a prompt and produces a completion with configurable length and temperature. Good for creative text, dialogue, or data augmentation tasks.
+
+**Tips:**
+- Lower the temperature toward 0.1 for more predictable, deterministic outputs.
+- Use String Template to build structured prompts from multiple inputs before feeding them in.
+
+**Works well with:** String Template, Sentiment, Speech to Text, Monitor
+
 | Property | Value |
 |----------|-------|
 | **ID** | `text-generation` |
@@ -46,6 +56,16 @@ Uses Transformers.js text generation pipeline. Higher temperature produces more 
 ## Classify Image
 
 Classify images using Vision Transformer.
+
+### Info
+
+Classifies images using a Vision Transformer model and returns ranked labels with confidence scores. Outputs the top K predictions along with the highest-scoring label and its score. Useful for sorting, filtering, or reacting to visual content.
+
+**Tips:**
+- Lower the Top K value to reduce noise when you only care about the most likely class.
+- Connect the topLabel output to a Gate node to trigger actions only when a specific class is detected.
+
+**Works well with:** Webcam, Detect Objects, Caption Image, Gate
 
 | Property | Value |
 |----------|-------|
@@ -82,6 +102,16 @@ Uses ViT (Vision Transformer) model for ImageNet classification. Returns sorted 
 
 Analyze text sentiment (positive/negative).
 
+### Info
+
+Analyzes text and classifies it as positive or negative, outputting both a label and numeric scores. Returns separate positive and negative confidence values. Useful for monitoring tone in chat messages, reviews, or transcribed speech.
+
+**Tips:**
+- Connect this after Speech to Text to get real-time sentiment from spoken input.
+- Use the score output with an Expression node to create custom thresholds for sentiment-based branching.
+
+**Works well with:** Speech to Text, Text Generate, String Template, Expression
+
 | Property | Value |
 |----------|-------|
 | **ID** | `sentiment-analysis` |
@@ -115,6 +145,16 @@ Uses distilled BERT model for binary sentiment classification. Returns both the 
 
 Generate captions for images.
 
+### Info
+
+Generates a natural language description of an image using a vision-language model. Takes image data as input and produces a text caption. The frame interval control limits how often captioning runs on video streams.
+
+**Tips:**
+- Increase the frame interval when processing live video to reduce CPU and memory usage.
+- Feed the caption output into Text Generate or Sentiment Analysis for further language processing.
+
+**Works well with:** Webcam, Classify Image, Text Generate, Sentiment
+
 | Property | Value |
 |----------|-------|
 | **ID** | `image-captioning` |
@@ -147,6 +187,16 @@ Uses image-to-text model to generate natural language descriptions of image cont
 
 Convert text to embedding vectors.
 
+### Info
+
+Converts text into a numeric embedding vector using a transformer model. The resulting high-dimensional vector captures semantic meaning, making it useful for similarity comparisons and clustering. Runs entirely in the browser.
+
+**Tips:**
+- Connect the trigger input to control when extraction runs, since it can be computationally expensive.
+- Use the dimensions output to verify the embedding size matches what downstream nodes expect.
+
+**Works well with:** Sentiment, String Template, Text Generate, Monitor
+
 | Property | Value |
 |----------|-------|
 | **ID** | `feature-extraction` |
@@ -177,6 +227,16 @@ Uses sentence transformer model to convert text into dense vector representation
 ## Detect Objects
 
 Detect and locate objects in images.
+
+### Info
+
+Detects and locates objects in images using a transformer-based model. Returns a list of detected objects with bounding boxes, labels, and confidence scores. The threshold control filters out low-confidence detections.
+
+**Tips:**
+- Lower the threshold to catch more objects at the cost of more false positives.
+- Use the count output to trigger logic only when a certain number of objects are in the scene.
+
+**Works well with:** Webcam, Classify Image, Object Detection (MediaPipe), Gate
 
 | Property | Value |
 |----------|-------|
@@ -211,6 +271,16 @@ Uses DETR or similar object detection model. Returns array of objects with `{lab
 ## Speech to Text
 
 Transcribe audio to text using Whisper.
+
+### Info
+
+Transcribes audio to text using the Whisper model. Supports three modes: manual transcription on trigger, continuous auto-chunking, and voice activity detection (VAD) that listens for speech and transcribes automatically. Runs entirely in the browser.
+
+**Tips:**
+- Use VAD mode for hands-free transcription that only processes audio when someone is speaking.
+- Increase the buffer duration in continuous mode to get longer, more coherent transcription chunks.
+
+**Works well with:** Audio Input, Sentiment, Text Generate, String Template
 
 | Property | Value |
 |----------|-------|
@@ -252,6 +322,16 @@ Uses Whisper model via Transformers.js. Three modes:
 ## Text Transform
 
 Transform text - summarize, translate, or rewrite.
+
+### Info
+
+Transforms text using T5/Flan models for summarization, translation, or paraphrasing. Select a task and the model rewrites the input accordingly. Runs locally in the browser with no external API calls.
+
+**Tips:**
+- Increase max tokens for longer summaries or translations.
+- Chain with String Template to add task-specific prefixes before the input text.
+
+**Works well with:** String Template, Text Generate, Sentiment, Speech to Text
 
 | Property | Value |
 |----------|-------|
@@ -296,6 +376,16 @@ The following nodes use [MediaPipe Tasks Vision](https://developers.google.com/m
 
 Detect and track hand landmarks using MediaPipe.
 
+### Info
+
+Tracks hand landmarks in real time from a video feed using MediaPipe. Outputs 21 landmark points per hand, world-space coordinates, handedness, and fingertip positions. Supports multiple visualization modes including skeleton, mesh, and bounding box.
+
+**Tips:**
+- Use the fingerTips output to get just the five fingertip positions without parsing the full landmark array.
+- Enable "Color by Hand" to visually distinguish left and right hands in the overlay.
+
+**Works well with:** Webcam, Gesture Recognition, Pose Estimation, Shader
+
 | Property | Value |
 |----------|-------|
 | **ID** | `mediapipe-hand` |
@@ -338,6 +428,16 @@ Detect and track hand landmarks using MediaPipe.
 ## Face Mesh
 
 Detect face landmarks and blendshapes using MediaPipe.
+
+### Info
+
+Detects 468 face landmarks and blendshapes from a video feed using MediaPipe Face Mesh. Provides head rotation angles, individual expression values like mouth open and eye blink, and multiple visualization styles. Runs in real time in the browser.
+
+**Tips:**
+- Use the blendshape outputs like smile or mouthOpen to drive parameters in a Shader node.
+- Switch the overlay style to "contours" for a cleaner visualization that highlights facial outlines only.
+
+**Works well with:** Webcam, Hand Tracking, Pose Estimation, Shader
 
 | Property | Value |
 |----------|-------|
@@ -384,6 +484,16 @@ Detect face landmarks and blendshapes using MediaPipe.
 ## Pose Estimation
 
 Detect body pose landmarks using MediaPipe.
+
+### Info
+
+Detects 33 body pose landmarks from a video feed using MediaPipe Pose. Provides both normalized and world-space coordinates, per-landmark visibility scores, and convenient outputs for key body points like shoulders, elbows, and hips.
+
+**Tips:**
+- Enable "Fade by Visibility" to make occluded or low-confidence landmarks less prominent in the overlay.
+- Use the individual joint outputs like leftWrist directly instead of parsing the full landmarks array.
+
+**Works well with:** Webcam, Hand Tracking, Face Mesh, Shader
 
 | Property | Value |
 |----------|-------|
@@ -432,6 +542,16 @@ Detect body pose landmarks using MediaPipe.
 
 Detect objects in video using MediaPipe EfficientDet.
 
+### Info
+
+Detects objects in a video stream using the MediaPipe EfficientDet model. Returns bounding boxes, labels, and confidence scores for each detected object. Includes a label filter to focus on specific object categories.
+
+**Tips:**
+- Use the label filter to restrict detections to only the categories you care about, like "person" or "car".
+- Connect the topBox output to a Shader node to highlight the most confident detection visually.
+
+**Works well with:** Webcam, Detect Objects, Classify Image, Gate
+
 | Property | Value |
 |----------|-------|
 | **ID** | `mediapipe-object` |
@@ -474,6 +594,16 @@ Detect objects in video using MediaPipe EfficientDet.
 
 Segment person from background using MediaPipe.
 
+### Info
+
+Separates a person from the background in a video feed using MediaPipe Selfie Segmentation. Outputs a mask that can be used for cutout effects, background blur, or custom compositing. Runs in real time in the browser.
+
+**Tips:**
+- Use the "Blur BG" overlay mode for a quick virtual background effect without additional nodes.
+- Adjust mask opacity to blend the segmentation visualization with the original video.
+
+**Works well with:** Webcam, Shader, Pose Estimation, Face Mesh
+
 | Property | Value |
 |----------|-------|
 | **ID** | `mediapipe-segmentation` |
@@ -510,6 +640,16 @@ Uses MediaPipe Selfie Segmentation for real-time person/background separation. U
 ## Gesture Recognition
 
 Recognize hand gestures using MediaPipe.
+
+### Info
+
+Recognizes hand gestures from a video feed using MediaPipe. Identifies common gestures like thumbs up, open palm, and pointing, and outputs the gesture name, confidence, and hand landmarks. Can track multiple hands simultaneously.
+
+**Tips:**
+- Increase the min confidence threshold to reduce false positives in noisy environments.
+- Use the gesture string output with a Gate node to trigger different actions for different gestures.
+
+**Works well with:** Webcam, Hand Tracking, Gate, Monitor
 
 | Property | Value |
 |----------|-------|
@@ -552,6 +692,16 @@ Recognizes predefined gestures like: Thumb Up, Thumb Down, Victory, Pointing Up,
 ## Audio Classifier
 
 Classify audio using MediaPipe YamNet model.
+
+### Info
+
+Classifies audio input using the MediaPipe YamNet model, identifying sounds like speech, music, and environmental noise. Outputs the top category, confidence score, and convenience booleans for speech and music detection.
+
+**Tips:**
+- Raise the min score threshold to filter out low-confidence classifications.
+- Use the isSpeech output to trigger speech recognition only when someone is actually talking.
+
+**Works well with:** Audio Input, Speech to Text, Gate, Monitor
 
 | Property | Value |
 |----------|-------|

@@ -27,4 +27,12 @@ export const arraySortNode: NodeDefinition = {
     },
   ],
   tags: ['array', 'sort', 'order', 'ascending', 'descending'],
+  info: {
+    overview: 'Sorts the elements of an array in ascending or descending order. Supports auto-detection of type as well as explicit numeric or alphabetic sorting. Returns a new sorted array.',
+    tips: [
+      'Use the "numeric" type when sorting strings that contain numbers to avoid lexicographic ordering.',
+      'Chain with Array First/Last to quickly extract the minimum or maximum value.',
+    ],
+    pairsWith: ['array-first-last', 'array-reverse', 'array-unique', 'array-slice'],
+  },
 }

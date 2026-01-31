@@ -14,4 +14,12 @@ export const multiplyNode: NodeDefinition = {
   ],
   outputs: [{ id: 'result', type: 'number', label: 'Result' }],
   controls: [],
+  info: {
+    overview: 'Multiplies two numbers together and outputs the product. This is one of the core arithmetic operations. Use it for scaling values, applying gain, or computing areas and rates.',
+    tips: [
+      'Multiply by -1 to negate a signal without using a subtract node.',
+      'Chain with add to build linear equations of the form (a * x + b).',
+    ],
+    pairsWith: ['add', 'divide', 'constant', 'clamp'],
+  },
 }

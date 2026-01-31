@@ -217,5 +217,26 @@ export function validateDefinition(definition: unknown): NodeDefinition {
     result.tags = tagsRaw.map((t, i) => validateString(t, `tags[${i}]`))
   }
 
+  // Validate optional info field
+  if (def.info !== undefined) {
+    if (typeof def.info !== 'object' || def.info === null) {
+      throw new ValidationError('info must be an object', 'info', def.info)
+    }
+    const info = def.info as Record<string, unknown>
+    const overview = validateString(info.overview, 'info.overview')
+    const nodeInfo: { overview: string; tips?: string[]; pairsWith?: string[] } = { overview }
+
+    if (info.tips !== undefined) {
+      const tipsRaw = validateArray<unknown>(info.tips, 'info.tips')
+      nodeInfo.tips = tipsRaw.map((t, i) => validateString(t, `info.tips[${i}]`))
+    }
+    if (info.pairsWith !== undefined) {
+      const pairsRaw = validateArray<unknown>(info.pairsWith, 'info.pairsWith')
+      nodeInfo.pairsWith = pairsRaw.map((p, i) => validateString(p, `info.pairsWith[${i}]`))
+    }
+
+    result.info = nodeInfo
+  }
+
   return result
 }

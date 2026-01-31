@@ -23,4 +23,13 @@ export const claspGetNode: NodeDefinition = {
     { id: 'address', type: 'text', label: 'Address', default: '/param', props: { placeholder: '/lights/strip1/brightness' } },
   ],
   tags: ['clasp', 'get', 'read', 'fetch'],
+  info: {
+    overview: 'Fetches the current value of a single CLASP parameter on demand. Unlike Subscribe, this performs a one-time read each time it is triggered. Use it when you need a snapshot of a parameter rather than continuous updates.',
+    tips: [
+      'Connect a trigger node to poll the value at specific intervals or on user action.',
+      'Use CLASP Subscribe instead if you need real-time continuous updates.',
+      'Check the Error output to handle cases where the address does not exist.',
+    ],
+    pairsWith: ['clasp-connection', 'clasp-set', 'clasp-subscribe', 'trigger'],
+  },
 }

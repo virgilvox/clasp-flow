@@ -21,4 +21,12 @@ export const counterNode: NodeDefinition = {
     { id: 'initial', type: 'number', label: 'Initial', default: 0 },
   ],
   tags: ['counter', 'count', 'increment', 'decrement'],
+  info: {
+    overview: 'Maintains a numeric count that responds to increment, decrement, and reset triggers. Supports configurable min/max bounds and optional wrapping. Useful for sequencing, stepping through arrays, or tracking events.',
+    tips: [
+      'Enable wrap mode to cycle through a fixed range of values continuously.',
+      'Connect the count output to Array Get to step through array elements one at a time.',
+    ],
+    pairsWith: ['array-get', 'gate', 'compare', 'router'],
+  },
 }

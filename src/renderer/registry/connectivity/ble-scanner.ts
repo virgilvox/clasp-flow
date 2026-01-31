@@ -55,4 +55,13 @@ export const bleScannerNode: NodeDefinition = {
       props: { placeholder: 'Optional device name prefix' },
     },
   ],
+  info: {
+    overview: 'Scans for nearby Bluetooth LE devices and lets the user select one. You can filter by standard service types, a custom UUID, or a device name prefix. The selected device reference is passed to a BLE Device node for connection.',
+    tips: [
+      'Use a service filter to narrow results to relevant devices and speed up discovery.',
+      'Set a name prefix filter when multiple devices of the same type are nearby.',
+      'Trigger a new scan whenever you need to refresh the list of available devices.',
+    ],
+    pairsWith: ['ble-device', 'ble-characteristic', 'trigger', 'console'],
+  },
 }

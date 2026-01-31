@@ -23,4 +23,13 @@ export const claspStreamNode: NodeDefinition = {
     { id: 'enabled', type: 'toggle', label: 'Enabled', default: true },
   ],
   tags: ['clasp', 'stream', 'continuous', 'high-rate'],
+  info: {
+    overview: 'Sends high-rate continuous data to a CLASP address. Unlike Set, stream messages are optimized for throughput and do not guarantee persistence. Use this for sensor feeds, animation data, or any value that updates many times per second.',
+    tips: [
+      'Disable the Enabled toggle to pause streaming without disconnecting.',
+      'Use CLASP Set instead when the value needs to persist on the server.',
+      'Keep the address consistent so subscribers can reliably receive the stream.',
+    ],
+    pairsWith: ['clasp-connection', 'clasp-subscribe', 'oscillator', 'expression'],
+  },
 }

@@ -21,4 +21,12 @@ export const stringSliceNode: NodeDefinition = {
     { id: 'start', type: 'number', label: 'Start', default: 0 },
     { id: 'end', type: 'number', label: 'End', default: -1 },
   ],
+  info: {
+    overview: 'Extracts a substring from the input using start and end indices. Negative indices count from the end of the string. Also outputs the length of the extracted portion.',
+    tips: [
+      'Set end to -1 to slice from the start index through the rest of the string.',
+      'Combine with String Length to dynamically calculate slice boundaries.',
+    ],
+    pairsWith: ['string-length', 'string-contains', 'string-split', 'expression'],
+  },
 }

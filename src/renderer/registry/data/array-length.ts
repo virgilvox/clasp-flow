@@ -15,4 +15,12 @@ export const arrayLengthNode: NodeDefinition = {
   ],
   controls: [],
   tags: ['array', 'length', 'count', 'size'],
+  info: {
+    overview: 'Returns the number of elements in an array and a boolean indicating whether the array is empty. This is a lightweight way to check the size of any list before processing it.',
+    tips: [
+      'Use the isEmpty output with a Gate to skip processing on empty arrays.',
+      'Combine with Counter to track how array sizes change over time.',
+    ],
+    pairsWith: ['array-filter-nulls', 'gate', 'compare', 'counter'],
+  },
 }

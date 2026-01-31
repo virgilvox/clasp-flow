@@ -12,4 +12,12 @@ export const arrayUniqueNode: NodeDefinition = {
   outputs: [{ id: 'result', type: 'array', label: 'Result' }],
   controls: [],
   tags: ['array', 'unique', 'distinct', 'dedupe'],
+  info: {
+    overview: 'Removes duplicate values from an array, keeping only the first occurrence of each value. Useful for deduplicating lists of IDs, tags, or any repeated data.',
+    tips: [
+      'Apply this after Array Push when accumulating values that may repeat.',
+      'Combine with Array Length to compare the count before and after deduplication.',
+    ],
+    pairsWith: ['array-push', 'array-length', 'array-sort', 'array-filter-nulls'],
+  },
 }

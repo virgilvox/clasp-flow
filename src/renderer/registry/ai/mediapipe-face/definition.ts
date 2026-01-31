@@ -74,4 +74,12 @@ export const mediapipeFaceNode: NodeDefinition = {
       default: true,
     },
   ],
+  info: {
+    overview: 'Detects 468 face landmarks and blendshapes from a video feed using MediaPipe Face Mesh. Provides head rotation angles, individual expression values like mouth open and eye blink, and multiple visualization styles. Runs in real time in the browser.',
+    tips: [
+      'Use the blendshape outputs like smile or mouthOpen to drive parameters in a Shader node.',
+      'Switch the overlay style to "contours" for a cleaner visualization that highlights facial outlines only.',
+    ],
+    pairsWith: ['webcam', 'mediapipe-hand', 'mediapipe-pose', 'shader'],
+  },
 }

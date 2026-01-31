@@ -72,4 +72,13 @@ export const bleCharacteristicNode: NodeDefinition = {
       default: false,
     },
   ],
+  info: {
+    overview: 'Reads, writes, and subscribes to individual BLE characteristic values on a connected device. You specify the service and characteristic UUIDs, pick a data format, and the node handles encoding and decoding automatically. Notifications push updated values as they arrive.',
+    tips: [
+      'Enable notifications to receive continuous updates without polling.',
+      'Use the Auto data format when working with standard Bluetooth SIG profiles.',
+      'Connect a BLE Device node to the Device input before attempting reads or writes.',
+    ],
+    pairsWith: ['ble-device', 'ble-scanner', 'monitor', 'json-parse'],
+  },
 }

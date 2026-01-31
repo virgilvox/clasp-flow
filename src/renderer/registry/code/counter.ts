@@ -26,4 +26,13 @@ export const counterNode: NodeDefinition = {
     { id: 'step', type: 'number', label: 'Step', default: 1 },
     { id: 'wrap', type: 'toggle', label: 'Wrap Around', default: false },
   ],
+  info: {
+    overview: 'Maintains an integer count that responds to increment, decrement, and reset triggers. The normalized output gives a 0-1 value based on the min/max range. Wrap mode makes the counter loop back to the opposite bound when it exceeds a limit.',
+    tips: [
+      'Connect a trigger node to increment for a manual step sequencer.',
+      'Enable wrap mode and use normalized output to drive cyclic animations.',
+      'Wire atMin and atMax to toggle or gate nodes to build conditional logic around boundaries.',
+    ],
+    pairsWith: ['trigger', 'gate', 'switch', 'interval'],
+  },
 }

@@ -20,4 +20,12 @@ export const stringTrimNode: NodeDefinition = {
     },
   ],
   tags: ['trim', 'whitespace', 'clean', 'strip'],
+  info: {
+    overview: 'Removes leading and trailing whitespace from a string. Can trim from both ends, only the start, or only the end. Helpful for cleaning up user input or text extracted from other sources.',
+    tips: [
+      'Place this after Speech to Text or any text input to strip unwanted whitespace before further processing.',
+      'Use the "start" or "end" mode when you only need to clean one side of the string.',
+    ],
+    pairsWith: ['string-replace', 'string-concat', 'string-case', 'speech-recognition'],
+  },
 }

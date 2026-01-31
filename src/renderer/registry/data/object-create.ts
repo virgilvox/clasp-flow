@@ -19,4 +19,12 @@ export const objectCreateNode: NodeDefinition = {
   outputs: [{ id: 'result', type: 'data', label: 'Result' }],
   controls: [],
   tags: ['object', 'create', 'build', 'construct'],
+  info: {
+    overview: 'Builds a new object from up to three key/value pairs. Each key is a string input and each value can be any type. Unused pairs are omitted from the output.',
+    tips: [
+      'Leave key inputs empty to skip those pairs and create objects with fewer properties.',
+      'Chain with Object Merge to combine the result with an existing object.',
+    ],
+    pairsWith: ['object-merge', 'object-set', 'json-stringify', 'http-request'],
+  },
 }

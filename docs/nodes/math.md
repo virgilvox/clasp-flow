@@ -11,6 +11,16 @@
 
 Add two numbers together.
 
+### Info
+
+Adds two numbers together and outputs the sum. This is one of the core arithmetic operations. Use it to combine values, apply offsets, or accumulate totals.
+
+**Tips:**
+- Chain with a constant node to add a fixed offset to a signal.
+- Pair with multiply to build linear transformations (multiply then add).
+
+**Works well with:** Subtract, Multiply, Constant, Smooth
+
 | Property | Value |
 |----------|-------|
 | **ID** | `add` |
@@ -39,6 +49,16 @@ Add two numbers together.
 ## Subtract
 
 Subtract one number from another.
+
+### Info
+
+Subtracts the second input from the first and outputs the difference. This is one of the core arithmetic operations. Use it to compute offsets, deltas, or distances between values.
+
+**Tips:**
+- Follow with abs to get the unsigned distance between two values.
+- Use to compute frame-to-frame deltas by subtracting the previous value from the current.
+
+**Works well with:** Add, Absolute, Multiply, Smooth
 
 | Property | Value |
 |----------|-------|
@@ -69,6 +89,16 @@ Subtract one number from another.
 
 Multiply two numbers.
 
+### Info
+
+Multiplies two numbers together and outputs the product. This is one of the core arithmetic operations. Use it for scaling values, applying gain, or computing areas and rates.
+
+**Tips:**
+- Multiply by -1 to negate a signal without using a subtract node.
+- Chain with add to build linear equations of the form (a * x + b).
+
+**Works well with:** Add, Divide, Constant, Clamp
+
 | Property | Value |
 |----------|-------|
 | **ID** | `multiply` |
@@ -98,6 +128,16 @@ Multiply two numbers.
 
 Divide one number by another.
 
+### Info
+
+Divides the first input by the second and outputs the quotient. This is standard numeric division. Be aware that dividing by zero will produce Infinity or NaN.
+
+**Tips:**
+- Use a compare node to guard against division by zero before this node.
+- Combine with modulo to get both the quotient and remainder of a division.
+
+**Works well with:** Multiply, Modulo, Compare, Clamp
+
 | Property | Value |
 |----------|-------|
 | **ID** | `divide` |
@@ -126,6 +166,16 @@ Divide one number by another.
 ## Modulo
 
 Get the remainder of division.
+
+### Info
+
+Computes the remainder after dividing a value by a divisor. Supports standard, positive-only, and floor modes for different remainder conventions. Useful for creating repeating patterns and cyclic behavior from increasing values.
+
+**Tips:**
+- Use Positive mode to ensure the result is always non-negative.
+- Combine with time to create looping counters or repeating animations.
+
+**Works well with:** Divide, Wrap, Time, Quantize
 
 | Property | Value |
 |----------|-------|
@@ -161,6 +211,16 @@ Get the remainder of division.
 
 Constrain a value between minimum and maximum bounds.
 
+### Info
+
+Constrains a value to stay within a minimum and maximum range. Values below the minimum are raised to the minimum, and values above the maximum are lowered to the maximum. Values already within range pass through unchanged.
+
+**Tips:**
+- Place after map-range to ensure the output never exceeds the target bounds.
+- Use with lerp to keep interpolation parameters in the 0 to 1 range.
+
+**Works well with:** Map Range, Lerp, Smooth, In Range, Wrap
+
 | Property | Value |
 |----------|-------|
 | **ID** | `clamp` |
@@ -192,6 +252,16 @@ Constrain a value between minimum and maximum bounds.
 
 Get the absolute (positive) value.
 
+### Info
+
+Returns the absolute value of the input, converting negative numbers to positive. Zero and positive values pass through unchanged. Commonly used to get magnitude without regard to sign.
+
+**Tips:**
+- Use after subtract to get the distance between two values.
+- Combine with compare to check if a value exceeds a threshold in either direction.
+
+**Works well with:** Subtract, Compare, Clamp, Smooth
+
 | Property | Value |
 |----------|-------|
 | **ID** | `abs` |
@@ -219,6 +289,16 @@ Get the absolute (positive) value.
 ## Random
 
 Generate random numbers.
+
+### Info
+
+Generates a random number within a configurable minimum and maximum range. An optional seed input allows for reproducible random sequences. Each evaluation produces a new random value unless the seed is held constant.
+
+**Tips:**
+- Set a fixed seed to get the same random sequence every time for testing.
+- Use clamp after this node if downstream logic requires strict bounds.
+
+**Works well with:** Clamp, Quantize, Map Range, Trigger
 
 | Property | Value |
 |----------|-------|
@@ -252,6 +332,16 @@ When seed input changes, a new random value is generated.
 ## Map Range
 
 Remap a value from one range to another.
+
+### Info
+
+Rescales a value from one numeric range to another. For example, an input in the 0-1 range can be mapped to 0-100. The mapping is linear and does not clamp, so values outside the input range will extrapolate.
+
+**Tips:**
+- Follow with a clamp node if you need to prevent extrapolation beyond the output range.
+- Use remap instead if you need built-in clamping and easing options.
+
+**Works well with:** Clamp, Remap, Lerp, Smooth, In Range
 
 | Property | Value |
 |----------|-------|
@@ -289,6 +379,16 @@ result = outMin + normalized * (outMax - outMin)
 
 Smooth value changes over time using linear interpolation.
 
+### Info
+
+Applies exponential smoothing to a value, gradually moving the output toward the input over time. Lower factor values produce slower, smoother transitions while higher values track the input more closely. Useful for dampening noisy or jittery signals.
+
+**Tips:**
+- Start with a factor around 0.1 and adjust based on how responsive you need the output to be.
+- Place after any sensor or rapidly changing input to remove noise.
+
+**Works well with:** Lerp, Clamp, Map Range, LFO, Remap
+
 | Property | Value |
 |----------|-------|
 | **ID** | `smooth` |
@@ -324,6 +424,16 @@ Lower factor = smoother (slower response)
 
 Trigonometric functions.
 
+### Info
+
+Applies trigonometric functions including sin, cos, tan, and their inverses and hyperbolic variants. The input is treated as radians by default, but a toggle lets you work in degrees instead. Useful for circular motion, oscillation, and angle calculations.
+
+**Tips:**
+- Enable Use Degrees if your angle source provides values in degrees rather than radians.
+- Feed a time-based ramp into sin or cos to generate smooth oscillations.
+
+**Works well with:** Multiply, Add, Time, LFO, Power/Root
+
 | Property | Value |
 |----------|-------|
 | **ID** | `trig` |
@@ -354,6 +464,16 @@ Applies `Math[function]()` to input. If `degrees` is true, converts input to rad
 ## Power/Root
 
 Power, root, and logarithm functions.
+
+### Info
+
+Applies power, root, and logarithmic functions to numeric values. Includes power, square root, cube root, natural log, log base 10, and exponential operations. Select the desired operation from the dropdown.
+
+**Tips:**
+- Use Sqrt for distance calculations after summing squared components.
+- Apply Log or Ln to compress large value ranges into smaller ones.
+
+**Works well with:** Multiply, Absolute, Map Range, Trig
 
 | Property | Value |
 |----------|-------|
@@ -392,6 +512,16 @@ Power, root, and logarithm functions.
 ## Vector Math
 
 3D vector operations.
+
+### Info
+
+Performs 3D vector operations on two input vectors, including addition, subtraction, cross product, normalization, scaling, interpolation, and dot product. Also outputs the magnitude of the result. Select the operation from the dropdown.
+
+**Tips:**
+- Use Normalize to get a unit-length direction vector from any input.
+- Use Dot to measure the alignment between two direction vectors.
+
+**Works well with:** Add, Multiply, Lerp, Trig, Smooth
 
 | Property | Value |
 |----------|-------|

@@ -33,4 +33,13 @@ export const spotLight3dNode: NodeDefinition = {
     { id: 'targetZ', type: 'number', label: 'Target Z', default: 0 },
     { id: 'castShadow', type: 'toggle', label: 'Cast Shadow', default: true },
   ],
+  info: {
+    overview: 'Projects a cone of light from a point toward a target, like a stage spotlight or flashlight. The angle and penumbra controls shape the cone edge. Supports shadow casting for dramatic, focused lighting.',
+    tips: [
+      'Increase penumbra toward 1 for a soft-edged falloff at the cone boundary.',
+      'Narrow the angle to create a tight, focused beam for dramatic highlights.',
+      'Aim the target position at the object you want to emphasize in the scene.',
+    ],
+    pairsWith: ['scene-3d', 'ambient-light-3d', 'material-3d', 'point-light-3d'],
+  },
 }

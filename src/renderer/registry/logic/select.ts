@@ -19,4 +19,12 @@ export const selectNode: NodeDefinition = {
     { id: 'result', type: 'any', label: 'Result' },
   ],
   controls: [],
+  info: {
+    overview: 'Picks one of up to four inputs based on a numeric index. Index 0 selects input A, index 1 selects B, and so on. This is useful for cycling through values or building lookup-style selection from a numeric source.',
+    tips: [
+      'Use modulo before the index input to cycle through inputs in a loop.',
+      'Combine with quantize to snap a continuous signal to discrete selection steps.',
+    ],
+    pairsWith: ['switch', 'modulo', 'quantize', 'compare'],
+  },
 }

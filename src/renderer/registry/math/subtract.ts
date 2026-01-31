@@ -14,4 +14,12 @@ export const subtractNode: NodeDefinition = {
   ],
   outputs: [{ id: 'result', type: 'number', label: 'Result' }],
   controls: [],
+  info: {
+    overview: 'Subtracts the second input from the first and outputs the difference. This is one of the core arithmetic operations. Use it to compute offsets, deltas, or distances between values.',
+    tips: [
+      'Follow with abs to get the unsigned distance between two values.',
+      'Use to compute frame-to-frame deltas by subtracting the previous value from the current.',
+    ],
+    pairsWith: ['add', 'abs', 'multiply', 'smooth'],
+  },
 }

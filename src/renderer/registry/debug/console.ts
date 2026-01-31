@@ -14,4 +14,12 @@ export const consoleNode: NodeDefinition = {
     { id: 'label', type: 'text', label: 'Label', default: 'Log' },
     { id: 'logOnChange', type: 'toggle', label: 'On Change', default: true },
   ],
+  info: {
+    overview: 'Prints the incoming value to the browser developer console. Useful for quick debugging when you need to inspect raw data flowing through a connection. Set a label to distinguish logs from different Console nodes.',
+    tips: [
+      'Disable "On Change" to stop continuous logging of high-frequency signals like audio or LFOs.',
+      'Open the browser DevTools console to see the output since it does not display inside the node itself.',
+    ],
+    pairsWith: ['monitor', 'json-parse', 'json-stringify', 'type-of'],
+  },
 }

@@ -15,4 +15,12 @@ export const objectKeysNode: NodeDefinition = {
   ],
   controls: [],
   tags: ['object', 'keys', 'properties', 'enumerate'],
+  info: {
+    overview: 'Extracts all property names from an object and returns them as an array of strings. Also outputs the total number of keys. Useful for inspecting object structure or iterating over properties.',
+    tips: [
+      'Feed the keys array into Array Contains to check for a specific property by name.',
+      'Use the count output to detect empty objects without inspecting individual keys.',
+    ],
+    pairsWith: ['object-values', 'object-entries', 'array-contains', 'array-length'],
+  },
 }

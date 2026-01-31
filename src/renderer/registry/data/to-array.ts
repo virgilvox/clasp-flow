@@ -21,4 +21,12 @@ export const toArrayNode: NodeDefinition = {
     { id: 'separator', type: 'text', label: 'Separator', default: ',' },
   ],
   tags: ['convert', 'array', 'wrap', 'split'],
+  info: {
+    overview: 'Converts a value into an array using one of three modes: wrap places the value inside a single-element array, split divides a string by a separator, and from attempts to convert iterable values. Useful for normalizing input into array form.',
+    tips: [
+      'Use split mode with a comma separator to turn CSV-style strings into arrays.',
+      'Use wrap mode to ensure a value is always an array before feeding it to array-processing nodes.',
+    ],
+    pairsWith: ['array-join', 'array-filter-nulls', 'array-push', 'json-parse'],
+  },
 }

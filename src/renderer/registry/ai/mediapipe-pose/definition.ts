@@ -81,4 +81,12 @@ export const mediapipePoseNode: NodeDefinition = {
       default: true,
     },
   ],
+  info: {
+    overview: 'Detects 33 body pose landmarks from a video feed using MediaPipe Pose. Provides both normalized and world-space coordinates, per-landmark visibility scores, and convenient outputs for key body points like shoulders, elbows, and hips.',
+    tips: [
+      'Enable "Fade by Visibility" to make occluded or low-confidence landmarks less prominent in the overlay.',
+      'Use the individual joint outputs like leftWrist directly instead of parsing the full landmarks array.',
+    ],
+    pairsWith: ['webcam', 'mediapipe-hand', 'mediapipe-face', 'shader'],
+  },
 }

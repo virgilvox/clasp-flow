@@ -21,4 +21,13 @@ export const render3dNode: NodeDefinition = {
     { id: 'height', type: 'number', label: 'Height', default: 512, props: { min: 64, max: 2048 } },
     { id: 'includeDepth', type: 'toggle', label: 'Include Depth', default: false },
   ],
+  info: {
+    overview: 'Takes a scene and a camera and produces a rendered texture output. This is the final step in any 3D pipeline. It can also output a depth buffer for post-processing effects.',
+    tips: [
+      'Increase width and height for sharper output, but watch performance on complex scenes.',
+      'Enable Include Depth to get a depth texture for fog, DOF, or edge-detection effects.',
+      'Connect the texture output to an image display or further processing nodes.',
+    ],
+    pairsWith: ['scene-3d', 'camera-3d'],
+  },
 }

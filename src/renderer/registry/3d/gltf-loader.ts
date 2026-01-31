@@ -26,4 +26,13 @@ export const gltfLoaderNode: NodeDefinition = {
     { id: 'posZ', type: 'number', label: 'Position Z', default: 0 },
     { id: 'scale', type: 'number', label: 'Scale', default: 1, props: { min: 0.001, max: 100 } },
   ],
+  info: {
+    overview: 'Loads external 3D models in GLTF or GLB format from a URL and outputs them as scene objects. This is the primary way to bring complex, pre-built assets into the scene. The loading output lets you show progress feedback.',
+    tips: [
+      'Use the scale control to normalize models that were exported at different unit scales.',
+      'Check the error output to catch missing or malformed URLs early.',
+      'Host GLB files on a CORS-enabled server or use local file paths in Electron.',
+    ],
+    pairsWith: ['scene-3d', 'transform-3d', 'material-3d', 'group-3d'],
+  },
 }

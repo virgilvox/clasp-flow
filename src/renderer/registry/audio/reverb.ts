@@ -19,4 +19,13 @@ export const reverbNode: NodeDefinition = {
     { id: 'wet', type: 'slider', label: 'Wet', default: 0.5, props: { min: 0, max: 1, step: 0.01 } },
     { id: 'preDelay', type: 'slider', label: 'Pre-Delay', default: 0.01, props: { min: 0, max: 0.1, step: 0.001 } },
   ],
+  info: {
+    overview: 'Simulates the reflections of a physical space by applying a reverb tail to the audio signal. The decay control sets how long the reverb rings out, and the wet control blends between dry and reverberant audio.',
+    tips: [
+      'Keep wet below 0.3 for subtle room ambience, or push above 0.7 for atmospheric wash effects.',
+      'Increase pre-delay slightly to preserve transient clarity before the reverb tail begins.',
+      'Place reverb after delay in the signal chain for a cleaner echo-into-space effect.',
+    ],
+    pairsWith: ['audio-delay', 'gain', 'audio-output', 'filter'],
+  },
 }

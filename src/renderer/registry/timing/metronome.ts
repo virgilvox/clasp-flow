@@ -33,4 +33,13 @@ export const metronomeNode: NodeDefinition = {
     { id: 'swing', type: 'slider', label: 'Swing', default: 0, props: { min: 0, max: 100, step: 1 } },
     { id: 'running', type: 'toggle', label: 'Running', default: true },
   ],
+  info: {
+    overview: 'A musical clock that emits beat and bar triggers at a given BPM. It outputs the current beat number, bar number, and a phase value from 0 to 1 within each beat. Subdivision and swing controls let you dial in rhythmic feel.',
+    tips: [
+      'Use the phase output with a map-range node to create smooth animations that lock to the beat.',
+      'Swing only affects subdivided beats, so set subdivision to 1/8 or 1/16 to hear its effect.',
+      'Feed the bar trigger into a step-sequencer reset input to keep patterns aligned across changes.',
+    ],
+    pairsWith: ['step-sequencer', 'beat-detect', 'envelope', 'counter', 'lfo'],
+  },
 }

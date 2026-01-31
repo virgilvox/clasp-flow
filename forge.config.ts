@@ -13,6 +13,16 @@ const config: ForgeConfig = {
     icon: './public/icon',
     appBundleId: 'com.lumencanvas.latch',
     appCategoryType: 'public.app-category.developer-tools',
+    osxSign: {},
+    ...(process.env.APPLE_ID &&
+      process.env.APPLE_PASSWORD &&
+      process.env.APPLE_TEAM_ID && {
+        osxNotarize: {
+          appleId: process.env.APPLE_ID,
+          appleIdPassword: process.env.APPLE_PASSWORD,
+          teamId: process.env.APPLE_TEAM_ID,
+        },
+      }),
     // Only include built files, exclude source and dev files
     ignore: [
       /^\/src$/,

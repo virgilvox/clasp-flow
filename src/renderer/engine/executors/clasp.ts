@@ -602,8 +602,8 @@ export const claspBundleExecutor: NodeExecutorFn = async (ctx: ExecutionContext)
 // ============================================================================
 
 interface VideoReceiveNodeState {
-  canvas: OffscreenCanvas | HTMLCanvasElement
-  ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D
+  canvas: HTMLCanvasElement
+  ctx: CanvasRenderingContext2D
   texture: THREE.Texture
   decoder: VideoDecoder | null
   decoderConfigured: boolean
@@ -622,12 +622,7 @@ interface VideoReceiveNodeState {
 
 const videoReceiveState = new Map<string, VideoReceiveNodeState>()
 
-function createReceiveCanvas(): { canvas: OffscreenCanvas | HTMLCanvasElement; ctx: OffscreenCanvasRenderingContext2D | CanvasRenderingContext2D } {
-  if (typeof OffscreenCanvas !== 'undefined') {
-    const canvas = new OffscreenCanvas(1280, 720)
-    const ctx = canvas.getContext('2d')!
-    return { canvas, ctx }
-  }
+function createReceiveCanvas(): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } {
   const canvas = document.createElement('canvas')
   canvas.width = 1280
   canvas.height = 720
@@ -682,7 +677,7 @@ export const claspVideoReceiveExecutor: NodeExecutorFn = async (ctx: ExecutionCo
   if (!state) {
     const { canvas, ctx: canvasCtx } = createReceiveCanvas()
     const renderer = getThreeShaderRenderer()
-    const texture = renderer.createTexture(canvas as HTMLCanvasElement)
+    const texture = renderer.createTexture(canvas)
 
     state = {
       canvas,
@@ -888,7 +883,7 @@ export const claspVideoReceiveExecutor: NodeExecutorFn = async (ctx: ExecutionCo
 
   // Update texture
   const renderer = getThreeShaderRenderer()
-  renderer.updateTexture(state.texture, state.canvas as HTMLCanvasElement)
+  renderer.updateTexture(state.texture, state.canvas)
 
   outputs.set('texture', state.texture)
   outputs.set('width', state.canvas.width)

@@ -27,4 +27,12 @@ export const moduloNode: NodeDefinition = {
       },
     },
   ],
+  info: {
+    overview: 'Computes the remainder after dividing a value by a divisor. Supports standard, positive-only, and floor modes for different remainder conventions. Useful for creating repeating patterns and cyclic behavior from increasing values.',
+    tips: [
+      'Use Positive mode to ensure the result is always non-negative.',
+      'Combine with time to create looping counters or repeating animations.',
+    ],
+    pairsWith: ['divide', 'wrap', 'time', 'quantize'],
+  },
 }

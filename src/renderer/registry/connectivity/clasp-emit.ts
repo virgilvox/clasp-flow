@@ -24,4 +24,13 @@ export const claspEmitNode: NodeDefinition = {
     { id: 'address', type: 'text', label: 'Event Address', default: '/event', props: { placeholder: '/cue/fire' } },
   ],
   tags: ['clasp', 'emit', 'event', 'trigger'],
+  info: {
+    overview: 'Sends a one-shot CLASP event to a specified address. Events are fire-and-forget signals that do not persist state on the server. Use this for cues, triggers, and other momentary actions.',
+    tips: [
+      'Connect a trigger input to control exactly when the event fires.',
+      'Use address patterns like /cue/fire to organize events by category.',
+      'Attach a payload for events that need to carry data along with the trigger.',
+    ],
+    pairsWith: ['clasp-connection', 'clasp-subscribe', 'trigger', 'function'],
+  },
 }

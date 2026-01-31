@@ -18,4 +18,13 @@ export const audioAnalyzerNode: NodeDefinition = {
   controls: [
     { id: 'smoothing', type: 'number', label: 'Smoothing', default: 0.8 },
   ],
+  info: {
+    overview: 'Splits an incoming audio signal into level, bass, mid, and high frequency bands as numeric outputs. Use it to drive visuals, animations, or any parameter that should react to sound.',
+    tips: [
+      'Increase smoothing (closer to 1) for slower, more stable readings; decrease it for snappier response.',
+      'Map the bass output to scale or brightness for kick-driven visual effects.',
+      'Place this after a gain node to control the analysis input level independently of the output volume.',
+    ],
+    pairsWith: ['audio-player', 'gain', 'oscillator', 'beat-detect'],
+  },
 }
