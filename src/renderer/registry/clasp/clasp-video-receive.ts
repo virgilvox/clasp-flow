@@ -17,6 +17,7 @@ export const claspVideoReceiveNode: NodeDefinition = {
   ],
   outputs: [
     { id: 'texture', type: 'texture', label: 'Texture' },
+    { id: 'video', type: 'video', label: 'Video' },
     { id: 'width', type: 'number', label: 'Width' },
     { id: 'height', type: 'number', label: 'Height' },
     { id: 'fps', type: 'number', label: 'FPS' },

@@ -49,13 +49,6 @@ function updatePreview() {
   const engine = getExecutionEngine()
   const texture = engine.getNodeTexture(props.id) as THREE.Texture | null
 
-  // Debug logging (every 60 frames)
-  if (Math.random() < 0.02) {
-    const outputs = engine.getNodeOutputs(props.id)
-    console.log(`[MainOutputNode ${props.id}] outputs:`, outputs ? [...outputs.entries()] : 'none')
-    console.log(`[MainOutputNode ${props.id}] texture:`, texture ? `THREE.Texture uuid=${texture.uuid}` : 'null')
-  }
-
   if (!texture || !(texture instanceof THREE.Texture)) {
     // No input - draw placeholder
     ctx.fillStyle = '#1a1a1a'

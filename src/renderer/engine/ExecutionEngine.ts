@@ -174,11 +174,6 @@ export class ExecutionEngine {
     for (const edge of this.edges) {
       if (edge.target === nodeId && edge.targetHandle && edge.sourceHandle) {
         const sourceOutputs = this.nodeOutputs.get(edge.source)
-        // Debug: log edge connections for main-output nodes (every 60 frames)
-        if (this.frameCount % 60 === 0 && nodeId.includes('output')) {
-          console.log(`[ExecutionEngine] Edge: ${edge.source}:${edge.sourceHandle} -> ${nodeId}:${edge.targetHandle}`)
-          console.log(`[ExecutionEngine] Source outputs available:`, sourceOutputs ? [...sourceOutputs.keys()] : 'none')
-        }
         if (sourceOutputs) {
           const value = sourceOutputs.get(edge.sourceHandle)
           if (value !== undefined) {
@@ -313,6 +308,15 @@ export class ExecutionEngine {
     if (outputs.has('_preset_code')) {
       updates.code = outputs.get('_preset_code')
       hasUpdates = true
+    }
+
+    // Check for control value updates (e.g., auto-populated fields)
+    if (outputs.has('_controlUpdates')) {
+      const controlUpdates = outputs.get('_controlUpdates') as Record<string, unknown>
+      if (controlUpdates && typeof controlUpdates === 'object') {
+        Object.assign(updates, controlUpdates)
+        hasUpdates = true
+      }
     }
 
     // Apply updates if any

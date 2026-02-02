@@ -577,10 +577,6 @@ export const shaderExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
   // Render to per-node render target
   try {
     const texture = renderer.render(shaderMaterial, uniforms, ctx.nodeId)
-    // Debug: log texture output
-    if (ctx.frameCount % 60 === 0) {
-      console.log(`[Shader ${ctx.nodeId}] render output:`, texture ? `THREE.Texture (${texture.uuid})` : 'null')
-    }
     outputs.set('texture', texture)
     outputs.set('_error', null)
   } catch (error) {
@@ -815,11 +811,6 @@ const canvasTextureCache = new Map<string, THREE.Texture>()
  */
 export const mainOutputExecutor: NodeExecutorFn = (ctx: ExecutionContext) => {
   const textureInput = ctx.inputs.get('texture') as THREE.Texture | HTMLCanvasElement | null
-
-  // Debug: log what main-output receives (reduced frequency)
-  if (ctx.frameCount % 120 === 0) {
-    console.log(`[MainOutput ${ctx.nodeId}] received:`, textureInput ? (textureInput instanceof THREE.Texture ? `THREE.Texture` : 'HTMLCanvasElement') : 'null')
-  }
 
   const outputs = new Map<string, unknown>()
 

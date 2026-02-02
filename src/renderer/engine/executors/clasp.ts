@@ -605,6 +605,7 @@ interface VideoReceiveNodeState {
   canvas: HTMLCanvasElement
   ctx: CanvasRenderingContext2D
   texture: THREE.Texture
+  videoElement: HTMLVideoElement | null
   decoder: VideoDecoder | null
   decoderConfigured: boolean
   waitingForKeyframe: boolean
@@ -725,6 +726,7 @@ export const claspVideoReceiveExecutor: NodeExecutorFn = async (ctx: ExecutionCo
       canvas,
       ctx: canvasCtx,
       texture,
+      videoElement: null,
       decoder: null,
       decoderConfigured: false,
       waitingForKeyframe: false,
@@ -965,7 +967,24 @@ export const claspVideoReceiveExecutor: NodeExecutorFn = async (ctx: ExecutionCo
     state.frameDirty = false
   }
 
+  // Create video element from canvas captureStream for MediaPipe compatibility
+  if (!state.videoElement && state.canvas.width > 2) {
+    try {
+      const stream = state.canvas.captureStream(30)
+      const video = document.createElement('video')
+      video.srcObject = stream
+      video.muted = true
+      video.playsInline = true
+      video.autoplay = true
+      video.play().catch(() => {})
+      state.videoElement = video
+    } catch {
+      // captureStream not supported
+    }
+  }
+
   outputs.set('texture', state.texture)
+  outputs.set('video', state.videoElement)
   outputs.set('_display', state.canvas)
   outputs.set('width', state.canvas.width)
   outputs.set('height', state.canvas.height)
@@ -996,8 +1015,10 @@ interface VideoSendNodeState {
   connectionId: string
   room: string
   quality: string
+  streamAddress: string
+  /** Dedicated CLASP client for sending — separate session so relay echoes to receivers on the shared connection */
+  sendClient: Clasp | null
   presenceInterval: ReturnType<typeof setInterval> | null
-  keyframeUnsub: (() => void) | null
   lastKeyFrameTime: number
   lastEncodeTime: number
   codecDescription: Uint8Array | null
@@ -1012,6 +1033,7 @@ export const claspVideoSendExecutor: NodeExecutorFn = async (ctx: ExecutionConte
   const qualityPreset = (ctx.controls.get('quality') as string) ?? 'medium'
   const enabled = (ctx.controls.get('enabled') as boolean) ?? true
   const autoStart = (ctx.controls.get('autoStart') as boolean) ?? false
+  const streamAddressControl = (ctx.controls.get('streamAddress') as string) ?? ''
   const startTrigger = ctx.inputs.get('start') as boolean
   const stopTrigger = ctx.inputs.get('stop') as boolean
   const textureInput = ctx.inputs.get('texture') as THREE.Texture | null | undefined
@@ -1058,8 +1080,9 @@ export const claspVideoSendExecutor: NodeExecutorFn = async (ctx: ExecutionConte
       connectionId: '',
       room: '',
       quality: '',
+      streamAddress: '',
+      sendClient: null,
       presenceInterval: null,
-      keyframeUnsub: null,
       lastKeyFrameTime: 0,
       lastEncodeTime: 0,
       codecDescription: null,
@@ -1077,51 +1100,98 @@ export const claspVideoSendExecutor: NodeExecutorFn = async (ctx: ExecutionConte
     state.broadcasting = false
   }
 
+  // Detect if the send client disconnected — reset and restart
+  if (state.broadcasting && state.sendClient && !state.sendClient.connected) {
+    console.log('[CLASP Video Send] Send client disconnected, restarting broadcast')
+    stopVideoSend(nodeId, connection)
+    state.streamAddress = ''
+    if (!streamAddressControl) {
+      outputs.set('_controlUpdates', { streamAddress: '' })
+    }
+  }
+
   // Handle start trigger or autoStart
   const shouldStart = (startTrigger || (autoStart && !state.broadcasting)) && (textureInput || videoInput)
 
-  if (shouldStart && !state.broadcasting) {
+  if (shouldStart && !state.broadcasting && !state.encoder) {
+    // Create a dedicated CLASP client for sending — the relay won't echo stream()
+    // data back to the same session, so we need a separate session for the sender
+    if (!state.sendClient || !state.sendClient.connected) {
+      try {
+        const connConfig = connection.config || { url: 'wss://relay.clasp.to', name: 'latch-send', token: '' }
+        const builder = new ClaspBuilder(connConfig.url).name(`${connConfig.name || 'latch'}-send`).reconnect(false)
+        if (connConfig.token) builder.token(connConfig.token)
+        state.sendClient = await builder.connect()
+        console.log(`[CLASP Video Send] Dedicated send client connected, session: ${state.sendClient.session}`)
+      } catch (e) {
+        console.error('[CLASP Video Send] Failed to create send client:', e)
+        outputs.set('broadcasting', false)
+        outputs.set('fps', 0)
+        outputs.set('bitrate', 0)
+        outputs.set('error', `Send client connection failed: ${(e as Error).message}`)
+        return outputs
+      }
+    }
+
+    // Compute stream address using the SEND client's session
+    const sendSession = state.sendClient.session ?? ctx.nodeId
+    const computedAddress = `/video/relay/${roomInput}/stream/${sendSession}`
+    const streamAddress = streamAddressControl || computedAddress
+
     state.seqGenerator = createSequenceGenerator()
     state.connectionId = connectionId
     state.room = roomInput
     state.quality = qualityPreset
+    state.streamAddress = streamAddress
     state.codecDescription = null
+
+    // Auto-populate the streamAddress control if it was empty
+    if (!streamAddressControl) {
+      outputs.set('_controlUpdates', { streamAddress })
+    }
 
     // Create encoder
     state.encoder = new VideoEncoder({
       output: (chunk: EncodedVideoChunk, metadata?: EncodedVideoChunkMetadata) => {
-        const s = videoSendState.get(nodeId)
-        if (!s || !s.broadcasting) return
-        const conn = getConnection(s.connectionId)
-        if (!conn?.client) return
+        try {
+          const s = videoSendState.get(nodeId)
+          if (!s || !s.broadcasting || !s.sendClient?.connected) return
 
-        // Capture codec description
-        if (metadata?.decoderConfig?.description) {
-          const desc = metadata.decoderConfig.description
-          s.codecDescription = (desc instanceof ArrayBuffer)
-            ? new Uint8Array(desc)
-            : new Uint8Array((desc as unknown as ArrayBuffer))
+          // Capture codec description
+          if (metadata?.decoderConfig?.description) {
+            const desc = metadata.decoderConfig.description
+            s.codecDescription = (desc instanceof ArrayBuffer)
+              ? new Uint8Array(desc)
+              : new Uint8Array((desc as unknown as ArrayBuffer))
+          }
+
+          const data = new Uint8Array(chunk.byteLength)
+          chunk.copyTo(data)
+
+          s.stats.bytesSent += data.byteLength
+          s.stats.framesSent++
+
+          const chunks = chunkFrame(data, chunk.type, chunk.timestamp, 16000, s.seqGenerator!)
+          const address = s.streamAddress
+
+          if (s.stats.framesSent <= 3 || s.stats.framesSent % 100 === 0) {
+            console.log(`[CLASP Video Send] Frame ${s.stats.framesSent}: ${chunk.type} ${data.byteLength}B → ${chunks.length} chunks → ${address}`)
+          }
+
+          if (chunk.type === 'key' && s.codecDescription && chunks.length > 0) {
+            chunks[0].description = s.codecDescription
+          }
+
+          chunks.forEach((c) => {
+            s.sendClient!.stream(address, c as unknown as Value)
+          })
+        } catch (e) {
+          console.warn('[CLASP Video Send] Output callback error:', e)
         }
-
-        const data = new Uint8Array(chunk.byteLength)
-        chunk.copyTo(data)
-
-        s.stats.bytesSent += data.byteLength
-        s.stats.framesSent++
-
-        const chunks = chunkFrame(data, chunk.type, chunk.timestamp, 16000, s.seqGenerator!)
-        const address = `/video/relay/${s.room}/stream/${conn.client!.session}`
-
-        if (chunk.type === 'key' && s.codecDescription && chunks.length > 0) {
-          chunks[0].description = s.codecDescription
-        }
-
-        chunks.forEach((c) => {
-          conn.client!.stream(address, c as unknown as Value)
-        })
       },
       error: (e: DOMException) => {
         console.error('[CLASP Video Send] Encoder error:', e)
+        stopVideoSend(nodeId)
       },
     })
 
@@ -1145,6 +1215,10 @@ export const claspVideoSendExecutor: NodeExecutorFn = async (ctx: ExecutionConte
       state.encoder.configure(encoderConfig)
       state.encoderConfigured = true
     } catch (e) {
+      if (state.encoder && state.encoder.state !== 'closed') {
+        try { state.encoder.close() } catch { /* ignore */ }
+      }
+      state.encoder = null
       outputs.set('broadcasting', false)
       outputs.set('fps', 0)
       outputs.set('bitrate', 0)
@@ -1155,12 +1229,11 @@ export const claspVideoSendExecutor: NodeExecutorFn = async (ctx: ExecutionConte
     state.broadcasting = true
     state.lastKeyFrameTime = 0
 
-    // Presence announcements
-    const session = connection.client.session
+    // Presence announcements — use the send client so presence session matches stream address
     const announcePresence = () => {
-      const conn = getConnection(connectionId)
-      if (conn?.client) {
-        conn.client.set(`/video/relay/${roomInput}/presence/${session}`, {
+      const s = videoSendState.get(nodeId)
+      if (s?.sendClient?.connected) {
+        s.sendClient.set(`/video/relay/${roomInput}/presence/${sendSession}`, {
           isBroadcaster: true,
           quality: qualityPreset,
         } as unknown as Value)
@@ -1169,16 +1242,16 @@ export const claspVideoSendExecutor: NodeExecutorFn = async (ctx: ExecutionConte
     announcePresence()
     state.presenceInterval = setInterval(announcePresence, 5000)
 
-    // Listen for keyframe requests
-    const keyframePattern = `/video/relay/${roomInput}/request-keyframe/${session}`
-    state.keyframeUnsub = connection.client.on(keyframePattern, () => {
+    // Listen for keyframe requests on the send client
+    const keyframePattern = `/video/relay/${roomInput}/request-keyframe/${sendSession}`
+    state.sendClient.on(keyframePattern, () => {
       const s = videoSendState.get(nodeId)
       if (s) s.lastKeyFrameTime = 0
     })
   }
 
   // Encode frame if broadcasting
-  if (state.broadcasting && state.encoder && state.encoderConfigured) {
+  if (state.broadcasting && state.encoder && state.encoderConfigured && state.encoder.state !== 'closed') {
     const now = Date.now()
     const frameInterval = 1000 / preset.framerate
 
@@ -1189,33 +1262,33 @@ export const claspVideoSendExecutor: NodeExecutorFn = async (ctx: ExecutionConte
       }
 
       try {
-        let frame: VideoFrame | null = null
+        // Ensure capture canvas exists at encoder dimensions
+        if (!state.captureCanvas) {
+          state.captureCanvas = document.createElement('canvas')
+          state.captureCanvas.width = preset.width
+          state.captureCanvas.height = preset.height
+          state.captureCtx = state.captureCanvas.getContext('2d')
+        }
+        if (state.captureCanvas.width !== preset.width) state.captureCanvas.width = preset.width
+        if (state.captureCanvas.height !== preset.height) state.captureCanvas.height = preset.height
+
+        let hasContent = false
 
         if (videoInput && videoInput.readyState >= 2 && videoInput.videoWidth > 0) {
-          frame = new VideoFrame(videoInput, { timestamp: performance.now() * 1000 })
-        } else if (textureInput) {
-          // Render texture to canvas
-          if (!state.captureCanvas) {
-            state.captureCanvas = document.createElement('canvas')
-            state.captureCanvas.width = preset.width
-            state.captureCanvas.height = preset.height
-            state.captureCtx = state.captureCanvas.getContext('2d')
-          }
-
-          // If texture has an image source (canvas/video), draw it
-          if (textureInput.image) {
-            if (state.captureCanvas.width !== preset.width) state.captureCanvas.width = preset.width
-            if (state.captureCanvas.height !== preset.height) state.captureCanvas.height = preset.height
-            state.captureCtx!.drawImage(
-              textureInput.image as CanvasImageSource,
-              0, 0, preset.width, preset.height
-            )
-          }
-
-          frame = new VideoFrame(state.captureCanvas, { timestamp: performance.now() * 1000 })
+          // Draw video scaled to encoder dimensions
+          state.captureCtx!.drawImage(videoInput, 0, 0, preset.width, preset.height)
+          hasContent = true
+        } else if (textureInput && textureInput.image) {
+          // Draw texture image scaled to encoder dimensions
+          state.captureCtx!.drawImage(
+            textureInput.image as CanvasImageSource,
+            0, 0, preset.width, preset.height
+          )
+          hasContent = true
         }
 
-        if (frame) {
+        if (hasContent) {
+          const frame = new VideoFrame(state.captureCanvas, { timestamp: performance.now() * 1000 })
           state.encoder.encode(frame, { keyFrame: forceKeyFrame })
           frame.close()
           state.lastEncodeTime = now
@@ -1239,6 +1312,7 @@ export const claspVideoSendExecutor: NodeExecutorFn = async (ctx: ExecutionConte
   outputs.set('broadcasting', state.broadcasting)
   outputs.set('fps', state.stats.fps)
   outputs.set('bitrate', state.stats.bitrate)
+  outputs.set('address', state.streamAddress || '')
   outputs.set('error', null)
 
   return outputs
@@ -1261,9 +1335,10 @@ function stopVideoSend(nodeId: string, _connection?: ClaspConnection): void {
     state.presenceInterval = null
   }
 
-  if (state.keyframeUnsub) {
-    state.keyframeUnsub()
-    state.keyframeUnsub = null
+  // Close dedicated send client (also cleans up keyframe listener)
+  if (state.sendClient) {
+    try { state.sendClient.close() } catch { /* ignore */ }
+    state.sendClient = null
   }
 
   state.seqGenerator = null

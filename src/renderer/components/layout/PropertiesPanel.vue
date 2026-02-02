@@ -701,6 +701,7 @@ function shouldShowControl(control: { props?: Record<string, unknown> }): boolea
                   type="text"
                   class="control-input"
                   :value="controlValues[control.id]"
+                  :placeholder="(control.props?.placeholder as string) ?? ''"
                   @input="updateControl(control.id, ($event.target as HTMLInputElement).value)"
                 >
 
