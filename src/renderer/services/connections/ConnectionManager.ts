@@ -112,6 +112,7 @@ class ConnectionManagerImpl implements IConnectionManager {
 
     this.connections.set(config.id, config)
     this.statusCache.set(config.id, { status: 'disconnected' })
+    this.emit('connection-added', config)
 
     // Auto-connect if configured
     if (config.autoConnect) {
